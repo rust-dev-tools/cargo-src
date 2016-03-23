@@ -1,0 +1,117 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>rustw</title>
+  <link rel="stylesheet" type="text/css" href="/static/rustw.css">
+  <link rel="icon" href="TODO">
+  <script src="/static/libs/jquery-2.2.2.min.js"></script>
+  <script src="/static/libs/handlebars.runtime.min.js"></script>
+  <script src="/static/templates/build_results.js"></script>
+</head>
+<body>
+
+<div id="div_header">
+  <span id="link_build" class="button">build</span>
+  <span id="link_options" class="button">options</span>
+</div>
+
+<div id="div_main"></div>
+
+</body>
+
+<script>
+$("#link_build").click(do_build);
+// TODO keyboard shortcut
+
+// TODO move all this stuff into a JS file
+function do_build() {
+    $.ajax({
+        url: '/build',
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        $("#div_main").html(Handlebars.templates.build_results(json));
+        $("#link_build").click(do_build);
+        init_build_results();
+    })
+    .fail(function (xhr, status, errorThrown) {
+        $("#div_main").text("Server error");
+        console.log("Error with build request");
+        console.log("error: " + errorThrown + "; status: " + status);
+        $("#link_build").click(do_build);
+    });
+
+    $("#div_main").text("Building...");
+    $("#link_build").off("click");
+}
+
+function init_build_results() {
+    hide_stdout();
+
+    var expand_spans = $(".expand_spans");
+    expand_spans.text("-");
+    expand_spans.off("click");
+    expand_spans.click(hide_spans);
+
+    var expand_children = $(".expand_children");
+    expand_children.text("-");
+    expand_children.off("click");
+    expand_children.click(hide_children);
+
+    // TODO error codes
+    // TODO code links
+}
+
+function show_stdout() {
+    var expand = $("#expand_messages");
+    expand.text("-");
+    expand.off("click");
+    expand.click(hide_stdout);
+
+    $("#div_messages").show();
+}
+
+function hide_stdout() {
+    var expand = $("#expand_messages");
+    expand.text("+");
+    expand.off("click");
+    expand.click(show_stdout);
+
+    $("#div_messages").hide();
+}
+
+function show_spans() {
+    var element = $(this);
+    element.text("-");
+    element.off("click");
+    element.click(hide_spans);
+    element.next().show();
+}
+
+function hide_spans() {
+    var element = $(this);
+    element.text("+");
+    element.off("click");
+    element.click(show_spans);
+    element.next().hide();
+}
+
+function show_children() {
+    var element = $(this);
+    element.text("-");
+    element.off("click");
+    element.click(hide_children);
+    element.next().show();
+}
+
+function hide_children() {
+    var element = $(this);
+    element.text("+");
+    element.off("click");
+    element.click(show_children);
+    element.next().hide();
+}</script>
+</html>

@@ -1,20 +1,20 @@
 
-use web::{router, templates};
-use build::{self, errors};
+use web::router;
+use build;
+use build::errors::{self, Diagnostic};
 use config;
-
-use std::sync::Mutex;
 
 use hyper::server::request::Request;
 use hyper::server::response::Response;
 use hyper::net::Fresh;
 use hyper::uri::RequestUri;
+use hyper::header::ContentType;
+use serde_json;
 
 /// An instance of the server. Something of a God Class. Runs a session of
 /// rustw.
 pub struct Instance {
     router: router::Router,
-    template_engine: Mutex<templates::Engine>,
     builder: build::Builder,
     pub config: config::Config,
 }
@@ -24,7 +24,6 @@ impl Instance {
         let config = config::new();
         Instance {
             router: router::Router::new(),
-            template_engine: Mutex::new(templates::Engine::new()),
             builder: build::Builder::from_build_command(&config.build_cmd),
             config: config,
         }
@@ -32,15 +31,9 @@ impl Instance {
 
     pub fn build(&self) -> String {
         let build_result = self.builder.build().unwrap();
-        // TODO exit status?
-        let err_template = self.router.get_template_text(&["errors.html".to_owned()]).unwrap();
-        let errs = errors::parse_errors(&build_result.stderr);
-        // TODO parse and pass build results
-        let mut extra = templates::Extra::new();
-        extra.extra_values.insert("messages", &build_result.stdout);
-        extra.extra_lists.insert("errors", errs.iter().map(|e| format!("{:?}", e)).collect());
-        let mut engine = self.template_engine.lock().unwrap();
-        engine.expand(&err_template, self, &extra)
+        let result = BuildResult::from_build(&build_result);
+        // TODO need to do some processing of spans
+        serde_json::to_string(&result).unwrap()
     }
 }
 
@@ -50,12 +43,8 @@ impl ::hyper::server::Handler for Instance {
             let action = self.router.route(s);
             //println!("{:?}", action);
             match action {
+                _ => panic!(),
                 router::Action::Static(ref text) => {
-                    res.send(text.as_bytes()).unwrap();
-                }
-                router::Action::Template(ref text) => {
-                    let mut engine = self.template_engine.lock().unwrap();
-                    let text = engine.expand(text, self, &templates::Extra::new());
                     res.send(text.as_bytes()).unwrap();
                 }
                 router::Action::Build => {
@@ -63,6 +52,7 @@ impl ::hyper::server::Handler for Instance {
                     // Then, need to think about 'queueing', async build, timeouts, etc.
                     let text = self.build();
                     // TODO should this be JSON? Should we include data other than the HTML? build command, etc.?
+                    res.headers_mut().set(ContentType::json());
                     res.send(text.as_bytes()).unwrap();
                 }
                 router::Action::Error(status, ref msg) => {
@@ -76,6 +66,22 @@ impl ::hyper::server::Handler for Instance {
         } else {
             // TODO log this and ignore it.
             panic!("Unexpected uri");
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+struct BuildResult {
+    messages: String,
+    errors: Vec<Diagnostic>,
+    // build_command: String,
+}
+
+impl BuildResult {
+    fn from_build(build: &build::BuildResult) -> BuildResult {
+        BuildResult {
+            messages: build.stdout.trim().to_owned(),
+            errors: errors::parse_errors(&build.stderr),
         }
     }
 }

@@ -3,7 +3,7 @@ use serde_json;
 // Error structs copied from
 // https://github.com/rust-lang/rust/blob/master/src/libsyntax/errors/json.rs
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -15,7 +15,7 @@ pub struct Diagnostic {
     children: Vec<Diagnostic>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -28,7 +28,7 @@ pub struct DiagnosticSpan {
     column_end: usize,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DiagnosticCode {
     /// The code itself.
     code: String,

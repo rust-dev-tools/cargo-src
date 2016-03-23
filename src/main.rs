@@ -29,17 +29,14 @@ use std::env;
 // TODO interface
 // main page
 //   build command
-//     pause
+//     cancel
 //     rebuild
-//   errors
 
 
 // TODO next
-// Get errors to the main page
-// Control flow
-//   on server
-//   on page
-// rebuild command
+// spans for source code in errors
+// CSS
+// browse source code
 
 fn main() {
     let args: Vec<String> = env::args().collect();

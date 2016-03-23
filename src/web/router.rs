@@ -12,7 +12,6 @@ use hyper::status::StatusCode;
 // TODO separate path from dir
 // TODO need an 'absolute' path to static
 const STATIC_DIR: &'static str = "static";
-const TEMPLATE_DIR: &'static str = "templates";
 // TODO shouldn't be const
 const CODE_DIR: &'static str = "src";
 
@@ -21,8 +20,6 @@ const BUILD_REQUEST: &'static str = "build";
 #[derive(Debug)]
 pub enum Action {
     Static(String),
-    // TODO remove
-    //Template(String),
     Error(StatusCode, String),
     Build,
 }
@@ -59,18 +56,11 @@ impl Router {
         Action::Error(StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")))
     }
 
-    // TODO Not really sure this belongs in the router
-    pub fn get_template_text(&self, path: &[String]) -> Result<String, String> {
-        let mut path_buf = PathBuf::from(TEMPLATE_DIR);
-        for p in path {
-            path_buf.push(p);
-        }
-        self.read_file(&path_buf)
-    }
-
     fn action_index(&self) -> Action {
-        match self.get_template_text(&["index.html".to_owned()]) {
-            Ok(s) => Action::Template(s),
+        let mut path_buf = PathBuf::from(STATIC_DIR);
+        path_buf.push("index.html");
+        match self.read_file(&path_buf) {
+            Ok(s) => Action::Static(s),
             Err(s) => Action::Error(StatusCode::InternalServerError, s),
         }
     }
@@ -97,7 +87,7 @@ impl Router {
             path_buf.push(p);
         }
 
-        // TODO use a code template
+        // TODO use a code template?
         match self.read_file(&path_buf) {
             Ok(s) => Action::Static(s),
             Err(_) => Action::Error(StatusCode::NotFound, "Page not found".to_owned()),
