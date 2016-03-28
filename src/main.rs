@@ -52,6 +52,7 @@ use std::env;
 // options
 // push changes to rustdoc highlighting
 // context for errors
+// line numbers in error code
 
 fn main() {
     let args: Vec<String> = env::args().collect();

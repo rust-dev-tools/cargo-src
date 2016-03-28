@@ -36,7 +36,6 @@ impl Instance {
             d.fold_on_message(&|s| errors::codify_message(&s));
         }
 
-        // TODO need to do some processing of spans (waiting on rustc patch).
         serde_json::to_string(&result).unwrap()
     }
 }

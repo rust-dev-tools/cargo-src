@@ -5,8 +5,11 @@ authors = ["Nick Cameron <ncameron@mozilla.com>"]
 
 [dependencies]
 url = "0.5.7"
-hyper = "0.8.0"
 getopts = "0.2"
 serde = "*"
 serde_json = "*"
 serde_macros = "*"
+
+[dependencies.hyper]
+version = "0.8.0"
+default-features = false
