@@ -1,0 +1,5 @@
+<div id="div_src_view">
+    {{#each lines}}
+        <span class="div_src_line_number" id="src_line_number_{{inc @index}}">{{inc @index}}</span><span class="div_src_line" id="src_line_{{inc @index}}">{{{this}}}</span><br>
+    {{/each}}
+</div>

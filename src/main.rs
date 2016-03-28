@@ -1,13 +1,19 @@
 #![feature(question_mark)]
 #![feature(custom_derive, plugin)]
 #![feature(type_ascription)]
+#![feature(rustdoc)]
+// For libsyntax, which is just a hack to get around rustdoc.
+#![feature(rustc_private)]
 #![plugin(serde_macros)]
 
 extern crate hyper;
 extern crate url;
 extern crate getopts;
+// TODO merge changes back to rustdoc
+extern crate rustdoc;
 extern crate serde;
 extern crate serde_json;
+extern crate syntax;
 
 mod build;
 mod config;
@@ -24,19 +30,28 @@ use std::env;
 // read command line
 //   configuration?
 //   cargo default
+// incremental results
 // time
 
 // TODO interface
 // main page
 //   build command
 //     cancel
-//     rebuild
-
+// options
+//     show/hide all source
+//     show/hide all children
+//     show/hide warnings
+//     show/hide notes/help/suggestions
+//     show build command, time
+//     context for error source
+// build on load, f5 to rebuild
 
 // TODO next
-// spans for source code in errors
-// CSS
-// browse source code
+// edit link
+// paths to data
+// options
+// push changes to rustdoc highlighting
+// context for errors
 
 fn main() {
     let args: Vec<String> = env::args().collect();

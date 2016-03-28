@@ -1,51 +1,60 @@
 <div id="div_stdout">
-    stdout: <span id="expand_messages" class="small_button"></span>
+    <span id="expand_messages" class="small_button"></span> <span id="div_std_label">stdout:</span>
     <div id="div_messages">
-        <pre>
-            {{messages}}
-        </pre>
+        <pre>{{messages}}</pre>
     </div>
 </div>
 
 <div id="div_errors">
+    <span id="expand_errors" class="small_button"></span> <span id="div_std_label">stderr:</span>
     {{#each errors}}
         <div class="div_diagnostic div_{{level}}">
-            <span class="level_{{level}}">{{level}}</span>: <span class="err_msg">{{message}}</span>
+            <span class="level_{{level}}">{{level}}</span>
             {{#if code}}
-            <div class="err_code" {{#if code.explanation}}explain="{{code.explanation}}"{{/if}} code="{{code.code}}">{{code.code}}</div>
+            <span class="err_code" {{#if code.explanation}}explain="{{code.explanation}}"{{/if}} code="{{code.code}}">{{code.code}}</span>
             {{/if}}
+            : <span class="err_msg">{{{message}}}</span>
 
             {{#if spans}}
-            <span class="expand_spans small_button"></span>
+            <br><span class="expand_spans small_button"></span>
             <span class="div_spans">
             {{#each spans}}
-                <div class="div_span">
-                <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span> <span class="span_src">TODO source text</span>
-                </div>
+                <span class="div_span">
+                    <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+                    {{#each text}}
+                        <br><span class="span_src">{{{this}}}</span>
+                    {{/each}}
+                </span>
             {{/each}}
             </span>
             {{/if}}
 
             {{#if children}}
+            <div class="group_children">
             <span class="expand_children small_button"></span>
+            <span class="div_children_dots">...</span>
             <span class="div_children">
             {{#each children}}
-                <div class="div_diagnostic_nested div_{{level}}">
-                    <span class="level_{{level}}">{{level}}</span>: <span class="err_msg">{{message}}</span>
+                <span class="div_diagnostic_nested div_{{level}}">
+                    <span class="level_{{level}}">{{level}}</span>: <span class="err_msg">{{{message}}}</span>
 
                     {{#if spans}}
-                    <span class="expand_spans small_button"></span>
+                    <br><span class="expand_spans small_button"></span>
                     <span class="div_spans">
                     {{#each spans}}
-                        <div class="div_span">
-                        <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span> <span class="span_src">TODO source text</span>
-                        </div>
+                        <span class="div_span">
+                            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+                            {{#each text}}
+                                <br><span class="span_src">{{{this}}}</span>
+                            {{/each}}
+                        </span>
                     {{/each}}
                     </span>
                     {{/if}}
-                </div>
+                </span><br>
             {{/each}}
             </span>
+            </div>
             {{/if}}
         </div>
     {{/each}}

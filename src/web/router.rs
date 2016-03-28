@@ -7,6 +7,7 @@ use std::io::Read;
 
 use url::parse_path;
 use hyper::status::StatusCode;
+use hyper::header::ContentType;
 
 
 // TODO separate path from dir
@@ -16,12 +17,14 @@ const STATIC_DIR: &'static str = "static";
 const CODE_DIR: &'static str = "src";
 
 const BUILD_REQUEST: &'static str = "build";
+const TEST_REQUEST: &'static str = "test";
 
 #[derive(Debug)]
 pub enum Action {
-    Static(String),
+    Static(Vec<u8>, ContentType),
     Error(StatusCode, String),
     Build,
+    CodeLines(String),
 }
 
 pub struct Router;
@@ -53,6 +56,11 @@ impl Router {
             return self.action_build();
         }
 
+        if path[0] == TEST_REQUEST {
+            // TODO also check HTTP method
+            return self.action_static(&["test_data.json".to_owned()]);
+        }
+
         Action::Error(StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")))
     }
 
@@ -60,7 +68,7 @@ impl Router {
         let mut path_buf = PathBuf::from(STATIC_DIR);
         path_buf.push("index.html");
         match self.read_file(&path_buf) {
-            Ok(s) => Action::Static(s),
+            Ok(s) => Action::Static(s, ContentType::html()),
             Err(s) => Action::Error(StatusCode::InternalServerError, s),
         }
     }
@@ -70,9 +78,20 @@ impl Router {
         for p in path {
             path_buf.push(p);
         }
+        //println!("requesting `{}`", path_buf.to_str().unwrap());
+
+        let content_type = match path_buf.extension() {
+            Some(s) if s.to_str().unwrap() == "html" => ContentType::html(),
+            Some(s) if s.to_str().unwrap() == "css" => ContentType("text/css".parse().unwrap()),
+            Some(s) if s.to_str().unwrap() == "json" => ContentType::json(),
+            _ => ContentType("application/octet-stream".parse().unwrap()),
+        };
 
         match self.read_file(&path_buf) {
-            Ok(s) => Action::Static(s),
+            Ok(s) => {
+                //println!("serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
+                Action::Static(s, content_type)
+            }
             Err(_) => Action::Error(StatusCode::NotFound, "Page not found".to_owned()),
         }
     }
@@ -81,25 +100,28 @@ impl Router {
         Action::Build
     }
 
-    fn action_src(&self, path: &[String]) -> Action {
-        let mut path_buf = PathBuf::from(CODE_DIR);
+    fn action_src(&self, mut path: &[String]) -> Action {
+        let mut path_buf = PathBuf::new();
+        if path[0].is_empty() {
+            path_buf.push("/");
+            path = &path[1..];
+        }
         for p in path {
             path_buf.push(p);
         }
 
-        // TODO use a code template?
         match self.read_file(&path_buf) {
-            Ok(s) => Action::Static(s),
+            Ok(s) => Action::CodeLines(String::from_utf8(s).unwrap()),
             Err(_) => Action::Error(StatusCode::NotFound, "Page not found".to_owned()),
         }
     }
 
     // TODO should be factored out into a module and add caching
-    fn read_file(&self, path: &Path) -> Result<String, String> {
+    fn read_file(&self, path: &Path) -> Result<Vec<u8>, String> {
         match File::open(&path) {
             Ok(mut file) => {
-                let mut buf = String::new();
-                file.read_to_string(&mut buf).unwrap();
+                let mut buf = Vec::new();
+                file.read_to_end(&mut buf).unwrap();
                 Ok(buf)
             }
             Err(msg) => {

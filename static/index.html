@@ -4,16 +4,32 @@
   <meta charset="utf-8">
   <title>rustw</title>
   <link rel="stylesheet" type="text/css" href="/static/rustw.css">
-  <link rel="icon" href="TODO">
+  <link rel="icon" href="/static/favicon.ico">
   <script src="/static/libs/jquery-2.2.2.min.js"></script>
+  <script src="/static/libs/marked.min.js"></script>
   <script src="/static/libs/handlebars.runtime.min.js"></script>
   <script src="/static/templates/build_results.js"></script>
+  <script src="/static/templates/err_code.js"></script>
+  <script src="/static/templates/src_view.js"></script>
 </head>
 <body>
 
 <div id="div_header">
+  <span id="link_back">&#8592; return to build results</span>
   <span id="link_build" class="button">build</span>
+  <span id="link_test" class="button">test</span>
   <span id="link_options" class="button">options</span>
+</div>
+
+<div id="div_options">
+<a id="link_close_options" class="link" href="#" onclick="hide_options(); return false;">close</a>
+<div class="div_option">show/hide warnings</div>
+<div class="div_option">show/hide notes and help</div>
+<div class="div_option">show/hide all source snippets</div>
+<div class="div_option">show/hide context for source code</div>
+<div class="div_option">show/hide child messages</div>
+<br><div class="div_option">build command: <code>cargo build</code></div>
+<div class="div_option">build time: TODO</div>
 </div>
 
 <div id="div_main"></div>
@@ -21,97 +37,300 @@
 </body>
 
 <script>
-$("#link_build").click(do_build);
+Handlebars.registerHelper("inc", function(value, options)
+{
+    return parseInt(value) + 1;
+});
+
+onLoad();
 // TODO keyboard shortcut
 
 // TODO move all this stuff into a JS file
-function do_build() {
+
+function onLoad() {
+    load_start();
+    history.replaceState({ page: "start" }, "", "/");
+
+    // TODO handle onload event
+    window.onpopstate = function(event) {
+        // TODO could do something a bit more OO here
+        var state = event.state;
+        if (!state) {
+            console.log("ERROR: null state: ");
+            load_start();
+        } else if (state.page == "start") {
+            load_start();
+        } else if (state.page == "error") {
+            load_error();
+        } else if (state.page == "build") {
+            load_build(state);
+        } else if (state.page == "err_code") {
+            load_err_code(state);
+        } else if (state.page == "source") {
+            load_source(state);
+        } else {
+            console.log("ERROR: Unknown page state: ");
+            console.log(state);
+            load_start();
+        }
+
+        hide_options();
+    };
+}
+
+function load_start() {
+    $("#link_build").click('build', do_build);
+    $("#link_test").click('test', do_build);
+    $("#link_options").click('test', show_options);
+    $("#link_build").text("build");
+    $("#div_main").html("");
+    $("#div_options").hide();
+}
+
+function show_options(event) {
+    var options = $("#div_options");
+
+    options.show();
+    options.offset({ "top": event.pageY, "left": event.pageX });
+
+    $("#div_main").click(hide_options);
+    $("#div_header").click(hide_options);
+
+    return false;
+}
+
+function hide_options() {
+    $("#div_main").off("click");
+    $("#div_header").off("click");
+
+    $("#div_options").hide();
+}
+
+function load_build(state) {
+    // TODO scroll position (and other pages)
+    // TODO can we save the state of what has been opened and closed?
+
+    $("#div_main").html(Handlebars.templates.build_results(state.results));
+    $("#link_build").click('build', do_build);
+    $("#link_build").text("rebuild");
+    $("#link_back").css("visibility", "hidden");
+    init_build_results();
+}
+
+function load_error() {
+    $("#div_main").text("Server error?");
+    $("#link_build").click('build', do_build);
+}
+
+function load_err_code(state) {
+    $("#div_main").html(Handlebars.templates.err_code(state.data));
+
+    // Customise the copied error.
+    var err = $("#div_err_code_error");
+    // Make the error code not a link
+    var err_err_code = err.find(".err_code");
+    err_err_code.css("text-decoration", "none");
+    err_err_code.css("cursor", "auto");
+    err_err_code.off("click");
+    // Make all sub-parts visible.
+    var err_all = err.find(":hidden");
+    err_all.show();
+    // Hide all buttons.
+    var err_buttons = err.find(".small_button");
+    err_buttons.css("visibility", "hidden");
+}
+
+function load_source(state) {
+    $("#div_main").html(Handlebars.templates.src_view(state.data));
+
+    for (var i = state.start_line; i <= state.end_line; ++i) {
+        $("#src_line_number_" + i).addClass("selected");
+        $("#src_line_" + i).addClass("selected");
+    }
+
+    // Jump to the start line. 100 is a fudge so that the start line is not
+    // right at the top of the window, which makes it easier to see.
+    var y = state.start_line * $("#src_line_number_1").height() - 100;
+    window.scroll(0, y);
+}
+
+function do_build(data) {
     $.ajax({
-        url: '/build',
+        url: '/' + data.data,
         type: 'POST',
         dataType: 'JSON',
         cache: false
     })
     .done(function (json) {
-        $("#div_main").html(Handlebars.templates.build_results(json));
-        $("#link_build").click(do_build);
-        init_build_results();
+        var state = { page: "build", results: json }
+        load_build(state);
+
+        history.pushState(state, "", "#build");
     })
     .fail(function (xhr, status, errorThrown) {
-        $("#div_main").text("Server error");
         console.log("Error with build request");
         console.log("error: " + errorThrown + "; status: " + status);
-        $("#link_build").click(do_build);
+        load_error();
+
+        history.pushState({ page: "error" }, "", "#build");
     });
 
+    $("#link_back").css("visibility", "hidden");
     $("#div_main").text("Building...");
     $("#link_build").off("click");
+    $("#link_build").html("&nbsp;");
+    hide_options();
 }
 
 function init_build_results() {
     hide_stdout();
+    show_stderr();
 
     var expand_spans = $(".expand_spans");
-    expand_spans.text("-");
-    expand_spans.off("click");
-    expand_spans.click(hide_spans);
+    expand_spans.each(hide_spans);
 
     var expand_children = $(".expand_children");
-    expand_children.text("-");
-    expand_children.off("click");
-    expand_children.click(hide_children);
+    expand_children.each(show_children);
 
-    // TODO error codes
-    // TODO code links
+    var err_codes = $(".err_code");
+    err_codes.click(win_err_code);
+
+    var src_links = $(".span_loc");
+    src_links.click(win_src_link);
+}
+
+function show_hide(element, text, fn) {
+    element.text(text);
+    element.off("click");
+    element.click(fn);    
 }
 
 function show_stdout() {
     var expand = $("#expand_messages");
-    expand.text("-");
-    expand.off("click");
-    expand.click(hide_stdout);
-
+    show_hide(expand, "-", hide_stdout);
     $("#div_messages").show();
+}
+
+function hide_stderr() {
+    var expand = $("#expand_errors");
+    show_hide(expand, "+", show_stderr);
+    $(".div_diagnostic").hide();
+}
+
+function show_stderr() {
+    var expand = $("#expand_errors");
+    show_hide(expand, "-", hide_stderr);
+    $(".div_diagnostic").show();
 }
 
 function hide_stdout() {
     var expand = $("#expand_messages");
-    expand.text("+");
-    expand.off("click");
-    expand.click(show_stdout);
-
+    show_hide(expand, "+", show_stdout);
     $("#div_messages").hide();
 }
 
 function show_spans() {
     var element = $(this);
-    element.text("-");
-    element.off("click");
-    element.click(hide_spans);
-    element.next().show();
+    show_hide(element, "-", hide_spans);
+    element.next().find(".span_src").show();
 }
 
 function hide_spans() {
     var element = $(this);
-    element.text("+");
-    element.off("click");
-    element.click(show_spans);
-    element.next().hide();
+    show_hide(element, "+", show_spans);
+    element.next().find(".span_src").hide();
 }
 
 function show_children() {
     var element = $(this);
-    element.text("-");
-    element.off("click");
-    element.click(hide_children);
-    element.next().show();
+    show_hide(element, "-", hide_children);
+    element.next().hide();
+    element.next().next().show();
 }
 
 function hide_children() {
     var element = $(this);
-    element.text("+");
-    element.off("click");
-    element.click(show_children);
-    element.next().hide();
-}</script>
+    show_hide(element, "+", show_children);
+    element.next().show();
+    element.next().next().hide();
+}
+
+function show_back_link() {
+    // Save the current window.
+    var backup = history.state;
+
+    // Make the 'back' link visible and go back on click.
+    $("#link_back").css("visibility", "visible");
+    $("#link_back").click(function() {
+            load_build(backup);
+            history.pushState(backup, "", "#build");
+    });    
+}
+
+function win_err_code() {
+    // TODO can we store explanations in a hashtable, rather than in the elements?
+
+    show_back_link();
+
+    // Prepare the data for the error code window.
+    var element = $(this);
+    var error_html = element.parent().html();
+    var data = { "code": element.attr("code"), "explain": marked(element.attr("explain")), "error": error_html };
+
+    var state = { page: "err_code", data: data };
+    load_err_code(state);
+    history.pushState(state, "", "#" + element.attr("code"));
+}
+
+function win_src_link() {
+    // TODO
+    // highlight by columns
+    // jump to def (then navigation stuff)
+    // hover for docs
+    // mouseover to highlight all uses
+
+    show_back_link();
+
+    var element = $(this);
+    var file_loc = element.attr("link").split(':');
+    var file = file_loc[0];
+    var start = file_loc[1];
+    var end = file_loc[2];
+
+    var display = "";
+    if (!start) {
+        start = 0;
+        end = 0;
+    } else if (!end) {
+        end = start;
+        display = ":" + start;
+    } else if (start == end) {
+        display = ":" + start;
+    } else {
+        display = ":" + start + ":" + end;
+    }
+
+    $.ajax({
+        url: '/src/' + file,
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = { page: "source", data: json, file: file, display: display, start_line: start, end_line: end };
+        load_source(state);
+
+        history.pushState(state, "", "#src=" + file + display);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with build request");
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({ page: "error"}, "", "#src=" + file + display);
+    });
+
+    $("#div_main").text("Loading...");
+}
+</script>
 </html>
