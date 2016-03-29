@@ -51,14 +51,16 @@ impl Router {
             return self.action_src(&path[1..]);
         }
 
-        if path[0] == BUILD_REQUEST {
-            // TODO also check HTTP method
-            return self.action_build();
-        }
-
         if path[0] == TEST_REQUEST {
             // TODO also check HTTP method
             return self.action_static(&["test_data.json".to_owned()]);
+        }
+
+        if ::DEMO_MODE == false {
+            if path[0] == BUILD_REQUEST {
+                // TODO also check HTTP method
+                return self.action_build();
+            }
         }
 
         Action::Error(StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")))
@@ -67,8 +69,16 @@ impl Router {
     fn action_index(&self) -> Action {
         let mut path_buf = PathBuf::from(STATIC_DIR);
         path_buf.push("index.html");
+
         match self.read_file(&path_buf) {
-            Ok(s) => Action::Static(s, ContentType::html()),
+            Ok(mut s) => {
+                if ::DEMO_MODE {
+                    // TODO not good enough since we reset this elsewhere.
+                    s.extend_from_slice("\n<script>DEMO_MODE=true;set_build_onclick();</script>\n".as_bytes());
+                }
+
+                Action::Static(s, ContentType::html())
+            }
             Err(s) => Action::Error(StatusCode::InternalServerError, s),
         }
     }

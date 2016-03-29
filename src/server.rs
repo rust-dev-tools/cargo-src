@@ -50,6 +50,7 @@ impl ::hyper::server::Handler for Instance {
                     res.send(data).unwrap();
                 }
                 router::Action::Build => {
+                    assert!(!::DEMO_MODE, "Build shouldn't happen in demo mode");
                     // TODO would be nice to do this async, but waiting for async Hyper.
                     // Then, need to think about 'queueing', async build, timeouts, etc.
                     let text = self.build();

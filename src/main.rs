@@ -26,12 +26,16 @@ use hyper::Server;
 
 use std::env;
 
+const DEMO_MODE: bool = true;
+const PORT: u32 = 3000;
+
 // TODO build
 // read command line
 //   configuration?
 //   cargo default
 // incremental results
 // time
+// errors by code view
 
 // TODO interface
 // main page
@@ -70,6 +74,6 @@ fn main() {
 
     let server = server::Instance::new();
 
-    println!("server running on 127.0.0.1:3000");
-    Server::http("127.0.0.1:3000").unwrap().handle(server).unwrap();
+    println!("server running on 127.0.0.1:{}", PORT);
+    Server::http(&*format!("127.0.0.1:{}", PORT)).unwrap().handle(server).unwrap();
 }

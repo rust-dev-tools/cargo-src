@@ -29,6 +29,7 @@
 <div class="div_option">show/hide context for source code</div>
 <div class="div_option">show/hide child messages</div>
 <br><div class="div_option">build command: <code>cargo build</code></div>
+<div class="div_option">toolchain: TODO</div>
 <div class="div_option">build time: TODO</div>
 </div>
 
@@ -37,6 +38,8 @@
 </body>
 
 <script>
+var DEMO_MODE = false;
+
 Handlebars.registerHelper("inc", function(value, options)
 {
     return parseInt(value) + 1;
@@ -79,10 +82,11 @@ function onLoad() {
 }
 
 function load_start() {
-    $("#link_build").click('build', do_build);
-    $("#link_test").click('test', do_build);
-    $("#link_options").click('test', show_options);
     $("#link_build").text("build");
+    set_build_onclick();
+    $("#link_test").click('test', do_build);
+    $("#link_options").click(show_options);
+    
     $("#div_main").html("");
     $("#div_options").hide();
 }
@@ -111,7 +115,7 @@ function load_build(state) {
     // TODO can we save the state of what has been opened and closed?
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
-    $("#link_build").click('build', do_build);
+    set_build_onclick();
     $("#link_build").text("rebuild");
     $("#link_back").css("visibility", "hidden");
     init_build_results();
@@ -119,7 +123,7 @@ function load_build(state) {
 
 function load_error() {
     $("#div_main").text("Server error?");
-    $("#link_build").click('build', do_build);
+    set_build_onclick();
 }
 
 function load_err_code(state) {
@@ -170,6 +174,7 @@ function do_build(data) {
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
         console.log("error: " + errorThrown + "; status: " + status);
+        console.log(data);
         load_error();
 
         history.pushState({ page: "error" }, "", "#build");
@@ -332,6 +337,15 @@ function win_src_link() {
     });
 
     $("#div_main").text("Loading...");
+}
+
+function set_build_onclick() {
+    $("#link_build").off('click');
+    if (DEMO_MODE) {
+        $("#link_build").click('test', do_build);
+    } else {
+        $("#link_build").click('build', do_build);
+    }
 }
 </script>
 </html>
