@@ -237,13 +237,13 @@ function hide_stdout() {
 function show_spans() {
     var element = $(this);
     show_hide(element, "-", hide_spans);
-    element.next().find(".span_src").show();
+    element.next().find(".div_all_span_src").show();
 }
 
 function hide_spans() {
     var element = $(this);
     show_hide(element, "+", show_spans);
-    element.next().find(".span_src").hide();
+    element.next().find(".div_all_span_src").hide();
 }
 
 function show_children() {

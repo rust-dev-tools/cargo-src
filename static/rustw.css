@@ -156,6 +156,7 @@ a.issue_link:active, a.link  { color: black }
     margin-left: 50px;
     font-family: monospace;
     font-size: medium;
+    white-space: pre;
 }
 .err_code {
     display: inline-block;
