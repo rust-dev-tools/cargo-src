@@ -77,6 +77,9 @@ html {
     min-height: 100%;
     font-size: small;
 }
+#div_message {
+    margin-bottom: 20px;
+}
 #div_stdout {
     margin-bottom: 20px;
 }
@@ -119,7 +122,7 @@ html {
 }
 
 #link_test {
-    /* display: none; */
+    display: none;
 }
 
 .level_error {
@@ -219,7 +222,7 @@ a.issue_link:active, a.link  { color: black }
 #div_options {
     position: absolute;
     width: 300px;
-    height: 400px;
+    height: 250px;
     background-color: #f8f8f0;
     border: solid black 2px;
     border-radius: 6px;

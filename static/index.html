@@ -114,6 +114,10 @@ function load_build(state) {
     // TODO scroll position (and other pages)
     // TODO can we save the state of what has been opened and closed?
 
+    if (DEMO_MODE) {
+        state.results.rustw_message = "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff.";
+    }
+
     $("#div_main").html(Handlebars.templates.build_results(state.results));
     set_build_onclick();
     $("#link_build").text("rebuild");

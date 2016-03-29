@@ -26,7 +26,7 @@ use hyper::Server;
 
 use std::env;
 
-const DEMO_MODE: bool = true;
+const DEMO_MODE: bool = false;
 const PORT: u32 = 3000;
 
 // TODO build
