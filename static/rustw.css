@@ -224,7 +224,7 @@ a.issue_link:active, a.link  { color: black }
     width: 300px;
     height: 250px;
     background-color: #f8f8f0;
-    border: solid black 2px;
+    border: solid black 1px;
     border-radius: 6px;
     border-top-left-radius: 0;
     padding: 10px;
@@ -239,7 +239,7 @@ a.issue_link:active, a.link  { color: black }
     width: 150px;
     height: 100px;
     background-color: #f8f8f0;
-    border: solid black 2px;
+    border: solid black 1px;
     border-radius: 6px;
     border-top-left-radius: 0;
     padding: 10px;
