@@ -47,18 +47,15 @@ impl Router {
         }
 
         if path[0] == CODE_DIR {
-            // TODO line number from query
             return self.action_src(&path[1..]);
         }
 
         if path[0] == TEST_REQUEST {
-            // TODO also check HTTP method
             return self.action_static(&["test_data.json".to_owned()]);
         }
 
         if ::DEMO_MODE == false {
             if path[0] == BUILD_REQUEST {
-                // TODO also check HTTP method
                 return self.action_build();
             }
         }
@@ -73,7 +70,6 @@ impl Router {
         match self.read_file(&path_buf) {
             Ok(mut s) => {
                 if ::DEMO_MODE {
-                    // TODO not good enough since we reset this elsewhere.
                     s.extend_from_slice("\n<script>DEMO_MODE=true;set_build_onclick();</script>\n".as_bytes());
                 }
 
@@ -126,7 +122,6 @@ impl Router {
         }
     }
 
-    // TODO should be factored out into a module and add caching
     fn read_file(&self, path: &Path) -> Result<Vec<u8>, String> {
         match File::open(&path) {
             Ok(mut file) => {
@@ -140,9 +135,4 @@ impl Router {
             }
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-
 }

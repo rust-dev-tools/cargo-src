@@ -51,9 +51,8 @@ impl ::hyper::server::Handler for Instance {
                 }
                 router::Action::Build => {
                     assert!(!::DEMO_MODE, "Build shouldn't happen in demo mode");
-                    // TODO would be nice to do this async, but waiting for async Hyper.
-                    // Then, need to think about 'queueing', async build, timeouts, etc.
                     let text = self.build();
+                    // Used for generating the test data.
                     //println!("{}", text);
                     res.headers_mut().set(ContentType::json());
                     res.send(text.as_bytes()).unwrap();

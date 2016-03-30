@@ -28,6 +28,7 @@
 <div class="div_option">show/hide all source snippets</div>
 <div class="div_option">show/hide context for source code</div>
 <div class="div_option">show/hide child messages</div>
+<div class="div_option">error context: TODO lines</div>
 <br><div class="div_option">build command: <code>cargo build</code></div>
 <div class="div_option">toolchain: TODO</div>
 <div class="div_option">build time: TODO</div>
@@ -46,17 +47,12 @@ Handlebars.registerHelper("inc", function(value, options)
 });
 
 onLoad();
-// TODO keyboard shortcut
-
-// TODO move all this stuff into a JS file
 
 function onLoad() {
     load_start();
     history.replaceState({ page: "start" }, "", "/");
 
-    // TODO handle onload event
     window.onpopstate = function(event) {
-        // TODO could do something a bit more OO here
         var state = event.state;
         if (!state) {
             console.log("ERROR: null state: ");
@@ -111,9 +107,6 @@ function hide_options() {
 }
 
 function load_build(state) {
-    // TODO scroll position (and other pages)
-    // TODO can we save the state of what has been opened and closed?
-
     if (DEMO_MODE) {
         state.results.rustw_message = "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff.";
     }
@@ -277,8 +270,6 @@ function show_back_link() {
 }
 
 function win_err_code() {
-    // TODO can we store explanations in a hashtable, rather than in the elements?
-
     show_back_link();
 
     // Prepare the data for the error code window.
@@ -292,13 +283,6 @@ function win_err_code() {
 }
 
 function win_src_link() {
-    // TODO
-    // copy-able code
-    // highlight by columns
-    // jump to def (then navigation stuff)
-    // hover for docs
-    // mouseover to highlight all uses
-
     show_back_link();
 
     var element = $(this);
