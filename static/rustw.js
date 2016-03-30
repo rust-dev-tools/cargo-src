@@ -40,6 +40,7 @@ function load_start() {
     
     $("#div_main").html("");
     $("#div_options").hide();
+    $("#div_src_menu").hide();
 }
 
 function show_options(event) {
@@ -63,7 +64,8 @@ function hide_options() {
 
 function load_build(state) {
     if (DEMO_MODE) {
-        state.results.rustw_message = "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff.";
+        state.results.rustw_message =
+            "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff. Source links can be right-clicked for more options.";
     }
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
@@ -154,6 +156,7 @@ function init_build_results() {
 
     var src_links = $(".span_loc");
     src_links.click(win_src_link);
+    src_links.on("contextmenu", show_src_menu);
 }
 
 function show_hide(element, text, fn) {
@@ -280,6 +283,42 @@ function win_src_link() {
     });
 
     $("#div_main").text("Loading...");
+}
+
+function show_src_menu(event) {
+    var src_menu = $("#div_src_menu");
+
+    src_menu.show();
+    src_menu.offset({ "top": event.pageY, "left": event.pageX });
+
+    // TODO can we do better than this to close the menu? (Also options menu).
+    $("#div_main").click(function() { $("#src_menu_edit").off("click"); src_menu.hide(); });
+    $("#div_header").click(function() { $("#src_menu_edit").off("click"); src_menu.hide(); });
+
+    $("#src_menu_edit").click($(event.target), edit);
+
+    return false;
+}
+
+function edit(event) {
+    console.log(event.data.attr("link"));
+    $.ajax({
+        url: '/edit?file=' + event.data.attr("link"),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        console.log("edit - success");
+        console.log(json);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with edit request");
+        console.log("error: " + errorThrown + "; status: " + status);
+    });
+
+    $("#src_menu_edit").off("click");
+    $("#div_src_menu").hide();
 }
 
 function set_build_onclick() {

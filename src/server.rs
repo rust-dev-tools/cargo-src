@@ -63,6 +63,10 @@ impl ::hyper::server::Handler for Instance {
                     res.headers_mut().set(ContentType::json());
                     res.send(text.as_bytes()).unwrap();
                 }
+                router::Action::Ack => {
+                    res.headers_mut().set(ContentType::json());
+                    res.send("{}".as_bytes()).unwrap();                    
+                }
                 router::Action::Error(status, ref msg) => {
                     // TODO log it
                     //println!("ERROR: {} ({})", msg, status);

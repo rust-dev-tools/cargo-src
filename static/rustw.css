@@ -1,3 +1,7 @@
+#link_test {
+    display: none;
+}
+
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
@@ -121,10 +125,6 @@ html {
     top: 2px;
 }
 
-#link_test {
-    display: none;
-}
-
 .level_error {
     color: red;
 }
@@ -230,7 +230,22 @@ a.issue_link:active, a.link  { color: black }
     padding: 10px;
     z-index: 1;
 }
-
 #link_close_options {
     float: right;
+}
+
+#div_src_menu {
+    position: absolute;
+    width: 150px;
+    height: 100px;
+    background-color: #f8f8f0;
+    border: solid black 2px;
+    border-radius: 6px;
+    border-top-left-radius: 0;
+    padding: 10px;
+    z-index: 1;    
+}
+.src_menu_link {
+    text-decoration: underline;
+    cursor: pointer;    
 }

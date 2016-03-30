@@ -2,8 +2,9 @@
 // disk to support that action.
 
 use std::fs::File;
-use std::path::{Path, PathBuf};
 use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use url::parse_path;
 use hyper::status::StatusCode;
@@ -18,6 +19,7 @@ const CODE_DIR: &'static str = "src";
 
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
+const EDIT_REQUEST: &'static str = "edit";
 
 #[derive(Debug)]
 pub enum Action {
@@ -25,6 +27,8 @@ pub enum Action {
     Error(StatusCode, String),
     Build,
     CodeLines(String),
+    // Just send an acknowledgement - no data to send.
+    Ack,
 }
 
 pub struct Router;
@@ -35,7 +39,7 @@ impl Router {
     }
 
     pub fn route(&self, uri_path: &str) -> Action {
-        let (path, _query, _) = parse_path(uri_path).unwrap();
+        let (path, query, _) = parse_path(uri_path).unwrap();
 
         //println!("path: {:?}, query: {:?}", path, query);
         if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
@@ -57,6 +61,11 @@ impl Router {
         if ::DEMO_MODE == false {
             if path[0] == BUILD_REQUEST {
                 return self.action_build();
+            }
+
+            if path[0] == EDIT_REQUEST {
+                println!("uri: {}", uri_path);
+                return self.action_edit(query);
             }
         }
 
@@ -119,6 +128,57 @@ impl Router {
         match self.read_file(&path_buf) {
             Ok(s) => Action::CodeLines(String::from_utf8(s).unwrap()),
             Err(_) => Action::Error(StatusCode::NotFound, "Page not found".to_owned()),
+        }
+    }
+
+    fn action_edit(&self, query: Option<String>) -> Action {
+        // TODO log commented out printlns
+        let error_out = || {
+            //println!("no query string");
+            Action::Error(StatusCode::InternalServerError, format!("Bad query string: {:?}", query))
+        };
+
+        // TODO factor out query logic
+        match query {
+            Some(ref q) => {
+                //println!("edit: `{}`", q);
+                // Extract the `file` value from the query string.
+                let start = match q.find("file=") {
+                    Some(i) => i + 5,  // 5 = "file=".len()
+                    None => return error_out(),
+                };
+                let end = q[start..].find("&").unwrap_or(q.len());
+
+                // Get the filename out of the query string, then split it on
+                // colons, we want the filename part at least, and if there is
+                // a start line, then that too, but nothing after that (columns,
+                // end line, ...).
+                // TODO in the future we might want to use column too, depending
+                // on the configured command.
+                let mut colons = q[start..end].split(':');
+                let mut file_name = colons.next().unwrap().to_owned();
+                if let Some(next_part) = colons.next() {
+                    file_name.push(':');
+                    file_name.push_str(next_part);
+                }
+
+                // TODO probably move to another module.
+
+                // println!("Opening `{}` for editing", file_name);
+
+                // TODO use edit command from config.
+                let mut cmd = Command::new("subl");
+                cmd.arg(&file_name);
+                match cmd.spawn() {
+                    Ok(_) => println!("launched successfully"),
+                    Err(e) => println!("launch failed: {:?}", e),
+                }
+
+                Action::Ack
+            }
+            None => {
+                error_out()
+            }
         }
     }
 
