@@ -1,9 +1,11 @@
 pub mod errors;
 
+use config::Config;
+
 use std::process::{Command, ExitStatus, Output};
 
 pub struct Builder {
-    build_str: String,
+    build_command: String,
 }
 
 pub struct BuildResult {
@@ -13,16 +15,25 @@ pub struct BuildResult {
 }
 
 impl Builder {
-    pub fn from_build_command(s: &str) -> Builder {
+    pub fn from_config(config: &Config) -> Builder {
         Builder {
-            build_str: s.to_owned(),
+            build_command: config.build_command.clone(),
         }
     }
 
     pub fn build(&self) -> Result<BuildResult, ()> {
-        // TODO ignores build_str
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build");
+        let mut build_split = self.build_command.split(' ');
+        let mut cmd = if let Some(cmd) = build_split.next() {
+            Command::new(cmd)
+        } else {
+            println!("build error - no build command");
+            return Err(());
+        };
+
+        for arg in build_split.next() {
+            cmd.arg(arg);
+        }
+
         cmd.env("RUSTFLAGS", "-Zunstable-options --error-format json");
 
         // TODO execute async
@@ -39,7 +50,7 @@ impl Builder {
             }
             Err(e) => {
                 // TODO could handle this error more nicely.
-                println!("error: {}", e);
+                println!("error: `{}`; command: `{}`", e, self.build_command);
                 return Err(());
             }
         };

@@ -2,7 +2,9 @@
 use web::router;
 use build;
 use build::errors::{self, Diagnostic};
-use config;
+use config::Config;
+
+use std::process::Command;
 
 use hyper::server::request::Request;
 use hyper::server::response::Response;
@@ -16,15 +18,14 @@ use serde_json;
 pub struct Instance {
     router: router::Router,
     builder: build::Builder,
-    pub config: config::Config,
+    pub config: Config,
 }
 
 impl Instance {
-    pub fn new() -> Instance {
-        let config = config::new();
+    pub fn new(config: Config) -> Instance {
         Instance {
             router: router::Router::new(),
-            builder: build::Builder::from_build_command(&config.build_cmd),
+            builder: build::Builder::from_config(&config),
             config: config,
         }
     }
@@ -43,14 +44,14 @@ impl Instance {
 impl ::hyper::server::Handler for Instance {
     fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
         if let RequestUri::AbsolutePath(ref s) = req.uri {
-            let action = self.router.route(s);
+            let action = self.router.route(s, &self.config);
             match action {
                 router::Action::Static(ref data, ref content_type) => {
                     res.headers_mut().set(content_type.clone());
                     res.send(data).unwrap();
                 }
                 router::Action::Build => {
-                    assert!(!::DEMO_MODE, "Build shouldn't happen in demo mode");
+                    assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
                     let text = self.build();
                     // Used for generating the test data.
                     //println!("{}", text);
@@ -63,7 +64,27 @@ impl ::hyper::server::Handler for Instance {
                     res.headers_mut().set(ContentType::json());
                     res.send(text.as_bytes()).unwrap();
                 }
-                router::Action::Ack => {
+                router::Action::Edit(ref args) => {
+                    let cmd_line = &self.config.edit_command;
+                    if !cmd_line.is_empty() {
+                        let cmd_line = cmd_line.replace("$file", &args[0])
+                                               .replace("$line", &args[1])
+                                               .replace("$col", &args[2]);
+
+                        let mut splits = cmd_line.split(' ');
+
+                        let mut cmd = Command::new(splits.next().unwrap());
+                        for arg in splits {
+                            cmd.arg(arg);
+                        }
+
+                        // TODO log, don't print
+                        match cmd.spawn() {
+                            Ok(_) => println!("edit, launched successfully"),
+                            Err(e) => println!("edit, launch failed: `{:?}`, command: `{}`", e, cmd_line),
+                        }
+                    }
+
                     res.headers_mut().set(ContentType::json());
                     res.send("{}".as_bytes()).unwrap();                    
                 }

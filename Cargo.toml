@@ -6,9 +6,11 @@ authors = ["Nick Cameron <ncameron@mozilla.com>"]
 [dependencies]
 url = "0.5.7"
 getopts = "0.2"
+rustc-serialize = "0.3.14"
 serde = "*"
 serde_json = "*"
 serde_macros = "*"
+toml = "0.1.20"
 
 [dependencies.hyper]
 version = "0.8.0"

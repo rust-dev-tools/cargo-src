@@ -1,10 +1,11 @@
 // The router module parses URLs, decides on an action, and reads any data from
 // disk to support that action.
 
+use config::Config;
+
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use url::parse_path;
 use hyper::status::StatusCode;
@@ -27,8 +28,7 @@ pub enum Action {
     Error(StatusCode, String),
     Build,
     CodeLines(String),
-    // Just send an acknowledgement - no data to send.
-    Ack,
+    Edit([String; 3]),
 }
 
 pub struct Router;
@@ -38,12 +38,12 @@ impl Router {
         Router
     }
 
-    pub fn route(&self, uri_path: &str) -> Action {
+    pub fn route(&self, uri_path: &str, config: &Config) -> Action {
         let (path, query, _) = parse_path(uri_path).unwrap();
 
         //println!("path: {:?}, query: {:?}", path, query);
         if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
-            return self.action_index();
+            return self.action_index(config);
         }
 
         if path[0] == STATIC_DIR {
@@ -58,13 +58,12 @@ impl Router {
             return self.action_static(&["test_data.json".to_owned()]);
         }
 
-        if ::DEMO_MODE == false {
+        if config.demo_mode == false {
             if path[0] == BUILD_REQUEST {
                 return self.action_build();
             }
 
             if path[0] == EDIT_REQUEST {
-                println!("uri: {}", uri_path);
                 return self.action_edit(query);
             }
         }
@@ -72,13 +71,13 @@ impl Router {
         Action::Error(StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")))
     }
 
-    fn action_index(&self) -> Action {
+    fn action_index(&self, config: &Config) -> Action {
         let mut path_buf = PathBuf::from(STATIC_DIR);
         path_buf.push("index.html");
 
         match self.read_file(&path_buf) {
             Ok(mut s) => {
-                if ::DEMO_MODE {
+                if config.demo_mode {
                     s.extend_from_slice("\n<script>DEMO_MODE=true;set_build_onclick();</script>\n".as_bytes());
                 }
 
@@ -150,31 +149,11 @@ impl Router {
                 let end = q[start..].find("&").unwrap_or(q.len());
 
                 // Get the filename out of the query string, then split it on
-                // colons, we want the filename part at least, and if there is
-                // a start line, then that too, but nothing after that (columns,
-                // end line, ...).
-                // TODO in the future we might want to use column too, depending
-                // on the configured command.
-                let mut colons = q[start..end].split(':');
-                let mut file_name = colons.next().unwrap().to_owned();
-                if let Some(next_part) = colons.next() {
-                    file_name.push(':');
-                    file_name.push_str(next_part);
-                }
-
-                // TODO probably move to another module.
-
-                // println!("Opening `{}` for editing", file_name);
-
-                // TODO use edit command from config.
-                let mut cmd = Command::new("subl");
-                cmd.arg(&file_name);
-                match cmd.spawn() {
-                    Ok(_) => println!("launched successfully"),
-                    Err(e) => println!("launch failed: {:?}", e),
-                }
-
-                Action::Ack
+                // colons for line and column numbers.
+                let mut args = q[start..end].split(':').map(|s| s.to_owned());
+                Action::Edit([args.next().unwrap(),
+                              args.next().unwrap_or(String::new()),
+                              args.next().unwrap_or(String::new())])
             }
             None => {
                 error_out()

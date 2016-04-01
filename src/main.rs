@@ -9,24 +9,27 @@
 extern crate hyper;
 extern crate url;
 extern crate getopts;
+extern crate rustc_serialize;
 extern crate rustdoc;
 extern crate serde;
 extern crate serde_json;
 extern crate syntax;
+extern crate toml;
 
 mod build;
 mod config;
 mod server;
 mod web;
 
+use config::Config;
+
 use getopts::Options;
 
 use hyper::Server;
 
 use std::env;
-
-const DEMO_MODE: bool = false;
-const PORT: u32 = 3000;
+use std::fs::File;
+use std::io::Read;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -34,15 +37,32 @@ fn main() {
     opts.optflag("h", "help", "print this help menu");
 
     // Look at matches to actually see command line options.
-    let _matches = match opts.parse(&args[1..]) {
+    let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
             panic!(f.to_owned());
         }
-    };    
+    };
 
-    let server = server::Instance::new();
+    if matches.opt_present("h") {
+        let brief = "Usage: rustw [options]".to_owned();
+        println!("{}", opts.usage(&brief));
 
-    println!("server running on 127.0.0.1:{}", PORT);
-    Server::http(&*format!("127.0.0.1:{}", PORT)).unwrap().handle(server).unwrap();
+        Config::print_docs();
+
+        return;
+    }
+
+    let config_file = File::open("rustw.toml");
+    let mut toml = String::new();
+    if let Ok(mut f) = config_file {
+        f.read_to_string(&mut toml).unwrap();
+    }
+    let config = Config::from_toml(&toml);
+    let port = config.port;
+
+    let server = server::Instance::new(config);
+
+    println!("server running on 127.0.0.1:{}", port);
+    Server::http(&*format!("127.0.0.1:{}", port)).unwrap().handle(server).unwrap();
 }

@@ -35,7 +35,6 @@ function onLoad() {
 function load_start() {
     $("#link_build").text("build");
     set_build_onclick();
-    $("#link_test").click('test', do_build);
     $("#link_options").click(show_options);
     
     $("#div_main").html("");
