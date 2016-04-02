@@ -184,18 +184,24 @@ a.issue_link:active, a.link  { color: black }
     margin-bottom: 20px;
     white-space: nowrap;
 }
-.div_src_line_number {
+.div_src_line_numbers {
     display: inline-block;
+    border-right: black 1px solid;
+}
+.div_src_line_number {
+    display: block;
+    padding-right: 3px;
     text-align: right;
     width: 3em;
-    border-right: black 1px solid;
-    padding-right: 3px;
     color: #808080;
 }
-.div_src_line {
+.div_src_lines {
     display: inline-block;
+    width: calc(100% - 3em - 4px);
+}
+.div_src_line {
+    display: block;
     white-space: pre;
-    width: calc(100% - 4em - 4px);
     padding-left: 1em;
 }
 .src_highlight {
