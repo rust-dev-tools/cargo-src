@@ -35,6 +35,7 @@ impl Instance {
         let mut result = BuildResult::from_build(&build_result);
         for d in result.errors.iter_mut() {
             d.fold_on_message(&|s| errors::codify_message(&s));
+            d.fold_on_span(&|sp| errors::expand_zero_spans(sp));
         }
 
         serde_json::to_string(&result).unwrap()

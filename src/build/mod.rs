@@ -2,14 +2,14 @@ pub mod errors;
 
 use config::Config;
 
-use std::process::{Command, ExitStatus, Output};
+use std::process::{Command, Output};
 
 pub struct Builder {
     build_command: String,
 }
 
 pub struct BuildResult {
-    pub status: ExitStatus,
+    pub status: Option<i32>,
     pub stdout: String,
     pub stderr: String,
 }
@@ -55,16 +55,28 @@ impl Builder {
             }
         };
 
-        Ok(BuildResult::from_process_output(output))
+        let result = BuildResult::from_process_output(output);
+
+        Ok(result)
     }
 }
 
 impl BuildResult {
     fn from_process_output(output: Output) -> BuildResult {
         BuildResult {
-            status: output.status,
+            status: output.status.code(),
             stdout: String::from_utf8(output.stdout).unwrap(),
             stderr: String::from_utf8(output.stderr).unwrap(),
         }
     }
+
+    // FIXME(#54) demo mode should create a BuildResult and go from there,
+    // this is kind of how we should do that (maybe want some stdout too).
+    // fn from_stderr(stderr: &str) -> BuildResult {
+    //     BuildResult {
+    //         status: Some(0),
+    //         stdout: String::new(),
+    //         stderr: stderr.to_owned(),
+    //     }
+    // }
 }

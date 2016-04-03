@@ -12,7 +12,7 @@ pub struct Diagnostic {
     /// "error: internal compiler error", "error", "warning", "note", "help".
     pub level: String,
     pub spans: Vec<DiagnosticSpan>,
-    /// Assocaited diagnostic messages.
+    /// Associated diagnostic messages.
     pub children: Vec<Diagnostic>,
 }
 
@@ -21,6 +21,15 @@ impl Diagnostic {
         self.message = f(&self.message);
         for c in &mut self.children {
             c.fold_on_message(f);
+        }
+    }
+
+    pub fn fold_on_span(&mut self, f: &Fn(&mut DiagnosticSpan)) {
+        for sp in &mut self.spans {
+            f(sp);
+        }
+        for c in &mut self.children {
+            c.fold_on_span(f);
         }
     }
 }
@@ -48,24 +57,29 @@ pub struct DiagnosticSpanLine {
     highlight_end: usize,
 }
 
+
 impl serde::Serialize for DiagnosticSpanLine {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: serde::Serializer
     {
-        if self.highlight_end <= self.highlight_start {
+        if self.highlight_end < self.highlight_start {
             serializer.serialize_str(&self.text)
         } else {
+            let start = self.highlight_start;
+            let end = self.highlight_end;
+
             // Can we do this without allocating a buffer?
             let mut result = String::new();
-            result.push_str(&self.text[..self.highlight_start-1]);
+            result.push_str(&self.text[..start]);
             result.push_str("<span class=\"src_highlight\">");
-            result.push_str(&self.text[self.highlight_start-1..self.highlight_end-1]);
+            result.push_str(&self.text[start..end]);
             result.push_str("</span>");
-            result.push_str(&self.text[self.highlight_end-1..]);
+            result.push_str(&self.text[end..]);
             serializer.serialize_str(&result)
         }
     }
 }
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiagnosticCode {
@@ -82,7 +96,9 @@ pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
             continue;
         }
         match serde_json::from_str(i) {
-            Ok(x) => result.push(x),
+            Ok(x) => {
+                result.push(x);
+            }
             Err(e) => {
                 println!("ERROR parsing compiler output: {}", e);
                 println!("input: `{}`", input);
@@ -93,7 +109,36 @@ pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
     result
 }
 
-// TODO redo test data
+pub fn expand_zero_spans(span: &mut DiagnosticSpan) {
+    if span.line_start == span.line_end && span.column_start == span.column_end {
+        if span.column_start == 0 {
+            span.column_end = 1;
+        } else {
+            span.column_start -= 1;
+        }
+    }
+
+    for line in span.text.iter_mut() {
+        if line.highlight_end < line.highlight_start {
+            line.highlight_start = 0;
+            line.highlight_end = 0;
+        } else {
+            if line.highlight_start > 0 {
+                line.highlight_start -= 1;
+                line.highlight_end -= 1;
+
+                if line.highlight_start == line.highlight_end {
+                    if line.highlight_start == 0 {
+                        line.highlight_end += 1;
+                    } else {
+                        line.highlight_start -= 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Creates a new string, inserting <code> tags around text between backticks.
 /// E.g., "foo `bar`" becomes "foo `<code>bar</code>`".
 pub fn codify_message(source: &str) -> String {
