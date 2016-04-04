@@ -245,9 +245,23 @@ a.issue_link:active, a.link  { color: black }
     border-radius: 6px;
     border-top-left-radius: 0;
     padding: 10px;
-    z-index: 1;    
+    z-index: 1;
 }
 .src_menu_link {
     text-decoration: underline;
     cursor: pointer;    
+}
+
+#div_quick_edit {
+    position: absolute;
+    background-color: #f8f8f0;
+    border: solid black 1px;
+    border-radius: 6px;
+    border-top-left-radius: 0;
+    padding: 10px;
+    z-index: 1;
+}
+#quick_edit_text {
+    width: 800px;
+    height: 250px;
 }

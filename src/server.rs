@@ -32,11 +32,7 @@ impl Instance {
 
     pub fn build(&self) -> String {
         let build_result = self.builder.build().unwrap();
-        let mut result = BuildResult::from_build(&build_result);
-        for d in result.errors.iter_mut() {
-            d.fold_on_message(&|s| errors::codify_message(&s));
-            d.fold_on_span(&|sp| errors::expand_zero_spans(sp));
-        }
+        let result = BuildResult::from_build(&build_result);
 
         serde_json::to_string(&result).unwrap()
     }

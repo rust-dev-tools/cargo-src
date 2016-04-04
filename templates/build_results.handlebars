@@ -26,7 +26,7 @@
             <span class="div_spans">
             {{#each spans}}
                 <span class="div_span">
-                    <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+                    <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
                     <div class="div_all_span_src">
                     {{#each text}}
                         <span class="span_src">{{{this}}}</span><br>
@@ -51,7 +51,7 @@
                     <span class="div_spans">
                     {{#each spans}}
                         <span class="div_span">
-                            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+                            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
                             <div class="div_all_span_src">
                             {{#each text}}
                                 <span class="span_src">{{{this}}}</span><br>

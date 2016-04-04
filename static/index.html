@@ -22,23 +22,32 @@
 </div>
 
 <div id="div_options">
-<a id="link_close_options" class="link" href="#" onclick="hide_options(); return false;">close</a>
-<div class="div_option">show/hide warnings</div>
-<div class="div_option">show/hide notes and help</div>
-<div class="div_option">show/hide all source snippets</div>
-<div class="div_option">show/hide context for source code</div>
-<div class="div_option">show/hide child messages</div>
-<div class="div_option">error context: TODO lines</div>
-<br><div class="div_option">build command: <code>cargo build</code></div>
-<div class="div_option">toolchain: TODO</div>
-<div class="div_option">build time: TODO</div>
-<div class="div_option">exit status: TODO</div>
+  <a id="link_close_options" class="link" href="#" onclick="hide_options(); return false;">close</a>
+  <div class="div_option">list view/code view</div>
+  <div class="div_option">show/hide warnings</div>
+  <div class="div_option">show/hide notes and help</div>
+  <div class="div_option">show/hide all source snippets</div>
+  <div class="div_option">show/hide context for source code</div>
+  <div class="div_option">show/hide child messages</div>
+  <div class="div_option">show/hide error context</div>
+  <br><div class="div_option">build command: <code>cargo build</code></div>
+  <div class="div_option">toolchain: TODO</div>
+  <div class="div_option">build time: TODO</div>
+  <div class="div_option">exit status: TODO</div>
 </div>
 
 <div id="div_main"></div>
 
 <div id="div_src_menu">
-<div class="src_menu_link" id="src_menu_edit">edit</div>
+  <div class="src_menu_link" id="src_menu_edit">edit</div>
+  <div class="src_menu_link" id="src_menu_quick_edit">quick edit</div>
+</div>    
+
+<div id="div_quick_edit">
+  <textarea id="quick_edit_text"></textarea>
+  <br><br>
+  <span id="quick_edit_save" class="button">save</span>
+  <span id="quick_edit_cancel" class="button">cancel</span>
 </div>    
 
 </body>

@@ -1,41 +1,22 @@
-use serde;
-use serde_json;
+use build::errors;
 
 // Error structs copied from
 // https://github.com/rust-lang/rust/blob/master/src/libsyntax/errors/json.rs
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Diagnostic {
     /// The primary error message.
-    pub message: String,
-    pub code: Option<DiagnosticCode>,
+    message: String,
+    code: Option<DiagnosticCode>,
     /// "error: internal compiler error", "error", "warning", "note", "help".
-    pub level: String,
-    pub spans: Vec<DiagnosticSpan>,
+    level: String,
+    spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
-    pub children: Vec<Diagnostic>,
+    children: Vec<Diagnostic>,
 }
 
-impl Diagnostic {
-    pub fn fold_on_message(&mut self, f: &Fn(&str) -> String) {
-        self.message = f(&self.message);
-        for c in &mut self.children {
-            c.fold_on_message(f);
-        }
-    }
-
-    pub fn fold_on_span(&mut self, f: &Fn(&mut DiagnosticSpan)) {
-        for sp in &mut self.spans {
-            f(sp);
-        }
-        for c in &mut self.children {
-            c.fold_on_span(f);
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DiagnosticSpan {
+#[derive(Deserialize, Debug)]
+struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
     byte_end: u32,
@@ -50,98 +31,115 @@ pub struct DiagnosticSpan {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct DiagnosticSpanLine {
+struct DiagnosticSpanLine {
     text: String,
     /// 1-based, character offset in self.text.
     highlight_start: usize,
     highlight_end: usize,
 }
 
-
-impl serde::Serialize for DiagnosticSpanLine {
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-        where S: serde::Serializer
-    {
-        if self.highlight_end < self.highlight_start {
-            serializer.serialize_str(&self.text)
-        } else {
-            let start = self.highlight_start;
-            let end = self.highlight_end;
-
-            // Can we do this without allocating a buffer?
-            let mut result = String::new();
-            result.push_str(&self.text[..start]);
-            result.push_str("<span class=\"src_highlight\">");
-            result.push_str(&self.text[start..end]);
-            result.push_str("</span>");
-            result.push_str(&self.text[end..]);
-            serializer.serialize_str(&result)
-        }
-    }
-}
-
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DiagnosticCode {
+struct DiagnosticCode {
     /// The code itself.
     code: String,
     /// An explanation for the code.
     explanation: Option<String>,
 }
 
-pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
-    let mut result = vec![];
-    for i in input.split('\n') {
-        if i.trim().is_empty() || !i.starts_with('{') {
-            continue;
-        }
-        match serde_json::from_str(i) {
-            Ok(x) => {
-                result.push(x);
-            }
-            Err(e) => {
-                println!("ERROR parsing compiler output: {}", e);
-                println!("input: `{}`", input);
-            }
+// The lower operation takes errors emitted by rustc, processes them and makes
+// errors suitable for the frontend.
+
+impl Diagnostic {
+    pub fn lower(self) -> errors::Diagnostic {
+        errors::Diagnostic {
+            message: codify_message(&self.message),
+            code: self.code.map(|c| c.lower()),
+            level: self.level,
+            spans: self.spans.into_iter().map(|s| s.lower()).collect(),
+            children: self.children.into_iter().map(|d| d.lower()).collect(),
         }
     }
-
-    result
 }
 
-pub fn expand_zero_spans(span: &mut DiagnosticSpan) {
-    if span.line_start == span.line_end && span.column_start == span.column_end {
-        if span.column_start == 0 {
-            span.column_end = 1;
-        } else {
-            span.column_start -= 1;
+impl DiagnosticSpan {
+    pub fn lower(self) -> errors::DiagnosticSpan {
+        let mut col_start = self.column_start;
+        let mut col_end = self.column_end;
+
+        if self.line_start == self.line_end && col_start == col_end {
+            if col_end == 0 {
+                col_end = 1;
+            } else {
+                col_start -= 1;
+            }
+        }
+
+        let mut plain_text = String::with_capacity(self.text.len() + self.text.iter().fold(0, |a, l| a + l.text.len()));
+        for l in &self.text {
+            plain_text.push_str(&l.text);
+            plain_text.push('\n');
+        }
+
+        errors::DiagnosticSpan {
+            file_name: self.file_name,
+            byte_start: self.byte_start,
+            byte_end: self.byte_end,
+            line_start: self.line_start,
+            line_end: self.line_end,
+            column_start: col_start,
+            column_end: col_end,
+            text: self.text.into_iter().map(|l| l.lower()).collect(),
+            plain_text: plain_text,
         }
     }
+}
 
-    for line in span.text.iter_mut() {
-        if line.highlight_end < line.highlight_start {
-            line.highlight_start = 0;
-            line.highlight_end = 0;
+impl DiagnosticSpanLine {
+    // Lower straight to an HTML string.
+    pub fn lower(self) -> String {
+        if self.highlight_end < self.highlight_start {
+            self.text
         } else {
-            if line.highlight_start > 0 {
-                line.highlight_start -= 1;
-                line.highlight_end -= 1;
+            let mut start = self.highlight_start;
+            let mut end = self.highlight_end;
 
-                if line.highlight_start == line.highlight_end {
-                    if line.highlight_start == 0 {
-                        line.highlight_end += 1;
+            if start > 0 {
+                start -= 1;
+                end -= 1;
+
+                if start == end {
+                    if start == 0 {
+                        end += 1;
                     } else {
-                        line.highlight_start -= 1;
+                        start -= 1;
                     }
                 }
             }
+
+            let mut result = String::new();
+            result.push_str(&self.text[..start]);
+            result.push_str("<span class=\"src_highlight\">");
+            result.push_str(&self.text[start..end]);
+            result.push_str("</span>");
+            result.push_str(&self.text[end..]);
+            result
         }
     }
 }
 
+impl DiagnosticCode {
+    pub fn lower(self) -> errors::DiagnosticCode {
+        errors::DiagnosticCode {
+            code: self.code,
+            explanation: self.explanation,
+        }
+    }
+}
+
+
 /// Creates a new string, inserting <code> tags around text between backticks.
 /// E.g., "foo `bar`" becomes "foo `<code>bar</code>`".
-pub fn codify_message(source: &str) -> String {
+fn codify_message(source: &str) -> String {
     enum State {
         Outer,
         Backtick(String),
@@ -304,13 +302,7 @@ fn push_char(buf: &mut String, c: char) {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_parse() {
-        let input = r#"{"message":"unused variable: `matches`, #[warn(unused_variables)] on by default","code":null,"level":"warning","spans":[{"file_name":"src/main.rs","byte_start":771,"byte_end":778,"line_start":49,"line_end":49,"column_start":9,"column_end":16}],"children":[]}"#;
-        let _result = parse_errors(input);
-    }
-
+    use super::codify_message;
 
     #[test]
     fn test_codify_message_escape() {

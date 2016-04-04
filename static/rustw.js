@@ -40,6 +40,7 @@ function load_start() {
     $("#div_main").html("");
     $("#div_options").hide();
     $("#div_src_menu").hide();
+    $("#div_quick_edit").hide();
 }
 
 function show_options(event) {
@@ -286,17 +287,26 @@ function win_src_link() {
 
 function show_src_menu(event) {
     var src_menu = $("#div_src_menu");
+    var target = $(event.target);
+    var data = { "position": { "top": event.pageY, "left": event.pageX }, "text": target.attr("snippet")};
 
     src_menu.show();
-    src_menu.offset({ "top": event.pageY, "left": event.pageX });
+    src_menu.offset(data.position);
 
     // TODO can we do better than this to close the menu? (Also options menu).
-    $("#div_main").click(function() { $("#src_menu_edit").off("click"); src_menu.hide(); });
-    $("#div_header").click(function() { $("#src_menu_edit").off("click"); src_menu.hide(); });
+    $("#div_main").click(hide_src_menu);
+    $("#div_header").click(hide_src_menu);
 
-    $("#src_menu_edit").click($(event.target), edit);
+    $("#src_menu_edit").click(target, edit);
+    $("#src_menu_quick_edit").click(data, quick_edit);
 
     return false;
+}
+
+function hide_src_menu() {
+    $("#src_menu_edit").off("click");
+    $("#src_menu_quick_edit").off("click");
+    $("#div_src_menu").hide();
 }
 
 function edit(event) {
@@ -316,8 +326,31 @@ function edit(event) {
         console.log("error: " + errorThrown + "; status: " + status);
     });
 
-    $("#src_menu_edit").off("click");
-    $("#div_src_menu").hide();
+    hide_src_menu();
+}
+
+function quick_edit(event) {
+    hide_src_menu();
+
+    var quick_edit_div = $("#div_quick_edit");
+
+    quick_edit_div.show();
+    quick_edit_div.offset(event.data.position);
+
+    
+    $("#quick_edit_text").val(event.data.text);
+
+    $("#quick_edit_cancel").click(hide_quick_edit);
+    $("#div_main").click(hide_quick_edit);
+    $("#div_header").click(hide_quick_edit);
+
+    // TODO save
+}
+
+function hide_quick_edit() {
+    $("#quick_edit_save").off("click");
+    $("#quick_edit_cancel").off("click");
+    $("#div_quick_edit").hide();
 }
 
 function set_build_onclick() {
