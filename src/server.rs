@@ -47,12 +47,18 @@ impl ::hyper::server::Handler for Instance {
                     res.headers_mut().set(content_type.clone());
                     res.send(data).unwrap();
                 }
+                router::Action::Test => {
+                    let build_result = build::BuildResult::test_result();
+                    let result = BuildResult::from_build(&build_result);
+                    let text = serde_json::to_string(&result).unwrap();
+
+                    res.headers_mut().set(ContentType::json());
+                    res.send(text.as_bytes()).unwrap();
+                }
                 router::Action::Build => {
                     assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
-                    let text = self.build();
-                    // Used for generating the test data.
-                    //println!("{}", text);
                     res.headers_mut().set(ContentType::json());
+                    let text = self.build();
                     res.send(text.as_bytes()).unwrap();
                 }
                 router::Action::CodeLines(ref s) => {

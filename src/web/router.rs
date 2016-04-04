@@ -25,6 +25,7 @@ const EDIT_REQUEST: &'static str = "edit";
 #[derive(Debug)]
 pub enum Action {
     Static(Vec<u8>, ContentType),
+    Test,
     Error(StatusCode, String),
     Build,
     CodeLines(String),
@@ -55,7 +56,7 @@ impl Router {
         }
 
         if path[0] == TEST_REQUEST {
-            return self.action_static(&["test_data.json".to_owned()]);
+            return self.action_test();
         }
 
         if config.demo_mode == false {
@@ -108,6 +109,10 @@ impl Router {
             }
             Err(_) => Action::Error(StatusCode::NotFound, "Page not found".to_owned()),
         }
+    }
+
+    fn action_test(&self) -> Action {
+        Action::Test
     }
 
     fn action_build(&self) -> Action {

@@ -74,6 +74,9 @@ impl DiagnosticSpan {
             }
         }
 
+        // TODO we should make plain_text ourselves straight from the files,
+        // then when we save after quick edit, we can check the time on the file
+        // cache to check the file wasn't modified.
         let mut plain_text = String::with_capacity(self.text.len() + self.text.iter().fold(0, |a, l| a + l.text.len()));
         for l in &self.text {
             plain_text.push_str(&l.text);
@@ -97,7 +100,7 @@ impl DiagnosticSpan {
 impl DiagnosticSpanLine {
     // Lower straight to an HTML string.
     pub fn lower(self) -> String {
-        if self.highlight_end < self.highlight_start {
+        if self.highlight_end < self.highlight_start || self.text.is_empty() {
             self.text
         } else {
             let mut start = self.highlight_start;
