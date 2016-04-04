@@ -4,13 +4,17 @@ use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
 
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use std::process::Command;
+use std::str::FromStr;
 
+use hyper::header::ContentType;
+use hyper::net::Fresh;
 use hyper::server::request::Request;
 use hyper::server::response::Response;
-use hyper::net::Fresh;
+use hyper::status::StatusCode;
 use hyper::uri::RequestUri;
-use hyper::header::ContentType;
 use serde_json;
 
 /// An instance of the server. Something of a God Class. Runs a session of
@@ -30,17 +34,60 @@ impl Instance {
         }
     }
 
-    pub fn build(&self) -> String {
+    fn build(&self) -> String {
         let build_result = self.builder.build().unwrap();
         let result = BuildResult::from_build(&build_result);
 
         serde_json::to_string(&result).unwrap()
     }
+
+    // FIXME there may well be a better place for this functionality.
+    fn quick_edit(&self, data: QuickEditData) -> Result<(), String> {
+        // TODO all these unwraps should return Err instead.
+
+        let location = parse_location_string(&data.location);
+        if location.iter().any(|s| s.is_empty()) {
+            return Err(format!("Missing location information, found `{}`", data.location));
+        }
+
+        let edit_start = usize::from_str(&location[1]).unwrap();
+        let edit_end = usize::from_str(&location[2]).unwrap();
+
+        // TODO we should check that the file has not been modified since we read it,
+        // otherwise the file line locations will be incorrect.
+
+        // Scope is so we close file after reading.
+        let lines = {
+            let file = match File::open(&location[0]) {
+                Ok(f) => f,
+                Err(e) => return Err(e.to_string()),
+            };
+
+            read_lines(&file)?
+        };
+
+        assert!(edit_start < edit_end && edit_end <= lines.len());
+
+        let file = File::create(&location[0]).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        for i in 0..(edit_start - 1) {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+        writer.write(data.text.as_bytes()).unwrap();
+        for i in edit_end..lines.len() {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+
+        writer.flush().unwrap();
+        Ok(())
+    }
 }
 
 impl ::hyper::server::Handler for Instance {
-    fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
-        if let RequestUri::AbsolutePath(ref s) = req.uri {
+    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
+        let uri = req.uri.clone();
+        if let RequestUri::AbsolutePath(ref s) = uri {
             let action = self.router.route(s, &self.config);
             match action {
                 router::Action::Static(ref data, ref content_type) => {
@@ -89,6 +136,19 @@ impl ::hyper::server::Handler for Instance {
                     }
 
                     res.headers_mut().set(ContentType::json());
+                    res.send("{}".as_bytes()).unwrap();
+                }
+                router::Action::QuickEdit => {
+                    res.headers_mut().set(ContentType::json());
+
+                    let mut buf = String::new();
+                    req.read_to_string(&mut buf).unwrap();
+                    if let Err(msg) = self.quick_edit(serde_json::from_str(&buf).unwrap()) {
+                        *res.status_mut() = StatusCode::InternalServerError;
+                        res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
+                        return;
+                    }
+
                     res.send("{}".as_bytes()).unwrap();                    
                 }
                 router::Action::Error(status, ref msg) => {
@@ -144,6 +204,33 @@ impl SourceResult {
             lines: lines,
         }
     }
+}
+
+pub fn parse_location_string(input: &str) -> [String; 3] {
+    let mut args = input.split(':').map(|s| s.to_owned());
+    [args.next().unwrap(),
+     args.next().unwrap_or(String::new()),
+     args.next().unwrap_or(String::new())]
+}
+
+fn read_lines(file: &File) -> Result<Vec<String>, String> {
+    let mut result = Vec::new();
+    let mut reader = BufReader::new(file);
+
+    loop {
+        let mut buf = String::new();
+        match reader.read_line(&mut buf) {
+            Ok(0) => return Ok(result),
+            Ok(_) => result.push(buf),
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct QuickEditData {
+    location: String,
+    text: String,
 }
 
 use rustdoc::html::escape::Escape;

@@ -265,3 +265,6 @@ a.issue_link:active, a.link  { color: black }
     width: 800px;
     height: 250px;
 }
+#quick_edit_message {
+    padding-right: 1em;
+}

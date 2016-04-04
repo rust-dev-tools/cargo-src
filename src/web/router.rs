@@ -21,6 +21,7 @@ const CODE_DIR: &'static str = "src";
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
+const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
 
 #[derive(Debug)]
 pub enum Action {
@@ -30,6 +31,7 @@ pub enum Action {
     Build,
     CodeLines(String),
     Edit([String; 3]),
+    QuickEdit,
 }
 
 pub struct Router;
@@ -66,6 +68,10 @@ impl Router {
 
             if path[0] == EDIT_REQUEST {
                 return self.action_edit(query);
+            }
+
+            if path[0] == QUICK_EDIT_REQUEST {
+                return self.action_quick_edit();
             }
         }
 
@@ -119,6 +125,9 @@ impl Router {
         Action::Build
     }
 
+    fn action_quick_edit(&self) -> Action {
+        Action::QuickEdit
+    }
     fn action_src(&self, mut path: &[String]) -> Action {
         let mut path_buf = PathBuf::new();
         if path[0].is_empty() {
@@ -155,10 +164,7 @@ impl Router {
 
                 // Get the filename out of the query string, then split it on
                 // colons for line and column numbers.
-                let mut args = q[start..end].split(':').map(|s| s.to_owned());
-                Action::Edit([args.next().unwrap(),
-                              args.next().unwrap_or(String::new()),
-                              args.next().unwrap_or(String::new())])
+                Action::Edit(::server::parse_location_string(&q[start..end]))
             }
             None => {
                 error_out()

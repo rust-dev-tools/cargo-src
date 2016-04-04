@@ -1,4 +1,4 @@
 build_command = "cargo build"
 edit_command = "subl $file:$line"
 port = 3000
-demo_mode = true
+demo_mode = false

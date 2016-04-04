@@ -288,7 +288,7 @@ function win_src_link() {
 function show_src_menu(event) {
     var src_menu = $("#div_src_menu");
     var target = $(event.target);
-    var data = { "position": { "top": event.pageY, "left": event.pageX }, "text": target.attr("snippet")};
+    var data = { "position": { "top": event.pageY, "left": event.pageX }, "text": target.attr("snippet"), "location": target.attr("link") };
 
     src_menu.show();
     src_menu.offset(data.position);
@@ -310,7 +310,6 @@ function hide_src_menu() {
 }
 
 function edit(event) {
-    console.log(event.data.attr("link"));
     $.ajax({
         url: '/edit?file=' + event.data.attr("link"),
         type: 'POST',
@@ -339,18 +338,53 @@ function quick_edit(event) {
 
     
     $("#quick_edit_text").val(event.data.text);
+    $("#quick_edit_text").prop("disabled", false);
 
+    $("#quick_edit_message").hide();
+    $("#quick_edit_cancel").text("cancel");
     $("#quick_edit_cancel").click(hide_quick_edit);
+    $("#quick_edit_save").show();
+    var save_data = { "location": event.data.location };
+    $("#quick_edit_save").click(save_data, save_quick_edit);
     $("#div_main").click(hide_quick_edit);
     $("#div_header").click(hide_quick_edit);
-
-    // TODO save
 }
 
 function hide_quick_edit() {
     $("#quick_edit_save").off("click");
     $("#quick_edit_cancel").off("click");
     $("#div_quick_edit").hide();
+}
+
+function save_quick_edit(event) {
+    $("#quick_edit_message").show();
+    $("#quick_edit_message").text("saving...");
+    $("#quick_edit_save").hide();
+    $("#quick_edit_cancel").text("close");
+    $("#quick_edit_text").prop("disabled", true);
+
+    var data = event.data;
+    data.text = $("#quick_edit_text").val();
+
+    $.ajax({
+        url: '/quick_edit',
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false,
+        'data': JSON.stringify(data),
+    })
+    .done(function (json) {
+        console.log("quick edit - success");
+        console.log(json);
+        $("#quick_edit_message").text("edit saved");
+        // TODO add a fade-out animation here
+        window.setTimeout(hide_quick_edit, 1500);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with quick edit request");
+        console.log("error: " + errorThrown + "; status: " + status);
+        $("#quick_edit_message").text("error trying to save edit");
+    });
 }
 
 function set_build_onclick() {
