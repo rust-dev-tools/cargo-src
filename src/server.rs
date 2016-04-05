@@ -1,13 +1,15 @@
 
-use web::router;
 use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
+use file_cache::Cache;
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Read, Write, BufRead};
+use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::Mutex;
 
 use hyper::header::ContentType;
 use hyper::net::Fresh;
@@ -16,152 +18,232 @@ use hyper::server::response::Response;
 use hyper::status::StatusCode;
 use hyper::uri::RequestUri;
 use serde_json;
+use url::parse_path;
 
-/// An instance of the server. Something of a God Class. Runs a session of
-/// rustw.
+// TODO separate path from dir
+// TODO need an 'absolute' path to static
+const STATIC_DIR: &'static str = "static";
+
+/// An instance of the server. Runs a session of rustw.
 pub struct Instance {
-    router: router::Router,
     builder: build::Builder,
     pub config: Config,
+    file_cache: Mutex<Cache>,
 }
 
 impl Instance {
     pub fn new(config: Config) -> Instance {
         Instance {
-            router: router::Router::new(),
             builder: build::Builder::from_config(&config),
             config: config,
+            file_cache: Mutex::new(Cache::new()),
         }
-    }
-
-    fn build(&self) -> String {
-        let build_result = self.builder.build().unwrap();
-        let result = BuildResult::from_build(&build_result);
-
-        serde_json::to_string(&result).unwrap()
-    }
-
-    // FIXME there may well be a better place for this functionality.
-    fn quick_edit(&self, data: QuickEditData) -> Result<(), String> {
-        // TODO all these unwraps should return Err instead.
-
-        let location = parse_location_string(&data.location);
-        if location.iter().any(|s| s.is_empty()) {
-            return Err(format!("Missing location information, found `{}`", data.location));
-        }
-
-        let edit_start = usize::from_str(&location[1]).unwrap();
-        let edit_end = usize::from_str(&location[2]).unwrap();
-
-        // TODO we should check that the file has not been modified since we read it,
-        // otherwise the file line locations will be incorrect.
-
-        // Scope is so we close file after reading.
-        let lines = {
-            let file = match File::open(&location[0]) {
-                Ok(f) => f,
-                Err(e) => return Err(e.to_string()),
-            };
-
-            read_lines(&file)?
-        };
-
-        assert!(edit_start < edit_end && edit_end <= lines.len());
-
-        let file = File::create(&location[0]).unwrap();
-        let mut writer = BufWriter::new(file);
-
-        for i in 0..(edit_start - 1) {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-        writer.write(data.text.as_bytes()).unwrap();
-        for i in edit_end..lines.len() {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-
-        writer.flush().unwrap();
-        Ok(())
     }
 }
 
 impl ::hyper::server::Handler for Instance {
-    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
+    fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, res: Response<'a, Fresh>) {
         let uri = req.uri.clone();
         if let RequestUri::AbsolutePath(ref s) = uri {
-            let action = self.router.route(s, &self.config);
-            match action {
-                router::Action::Static(ref data, ref content_type) => {
-                    res.headers_mut().set(content_type.clone());
-                    res.send(data).unwrap();
-                }
-                router::Action::Test => {
-                    let build_result = build::BuildResult::test_result();
-                    let result = BuildResult::from_build(&build_result);
-                    let text = serde_json::to_string(&result).unwrap();
-
-                    res.headers_mut().set(ContentType::json());
-                    res.send(text.as_bytes()).unwrap();
-                }
-                router::Action::Build => {
-                    assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
-                    res.headers_mut().set(ContentType::json());
-                    let text = self.build();
-                    res.send(text.as_bytes()).unwrap();
-                }
-                router::Action::CodeLines(ref s) => {
-                    let src_result = SourceResult::from_source(s);
-                    let text = serde_json::to_string(&src_result).unwrap();
-                    res.headers_mut().set(ContentType::json());
-                    res.send(text.as_bytes()).unwrap();
-                }
-                router::Action::Edit(ref args) => {
-                    let cmd_line = &self.config.edit_command;
-                    if !cmd_line.is_empty() {
-                        let cmd_line = cmd_line.replace("$file", &args[0])
-                                               .replace("$line", &args[1])
-                                               .replace("$col", &args[2]);
-
-                        let mut splits = cmd_line.split(' ');
-
-                        let mut cmd = Command::new(splits.next().unwrap());
-                        for arg in splits {
-                            cmd.arg(arg);
-                        }
-
-                        // TODO log, don't print
-                        match cmd.spawn() {
-                            Ok(_) => println!("edit, launched successfully"),
-                            Err(e) => println!("edit, launch failed: `{:?}`, command: `{}`", e, cmd_line),
-                        }
-                    }
-
-                    res.headers_mut().set(ContentType::json());
-                    res.send("{}".as_bytes()).unwrap();
-                }
-                router::Action::QuickEdit => {
-                    res.headers_mut().set(ContentType::json());
-
-                    let mut buf = String::new();
-                    req.read_to_string(&mut buf).unwrap();
-                    if let Err(msg) = self.quick_edit(serde_json::from_str(&buf).unwrap()) {
-                        *res.status_mut() = StatusCode::InternalServerError;
-                        res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
-                        return;
-                    }
-
-                    res.send("{}".as_bytes()).unwrap();                    
-                }
-                router::Action::Error(status, ref msg) => {
-                    // TODO log it
-                    //println!("ERROR: {} ({})", msg, status);
-
-                    *res.status_mut() = status;
-                    res.send(msg.as_bytes()).unwrap();
-                }
-            }
+            let mut handler = Handler {
+                config: &self.config,
+                builder: &self.builder,
+                file_cache: &mut self.file_cache.lock().unwrap(),
+            };
+            route(s, &mut handler, req, res);
         } else {
             // TODO log this and ignore it.
             panic!("Unexpected uri");
+        }
+    }
+}
+
+// Handles a single request.
+struct Handler<'a> {
+    pub config: &'a Config,
+    builder: &'a build::Builder,
+    file_cache: &'a mut Cache,
+}
+
+impl<'a> Handler<'a> {
+    fn handle_error<'b: 'a, 'k: 'a>(&self,
+                                    _req: Request<'b, 'k>,
+                                    mut res: Response<'b, Fresh>,
+                                    status: StatusCode,
+                                    msg: String) {
+        // TODO log it
+        //println!("ERROR: {} ({})", msg, status);
+
+        *res.status_mut() = status;
+        res.send(msg.as_bytes()).unwrap();        
+    }
+
+    fn handle_index<'b: 'a, 'k: 'a>(&mut self,
+                                    _req: Request<'b, 'k>,
+                                    mut res: Response<'b, Fresh>) {
+        let mut path_buf = PathBuf::from(STATIC_DIR);
+        path_buf.push("index.html");
+
+        let msg = match self.file_cache.get_text(&path_buf) {
+            Ok(data) => {
+                res.headers_mut().set(ContentType::html());
+                let mut res = res.start().unwrap();
+
+                res.write(data).unwrap();
+                if self.config.demo_mode {
+                    res.write("\n<script>DEMO_MODE=true; set_build_onclick();</script>\n".as_bytes()).unwrap();
+                }
+                res.end().unwrap();
+                return;
+            }
+            Err(s) => s,
+        };
+
+        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+    }
+
+    fn handle_static<'b: 'a, 'k: 'a>(&mut self,
+                                     _req: Request<'b, 'k>,
+                                     mut res: Response<'b, Fresh>,
+                                     path: &[String]) {
+        let mut path_buf = PathBuf::from(STATIC_DIR);
+        for p in path {
+            path_buf.push(p);
+        }
+        //println!("requesting `{}`", path_buf.to_str().unwrap());
+
+        let content_type = match path_buf.extension() {
+            Some(s) if s.to_str().unwrap() == "html" => ContentType::html(),
+            Some(s) if s.to_str().unwrap() == "css" => ContentType("text/css".parse().unwrap()),
+            Some(s) if s.to_str().unwrap() == "json" => ContentType::json(),
+            _ => ContentType("application/octet-stream".parse().unwrap()),
+        };
+
+        if let Ok(s) = self.file_cache.get_text(&path_buf) {
+            //println!("serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
+            res.headers_mut().set(content_type);
+            res.send(s).unwrap();
+            return;
+        }        
+
+        self.handle_error(_req, res, StatusCode::NotFound, "Page not found".to_owned());
+    }
+
+    fn handle_src<'b: 'a, 'k: 'a>(&mut self,
+                                  _req: Request<'b, 'k>,
+                                  mut res: Response<'b, Fresh>,
+                                  mut path: &[String]) {
+        let mut path_buf = PathBuf::new();
+        if path[0].is_empty() {
+            path_buf.push("/");
+            path = &path[1..];
+        }
+        for p in path {
+            path_buf.push(p);
+        }
+
+        let msg = match self.file_cache.get_highlighted(&path_buf) {
+            Ok(ref lines) => {
+                res.headers_mut().set(ContentType::json());
+                res.send(serde_json::to_string(lines).unwrap().as_bytes()).unwrap();
+                return;
+            }
+            Err(msg) => msg,
+        };
+
+        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+    }
+
+    fn handle_test<'b: 'a, 'k: 'a>(&mut self,
+                                   _req: Request<'b, 'k>,
+                                   mut res: Response<'b, Fresh>) {
+        let build_result = build::BuildResult::test_result();
+        let result = BuildResult::from_build(&build_result);
+        let text = serde_json::to_string(&result).unwrap();
+
+        res.headers_mut().set(ContentType::json());
+        res.send(text.as_bytes()).unwrap();
+    }
+
+    fn handle_build<'b: 'a, 'k: 'a>(&mut self,
+                                    _req: Request<'b, 'k>,
+                                    mut res: Response<'b, Fresh>) {
+        assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
+
+        self.file_cache.reset();
+        res.headers_mut().set(ContentType::json());
+        let build_result = self.builder.build().unwrap();
+        let result = BuildResult::from_build(&build_result);
+
+        let text = serde_json::to_string(&result).unwrap();
+        res.send(text.as_bytes()).unwrap();
+    }
+
+    fn handle_quick_edit<'b: 'a, 'k: 'a>(&mut self,
+                                         mut req: Request<'b, 'k>,
+                                         mut res: Response<'b, Fresh>) {
+        assert!(!self.config.demo_mode, "Quick edit shouldn't happen in demo mode");
+
+        res.headers_mut().set(ContentType::json());
+
+        let mut buf = String::new();
+        req.read_to_string(&mut buf).unwrap();
+        if let Err(msg) = quick_edit(serde_json::from_str(&buf).unwrap()) {
+            *res.status_mut() = StatusCode::InternalServerError;
+            res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
+            return;
+        }
+
+        res.send("{}".as_bytes()).unwrap();                    
+    }
+
+    fn handle_edit<'b: 'a, 'k: 'a>(&mut self,
+                                   _req: Request<'b, 'k>,
+                                   mut res: Response<'b, Fresh>,
+                                   query: Option<String>) {
+        // TODO factor out query logic
+        match query {
+            Some(ref q) => {
+                // Extract the `file` value from the query string.
+                let start = match q.find("file=") {
+                    Some(i) => i + 5,  // 5 = "file=".len()
+                    None => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+                        return;
+                    }
+                };
+                let end = q[start..].find("&").unwrap_or(q.len());
+
+                // Get the filename out of the query string, then split it on
+                // colons for line and column numbers.
+                let args = parse_location_string(&q[start..end]);
+
+                let cmd_line = &self.config.edit_command;
+                if !cmd_line.is_empty() {
+                    let cmd_line = cmd_line.replace("$file", &args[0])
+                                           .replace("$line", &args[1])
+                                           .replace("$col", &args[2]);
+
+                    let mut splits = cmd_line.split(' ');
+
+                    let mut cmd = Command::new(splits.next().unwrap());
+                    for arg in splits {
+                        cmd.arg(arg);
+                    }
+
+                    // TODO log, don't print
+                    match cmd.spawn() {
+                        Ok(_) => println!("edit, launched successfully"),
+                        Err(e) => println!("edit, launch failed: `{:?}`, command: `{}`", e, cmd_line),
+                    }
+                }
+
+                res.headers_mut().set(ContentType::json());
+                res.send("{}".as_bytes()).unwrap();
+            }
+            None => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+            }
         }
     }
 }
@@ -178,30 +260,6 @@ impl BuildResult {
         BuildResult {
             messages: build.stdout.to_owned(),
             errors: errors::parse_errors(&build.stderr),
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-struct SourceResult {
-    lines: Vec<String>,
-}
-
-impl SourceResult {
-    fn from_source(s: &str) -> SourceResult {
-        let highlighted = highlight(s);
-
-        let mut lines = vec![];
-
-        for line in highlighted.lines() {
-            lines.push(line.to_owned());
-        }
-        if s.ends_with('\n') {
-            lines.push(String::new());
-        }
-
-        SourceResult {
-            lines: lines,
         }
     }
 }
@@ -233,168 +291,99 @@ struct QuickEditData {
     text: String,
 }
 
-use rustdoc::html::escape::Escape;
+// FIXME there may well be a better place for this functionality.
+fn quick_edit(data: QuickEditData) -> Result<(), String> {
+    // TODO all these unwraps should return Err instead.
 
-use std::io;
-use std::io::prelude::*;
-use syntax::parse::lexer;
-use syntax::parse::token;
-use syntax::parse;
+    let location = parse_location_string(&data.location);
+    if location.iter().any(|s| s.is_empty()) {
+        return Err(format!("Missing location information, found `{}`", data.location));
+    }
 
-// TODO copypasta from rustdoc, change rustdoc...
+    let edit_start = usize::from_str(&location[1]).unwrap();
+    let edit_end = usize::from_str(&location[2]).unwrap();
 
-/// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str) -> String {
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
+    // TODO we should check that the file has not been modified since we read it,
+    // otherwise the file line locations will be incorrect.
 
-    let mut out = Vec::new();
-    doit(&sess,
-         lexer::StringReader::new(&sess.span_diagnostic, fm),
-         &mut out).unwrap();
-    String::from_utf8_lossy(&out[..]).into_owned()
-}
-
-/// Exhausts the `lexer` writing the output into `out`.
-///
-/// The general structure for this method is to iterate over each token,
-/// possibly giving it an HTML span with a class specifying what flavor of token
-/// it's used. All source code emission is done as slices from the source map,
-/// not from the tokens themselves, in order to stay true to the original
-/// source.
-fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
-        out: &mut Write) -> io::Result<()> {
-    use syntax::parse::lexer::Reader;
-
-    let mut is_attribute = false;
-    let mut is_macro = false;
-    let mut is_macro_nonterminal = false;
-    loop {
-        let next = lexer.next_token();
-
-        let snip = |sp| sess.codemap().span_to_snippet(sp).unwrap();
-
-        if next.tok == token::Eof { break }
-
-        let klass = match next.tok {
-            token::Whitespace => {
-                write!(out, "{}", Escape(&snip(next.sp)))?;
-                continue
-            },
-            token::Comment => {
-                write!(out, "<span class='comment'>{}</span>",
-                       Escape(&snip(next.sp)))?;
-                continue
-            },
-            token::Shebang(s) => {
-                write!(out, "{}", Escape(&s.as_str()))?;
-                continue
-            },
-            // If this '&' token is directly adjacent to another token, assume
-            // that it's the address-of operator instead of the and-operator.
-            // This allows us to give all pointers their own class (`Box` and
-            // `@` are below).
-            token::BinOp(token::And) if lexer.peek().sp.lo == next.sp.hi => "kw-2",
-            token::At | token::Tilde => "kw-2",
-
-            // consider this as part of a macro invocation if there was a
-            // leading identifier
-            token::Not if is_macro => { is_macro = false; "macro" }
-
-            // operators
-            token::Eq | token::Lt | token::Le | token::EqEq | token::Ne | token::Ge | token::Gt |
-                token::AndAnd | token::OrOr | token::Not | token::BinOp(..) | token::RArrow |
-                token::BinOpEq(..) | token::FatArrow => "op",
-
-            // miscellaneous, no highlighting
-            token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
-                token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
-                token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
-                token::Question => "",
-            token::Dollar => {
-                if lexer.peek().tok.is_ident() {
-                    is_macro_nonterminal = true;
-                    "macro-nonterminal"
-                } else {
-                    ""
-                }
-            }
-
-            // This is the start of an attribute. We're going to want to
-            // continue highlighting it as an attribute until the ending ']' is
-            // seen, so skip out early. Down below we terminate the attribute
-            // span when we see the ']'.
-            token::Pound => {
-                is_attribute = true;
-                write!(out, r"<span class='attribute'>#")?;
-                continue
-            }
-            token::CloseDelim(token::Bracket) => {
-                if is_attribute {
-                    is_attribute = false;
-                    write!(out, "]</span>")?;
-                    continue
-                } else {
-                    ""
-                }
-            }
-
-            token::Literal(lit, _suf) => {
-                match lit {
-                    // text literals
-                    token::Byte(..) | token::Char(..) |
-                        token::ByteStr(..) | token::ByteStrRaw(..) |
-                        token::Str_(..) | token::StrRaw(..) => "string",
-
-                    // number literals
-                    token::Integer(..) | token::Float(..) => "number",
-                }
-            }
-
-            // keywords are also included in the identifier set
-            token::Ident(ident, _is_mod_sep) => {
-                match &*ident.name.as_str() {
-                    "ref" | "mut" => "kw-2",
-
-                    "self" => "self",
-                    "false" | "true" => "boolval",
-
-                    "Option" | "Result" => "prelude-ty",
-                    "Some" | "None" | "Ok" | "Err" => "prelude-val",
-
-                    _ if next.tok.is_any_keyword() => "kw",
-                    _ => {
-                        if is_macro_nonterminal {
-                            is_macro_nonterminal = false;
-                            "macro-nonterminal"
-                        } else if lexer.peek().tok == token::Not {
-                            is_macro = true;
-                            "macro"
-                        } else {
-                            "ident"
-                        }
-                    }
-                }
-            }
-
-            // Special macro vars are like keywords
-            token::SpecialVarNt(_) => "kw-2",
-
-            token::Lifetime(..) => "lifetime",
-            token::DocComment(..) => "doccomment",
-            token::Underscore | token::Eof | token::Interpolated(..) |
-                token::MatchNt(..) | token::SubstNt(..) => "",
+    // Scope is so we close file after reading.
+    let lines = {
+        let file = match File::open(&location[0]) {
+            Ok(f) => f,
+            Err(e) => return Err(e.to_string()),
         };
 
-        // as mentioned above, use the original source code instead of
-        // stringifying this token
-        let snip = sess.codemap().span_to_snippet(next.sp).unwrap();
-        if klass == "" {
-            write!(out, "{}", Escape(&snip))?;
-        } else {
-            write!(out, "<span class='{}'>{}</span>", klass, Escape(&snip))?;
+        read_lines(&file)?
+    };
+
+    assert!(edit_start < edit_end && edit_end <= lines.len());
+
+    let file = File::create(&location[0]).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    for i in 0..(edit_start - 1) {
+        writer.write(lines[i].as_bytes()).unwrap();
+    }
+    writer.write(data.text.as_bytes()).unwrap();
+    for i in edit_end..lines.len() {
+        writer.write(lines[i].as_bytes()).unwrap();
+    }
+
+    writer.flush().unwrap();
+    Ok(())
+}
+
+// TODO shouldn't be const
+const CODE_DIR: &'static str = "src";
+
+const BUILD_REQUEST: &'static str = "build";
+const TEST_REQUEST: &'static str = "test";
+const EDIT_REQUEST: &'static str = "edit";
+const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
+
+fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
+                             handler: &'a mut Handler<'a>,
+                             req: Request<'b, 'k>,
+                             res: Response<'b, Fresh>) {
+    let (path, query, _) = parse_path(uri_path).unwrap();
+
+    //println!("path: {:?}, query: {:?}", path, query);
+    if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
+        handler.handle_index(req, res);
+        return;
+    }
+
+    if path[0] == STATIC_DIR {
+        handler.handle_static(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == CODE_DIR {
+        handler.handle_src(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == TEST_REQUEST {
+        handler.handle_test(req, res);
+        return;
+    }
+
+    if handler.config.demo_mode == false {
+        if path[0] == BUILD_REQUEST {
+            handler.handle_build(req, res);
+            return;
+        }
+
+        if path[0] == EDIT_REQUEST {
+            handler.handle_edit(req, res, query);
+            return;
+        }
+
+        if path[0] == QUICK_EDIT_REQUEST {
+            handler.handle_quick_edit(req, res);
+            return;
         }
     }
 
-    Ok(())
+    handler.handle_error(req, res, StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")));
 }

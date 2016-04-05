@@ -18,8 +18,8 @@ extern crate toml;
 
 mod build;
 mod config;
+mod file_cache;
 mod server;
-mod web;
 
 use config::Config;
 
