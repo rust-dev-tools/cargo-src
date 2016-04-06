@@ -3,6 +3,13 @@ Handlebars.registerHelper("inc", function(value, options)
     return parseInt(value) + 1;
 });
 
+Handlebars.registerHelper("add", function(a, b, options)
+{
+    return parseInt(a) + parseInt(b);
+});
+
+Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
+
 function onLoad() {
     load_start();
     history.replaceState({ page: "start" }, "", "/");

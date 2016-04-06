@@ -150,12 +150,33 @@ a.issue_link:active, a.link  { color: black }
     text-decoration: underline;
     cursor: pointer;
 }
-.span_src {
-    display: inline-block;
-    margin-left: 50px;
+.div_all_span_src {
     font-family: monospace;
-    font-size: medium;
+    white-space: nowrap;
+}
+.div_children .div_all_span_src {
+    margin-left: -40px;
+}
+.div_span_src_number {
+    display: inline-block;
+    border-right: black 1px solid;
+}
+.div_span_src {
+    display: inline-block;
+    width: calc(100% - 2em - 4px);    
+}
+.span_src_number {
+    display: block;
+    padding-right: 3px;
+    text-align: right;
+    width: 2em;
+    color: #808080;
+}
+.span_src {
+    display: block;
     white-space: pre;
+    padding-left: 1em;
+    font-size: medium;
 }
 .err_code {
     display: inline-block;

@@ -20,22 +20,7 @@
             <span class="err_code" {{#if code.explanation}}explain="{{code.explanation}}"{{/if}} code="{{code.code}}">{{code.code}}</span>
             {{/if}}
             : <span class="err_msg">{{{message}}}</span>
-
-            {{#if spans}}
-            <br><span class="expand_spans small_button"></span>
-            <span class="div_spans">
-            {{#each spans}}
-                <span class="div_span">
-                    <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
-                    <div class="div_all_span_src">
-                    {{#each text}}
-                        <span class="span_src">{{{this}}}</span><br>
-                    {{/each}}
-                    </div>
-                </span>
-            {{/each}}
-            </span>
-            {{/if}}
+            {{> src_snippet }}
 
             {{#if children}}
             <div class="group_children">
@@ -45,22 +30,7 @@
             {{#each children}}
                 <span class="div_diagnostic_nested div_{{level}}">
                     <span class="level_{{level}}">{{level}}</span>: <span class="err_msg">{{{message}}}</span>
-
-                    {{#if spans}}
-                    <br><span class="expand_spans small_button"></span>
-                    <span class="div_spans">
-                    {{#each spans}}
-                        <span class="div_span">
-                            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
-                            <div class="div_all_span_src">
-                            {{#each text}}
-                                <span class="span_src">{{{this}}}</span><br>
-                            {{/each}}
-                            </div>
-                        </span>
-                    {{/each}}
-                    </span>
-                    {{/if}}
+                    {{> src_snippet }}
                 </span><br>
             {{/each}}
             </span>

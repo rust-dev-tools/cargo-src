@@ -1,0 +1,21 @@
+{{#if spans}}
+    <br><span class="expand_spans small_button"></span>
+    <span class="div_spans">
+    {{#each spans}}
+        <span class="div_span">
+            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{line_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+            <div class="div_all_span_src">
+                <span class="div_span_src_number">
+                    {{#each text}}
+                        <div class="span_src_number">{{add @index ../line_start}}</div>
+                    {{/each}}
+                </span><span class="div_span_src">
+                    {{#each text}}
+                        <div class="span_src">{{{this}}}</div>
+                    {{/each}}
+                </span>
+            </div>
+        </span>
+    {{/each}}
+    </span>
+{{/if}}
