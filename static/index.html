@@ -17,11 +17,16 @@
 </head>
 <body>
 
-<div id="div_header">
-  <span id="link_back">&#8592; return to build results</span>
-  <span id="link_build" class="button">build</span>
-  <span id="link_options" class="button">options</span>
+<div id="div_header_group">
+  <div id="div_header">
+    <span id="link_back">&#8592; return to build results</span>
+    <span id="link_build" class="button">build</span>
+    <span id="link_options" class="button">options</span>
+  </div>
+  <div id="div_border"><div id="div_border_animated"></div></div>
 </div>
+
+<div id="div_main"></div>
 
 <div id="div_options">
   <a id="link_close_options" class="link" href="#" onclick="hide_options(); return false;">close</a>
@@ -37,8 +42,6 @@
   <div class="div_option">build time: TODO</div>
   <div class="div_option">exit status: TODO</div>
 </div>
-
-<div id="div_main"></div>
 
 <div id="div_src_menu">
   <div class="src_menu_link" id="src_menu_edit">edit</div>

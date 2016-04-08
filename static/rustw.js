@@ -128,6 +128,7 @@ function do_build(data) {
         cache: false
     })
     .done(function (json) {
+        stop_build_animation();
         var state = { page: "build", results: json }
         load_build(state);
         pull_data(json.push_data_key);
@@ -141,11 +142,13 @@ function do_build(data) {
         load_error();
 
         history.pushState({ page: "error" }, "", "#build");
+        stop_build_animation();
     });
 
     $("#link_back").css("visibility", "hidden");
     disable_button($("#link_build"), "building...");
     hide_options();
+    start_build_animation();
 }
 
 function pull_data(key) {
@@ -209,6 +212,22 @@ function disable_button(button, text) {
     button.css("cursor", "auto");
     button.off("click");
     button.text(text);
+}
+
+function start_build_animation() {
+    $("#div_border").css("background-color", "white");
+
+    var border = $("#div_border_animated");
+    border.show();
+    border.addClass("animated_border");
+}
+
+function stop_build_animation() {
+    $("#div_border").css("background-color", "black");
+    
+    var border = $("#div_border_animated");
+    border.removeClass("animated_border");
+    border.hide();
 }
 
 function show_hide(element, text, fn) {

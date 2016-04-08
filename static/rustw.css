@@ -59,15 +59,47 @@ html {
     visibility: hidden;
 }
 
+#div_header_group {
+    width: 100%;
+    background-color: white;
+    opacity: 1;
+    position: fixed;
+}
 #div_header {
     width: 100%;
-    border-bottom: 2px solid black;
     background-color: white;
     opacity: 1;
     padding-top: 10px;
     padding-left: 20px;
     padding-bottom: 10px;
-    position: fixed;
+}
+#div_border {
+    width: 100%;
+    height: 3px;
+    background-color: black;    
+    opacity: 1;
+}
+#div_border_animated {
+    width: 0;
+    height: 100%;
+    background-color: #b3d9ff;
+    opacity: 1;
+    display: none;
+}
+.animated_border {
+    animation-duration: 30s;
+    animation-timing-function: linear;
+    animation-name: border;
+    animation-iteration-count: infinite;
+}
+@keyframes border {
+  from {
+    width: 0%; 
+  }
+
+  to {
+    width: 100%;
+  }
 }
 #div_main {
     padding-top: 70px;
