@@ -49,20 +49,37 @@ struct DiagnosticCode {
 // The lower operation takes errors emitted by rustc, processes them and makes
 // errors suitable for the frontend.
 
+pub struct LoweringContext {
+    id: u32,
+}
+
+impl LoweringContext {
+    pub fn new() -> LoweringContext {
+        LoweringContext {
+            id: 0,
+        }
+    }
+
+    fn next_id(&mut self) -> u32 {
+        self.id += 1;
+        self.id
+    }
+}
+
 impl Diagnostic {
-    pub fn lower(self) -> errors::Diagnostic {
+    pub fn lower(self, ctxt: &mut LoweringContext) -> errors::Diagnostic {
         errors::Diagnostic {
             message: codify_message(&self.message),
-            code: self.code.map(|c| c.lower()),
+            code: self.code.map(|c| c.lower(ctxt)),
             level: self.level,
-            spans: self.spans.into_iter().map(|s| s.lower()).collect(),
-            children: self.children.into_iter().map(|d| d.lower()).collect(),
+            spans: self.spans.into_iter().map(|s| s.lower(ctxt)).collect(),
+            children: self.children.into_iter().map(|d| d.lower(ctxt)).collect(),
         }
     }
 }
 
 impl DiagnosticSpan {
-    pub fn lower(self) -> errors::DiagnosticSpan {
+    fn lower(self, ctxt: &mut LoweringContext) -> errors::DiagnosticSpan {
         let mut col_start = self.column_start;
         let mut col_end = self.column_end;
 
@@ -84,6 +101,7 @@ impl DiagnosticSpan {
         }
 
         errors::DiagnosticSpan {
+            id: ctxt.next_id(),
             file_name: self.file_name,
             byte_start: self.byte_start,
             byte_end: self.byte_end,
@@ -91,7 +109,7 @@ impl DiagnosticSpan {
             line_end: self.line_end,
             column_start: col_start,
             column_end: col_end,
-            text: self.text.into_iter().map(|l| l.lower()).collect(),
+            text: self.text.into_iter().map(|l| l.lower(ctxt)).collect(),
             plain_text: plain_text,
         }
     }
@@ -99,7 +117,7 @@ impl DiagnosticSpan {
 
 impl DiagnosticSpanLine {
     // Lower straight to an HTML string.
-    pub fn lower(self) -> String {
+    fn lower(self, _ctxt: &mut LoweringContext) -> String {
         if self.highlight_end < self.highlight_start || self.text.is_empty() {
             self.text
         } else {
@@ -131,7 +149,7 @@ impl DiagnosticSpanLine {
 }
 
 impl DiagnosticCode {
-    pub fn lower(self) -> errors::DiagnosticCode {
+    pub fn lower(self, _ctxt: &mut LoweringContext) -> errors::DiagnosticCode {
         errors::DiagnosticCode {
             code: self.code,
             explanation: self.explanation,

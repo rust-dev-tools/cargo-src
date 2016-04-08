@@ -1,0 +1,9 @@
+<span class="div_span_src_number">
+    {{#each text}}
+        <div class="span_src_number">{{add @index ../line_start}}</div>
+    {{/each}}
+</span><span class="div_span_src">
+    {{#each text}}
+        <div class="span_src">{{{this}}}</div>
+    {{/each}}
+</span>

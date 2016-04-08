@@ -19,35 +19,37 @@ pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
         }
     }
 
-    result.into_iter().map(|d| d.lower()).collect()
+    let mut lowering_ctxt = rustc_errors::LoweringContext::new();
+    result.into_iter().map(|d| d.lower(&mut lowering_ctxt)).collect()
 }
 
 #[derive(Serialize, Debug)]
 pub struct Diagnostic {
     /// The primary error message.
-    message: String,
-    code: Option<DiagnosticCode>,
+    pub message: String,
+    pub code: Option<DiagnosticCode>,
     /// "error: internal compiler error", "error", "warning", "note", "help".
-    level: String,
-    spans: Vec<DiagnosticSpan>,
+    pub level: String,
+    pub spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
-    children: Vec<Diagnostic>,
+    pub children: Vec<Diagnostic>,
 }
 
 #[derive(Serialize, Debug)]
 pub struct DiagnosticSpan {
-    file_name: String,
-    byte_start: u32,
-    byte_end: u32,
+    pub id: u32,
+    pub file_name: String,
+    pub byte_start: u32,
+    pub byte_end: u32,
     /// 1-based.
-    line_start: usize,
-    line_end: usize,
+    pub line_start: usize,
+    pub line_end: usize,
     /// 1-based, character offset.
-    column_start: usize,
-    column_end: usize,
+    pub column_start: usize,
+    pub column_end: usize,
     /// Source text from the start of line_start to the end of line_end.
-    text: Vec<String>,
-    plain_text: String,
+    pub text: Vec<String>,
+    pub plain_text: String,
 }
 
 

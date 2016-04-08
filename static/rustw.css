@@ -176,7 +176,6 @@ a.issue_link:active, a.link  { color: black }
     display: block;
     white-space: pre;
     padding-left: 1em;
-    font-size: medium;
 }
 .err_code {
     display: inline-block;
@@ -241,6 +240,15 @@ a.issue_link:active, a.link  { color: black }
 #div_src_view .macro, #div_src_view .macro-nonterminal { color: #3E999F; }
 #div_src_view .lifetime { color: #B76514; }
 #div_src_view .comment, #div_src_view .doccomment { color: #808080; }
+
+.div_all_span_src .kw { color: #8959A8; }
+.div_all_span_src .kw-2, .div_all_span_src .prelude-ty { color: #4271AE; }
+.div_all_span_src .number, .div_all_span_src .string { color: #718C00; }
+.div_all_span_src .boolval, .div_all_span_src .prelude-val,
+.div_all_span_src .attribute, .div_all_span_src .attribute .ident { color: #C82829; }
+.div_all_span_src .macro, .div_all_span_src .macro-nonterminal { color: #3E999F; }
+.div_all_span_src .lifetime { color: #B76514; }
+.div_all_span_src .comment, .div_all_span_src .doccomment { color: #808080; }
 
 #div_options {
     position: absolute;

@@ -9,6 +9,7 @@ Handlebars.registerHelper("add", function(a, b, options)
 });
 
 Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
+Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet);
 
 function onLoad() {
     load_start();
@@ -129,6 +130,7 @@ function do_build(data) {
     .done(function (json) {
         var state = { page: "build", results: json }
         load_build(state);
+        pull_data(json.push_data_key);
 
         history.pushState(state, "", "#build");
     })
@@ -146,6 +148,36 @@ function do_build(data) {
     $("#link_build").off("click");
     $("#link_build").html("&nbsp;");
     hide_options();
+}
+
+function pull_data(key) {
+    if (!key) {
+        return;
+    }
+
+    console.log("sending pull request for key " + key);
+    $.ajax({
+        url: '/pull?key=' + key,
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        console.log("Success!")
+        console.log(json);
+
+        // Update the snippets
+        for (let snip of json.snippets) {
+            var target = $("#src_span_" + snip.id);
+            var html = Handlebars.templates.src_snippet_inner(snip);
+            console.log(html);
+            target.html(html);
+        }
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error pulling data for key " + key);
+        console.log("error: " + errorThrown + "; status: " + status);
+    });
 }
 
 function init_build_results() {

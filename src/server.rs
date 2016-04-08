@@ -3,13 +3,17 @@ use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
+use reprocess;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write, BufRead};
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::thread::{self, sleep};
+use std::time;
 
 use hyper::header::ContentType;
 use hyper::net::Fresh;
@@ -28,7 +32,8 @@ const STATIC_DIR: &'static str = "static";
 pub struct Instance {
     builder: build::Builder,
     pub config: Config,
-    file_cache: Mutex<Cache>,
+    file_cache: Arc<Mutex<Cache>>,
+    pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
 
 impl Instance {
@@ -36,7 +41,9 @@ impl Instance {
         Instance {
             builder: build::Builder::from_config(&config),
             config: config,
-            file_cache: Mutex::new(Cache::new()),
+            file_cache: Arc::new(Mutex::new(Cache::new())),
+            // FIXME(#58) a rebuild should cancel all pending tasks.
+            pending_push_data: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -48,7 +55,8 @@ impl ::hyper::server::Handler for Instance {
             let mut handler = Handler {
                 config: &self.config,
                 builder: &self.builder,
-                file_cache: &mut self.file_cache.lock().unwrap(),
+                file_cache: &self.file_cache,
+                pending_push_data: &self.pending_push_data,
             };
             route(s, &mut handler, req, res);
         } else {
@@ -62,7 +70,8 @@ impl ::hyper::server::Handler for Instance {
 struct Handler<'a> {
     pub config: &'a Config,
     builder: &'a build::Builder,
-    file_cache: &'a mut Cache,
+    file_cache: &'a Arc<Mutex<Cache>>,
+    pending_push_data: &'a Arc<Mutex<HashMap<String, Option<String>>>>,
 }
 
 impl<'a> Handler<'a> {
@@ -84,7 +93,8 @@ impl<'a> Handler<'a> {
         let mut path_buf = PathBuf::from(STATIC_DIR);
         path_buf.push("index.html");
 
-        let msg = match self.file_cache.get_text(&path_buf) {
+        let mut file_cache = self.file_cache.lock().unwrap();
+        let msg = match file_cache.get_text(&path_buf) {
             Ok(data) => {
                 res.headers_mut().set(ContentType::html());
                 let mut res = res.start().unwrap();
@@ -119,7 +129,8 @@ impl<'a> Handler<'a> {
             _ => ContentType("application/octet-stream".parse().unwrap()),
         };
 
-        if let Ok(s) = self.file_cache.get_text(&path_buf) {
+        let mut file_cache = self.file_cache.lock().unwrap();
+        if let Ok(s) = file_cache.get_text(&path_buf) {
             //println!("serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
             res.headers_mut().set(content_type);
             res.send(s).unwrap();
@@ -142,7 +153,8 @@ impl<'a> Handler<'a> {
             path_buf.push(p);
         }
 
-        let msg = match self.file_cache.get_highlighted(&path_buf) {
+        let mut file_cache = self.file_cache.lock().unwrap();
+        let msg = match file_cache.get_highlighted(&path_buf) {
             Ok(ref lines) => {
                 res.headers_mut().set(ContentType::json());
                 res.send(serde_json::to_string(lines).unwrap().as_bytes()).unwrap();
@@ -170,13 +182,29 @@ impl<'a> Handler<'a> {
                                     mut res: Response<'b, Fresh>) {
         assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
 
-        self.file_cache.reset();
+        {
+            let mut file_cache = self.file_cache.lock().unwrap();
+            file_cache.reset();
+        }
+
         res.headers_mut().set(ContentType::json());
         let build_result = self.builder.build().unwrap();
-        let result = BuildResult::from_build(&build_result);
+        let mut result = BuildResult::from_build(&build_result);
+        if !result.errors.is_empty() {
+            let key = reprocess::make_key();
+            result.push_data_key = Some(key.clone());
+            let mut pending_push_data = self.pending_push_data.lock().unwrap();
+            pending_push_data.insert(key, None);
+        }
 
         let text = serde_json::to_string(&result).unwrap();
         res.send(text.as_bytes()).unwrap();
+
+        if result.push_data_key.is_some() {
+            let pending_push_data = self.pending_push_data.clone();
+            let file_cache = self.file_cache.clone();
+            thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, file_cache));
+        }
     }
 
     fn handle_quick_edit<'b: 'a, 'k: 'a>(&mut self,
@@ -214,8 +242,7 @@ impl<'a> Handler<'a> {
                 };
                 let end = q[start..].find("&").unwrap_or(q.len());
 
-                // Get the filename out of the query string, then split it on
-                // colons for line and column numbers.
+                // Split the 'filename' on colons for line and column numbers.
                 let args = parse_location_string(&q[start..end]);
 
                 let cmd_line = &self.config.edit_command;
@@ -246,12 +273,58 @@ impl<'a> Handler<'a> {
             }
         }
     }
+
+    fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
+                                   _req: Request<'b, 'k>,
+                                   mut res: Response<'b, Fresh>,
+                                   query: Option<String>) {
+        match query {
+            Some(ref q) => {
+                // Extract the `key` value from the query string.
+                let start = match q.find("key=") {
+                    Some(i) => i + 4,  // 5 = "key=".len()
+                    None => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+                        return;
+                    }
+                };
+                let end = q[start..].find("&").unwrap_or(q.len());
+                let key = &q[start..end];
+
+                res.headers_mut().set(ContentType::json());
+
+                loop {
+                    let pending_push_data = self.pending_push_data.lock().unwrap();
+                    match pending_push_data.get(key) {
+                        Some(&Some(ref s)) => {
+                            // Data is ready, return it.
+                            res.send(s.as_bytes()).unwrap();
+                            return;
+                        }
+                        Some(&None) => {
+                            // Task is in progress, wait.
+                        }
+                        None => {
+                            // No push task, return nothing.
+                            res.send("{}".as_bytes()).unwrap();
+                            return;
+                        }
+                    }
+                    sleep(time::Duration::from_millis(200));
+                }
+            }
+            None => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]
-struct BuildResult {
-    messages: String,
-    errors: Vec<Diagnostic>,
+pub struct BuildResult {
+    pub messages: String,
+    pub errors: Vec<Diagnostic>,
+    pub push_data_key: Option<String>,
     // build_command: String,
 }
 
@@ -260,9 +333,11 @@ impl BuildResult {
         BuildResult {
             messages: build.stdout.to_owned(),
             errors: errors::parse_errors(&build.stderr),
+            push_data_key: None,
         }
     }
 }
+
 
 pub fn parse_location_string(input: &str) -> [String; 3] {
     let mut args = input.split(':').map(|s| s.to_owned());
@@ -339,6 +414,7 @@ const CODE_DIR: &'static str = "src";
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
+const PULL_REQUEST: &'static str = "pull";
 const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
@@ -355,6 +431,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
     if path[0] == STATIC_DIR {
         handler.handle_static(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == PULL_REQUEST {
+        handler.handle_pull(req, res, query);
         return;
     }
 

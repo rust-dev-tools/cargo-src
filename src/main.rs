@@ -19,6 +19,7 @@ extern crate toml;
 mod build;
 mod config;
 mod file_cache;
+mod reprocess;
 mod server;
 
 use config::Config;
