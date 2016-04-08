@@ -41,7 +41,7 @@ function onLoad() {
 }
 
 function load_start() {
-    $("#link_build").text("build");
+    enable_button($("#link_build"), "build");
     set_build_onclick();
     $("#link_options").click(show_options);
     
@@ -78,7 +78,7 @@ function load_build(state) {
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
     set_build_onclick();
-    $("#link_build").text("rebuild");
+    enable_button($("#link_build"), "rebuild");
     $("#link_back").css("visibility", "hidden");
     init_build_results();
 }
@@ -144,9 +144,7 @@ function do_build(data) {
     });
 
     $("#link_back").css("visibility", "hidden");
-    $("#div_main").text("Building...");
-    $("#link_build").off("click");
-    $("#link_build").html("&nbsp;");
+    disable_button($("#link_build"), "building...");
     hide_options();
 }
 
@@ -196,6 +194,21 @@ function init_build_results() {
     var src_links = $(".span_loc");
     src_links.click(win_src_link);
     src_links.on("contextmenu", show_src_menu);
+}
+
+// Doesn't actually add an action to the button, just makes it look active.
+function enable_button(button, text) {
+    button.css("color", "black");
+    button.css("cursor", "pointer");
+    button.text(text);
+}
+
+// Removes click action and makes it look disabled.
+function disable_button(button, text) {
+    button.css("color", "#808080");
+    button.css("cursor", "auto");
+    button.off("click");
+    button.text(text);
 }
 
 function show_hide(element, text, fn) {
@@ -427,10 +440,11 @@ function save_quick_edit(event) {
 }
 
 function set_build_onclick() {
-    $("#link_build").off('click');
+    var button = $("#link_build");
+    button.off('click');
     if (DEMO_MODE) {
-        $("#link_build").click('test', do_build);
+        button.click('test', do_build);
     } else {
-        $("#link_build").click('build', do_build);
+        button.click('build', do_build);
     }
 }
