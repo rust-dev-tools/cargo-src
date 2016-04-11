@@ -49,6 +49,7 @@ function load_start() {
     $("#div_options").hide();
     $("#div_src_menu").hide();
     $("#div_quick_edit").hide();
+    $("#measure").hide();
 }
 
 function show_options(event) {
@@ -109,15 +110,75 @@ function load_err_code(state) {
 function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
 
-    for (var i = state.start_line; i <= state.end_line; ++i) {
+    for (var i = state.line_start; i <= state.line_end; ++i) {
         $("#src_line_number_" + i).addClass("selected");
+    }
+
+    // Highlight all of the middle lines.
+    for (var i = state.line_start + 1; i <= state.line_end - 1; ++i) {
         $("#src_line_" + i).addClass("selected");
+    }
+
+    // If we don't have columns (at least a start), then highlight all the lines.
+    // If we do, then highlight between columns.
+    if (state.col_start <= 0) {
+        $("#src_line_" + state.line_start).addClass("selected");
+        $("#src_line_" + state.line_end).addClass("selected");
+    } else {
+        // First line
+        var lhs = (state.col_start - 1);
+        var rhs = 0;
+        if (state.line_end == state.line_start && state.col_end > 0) {
+            // If we're only highlighting one line, then the highlight must stop
+            // before the end of the line.
+            rhs = (state.col_end - 1);
+        }
+        make_highlight(state.line_start, lhs, rhs);
+
+        // Last line
+        if (state.line_end > state.line_start) {
+            var rhs = 0;
+            if (state.col_end > 0) {
+                rhs = (state.col_end - 1);
+            }
+            make_highlight(state.line_end, 0, rhs);
+        }
     }
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
-    var y = state.start_line * $("#src_line_number_1").height() - 100;
+    var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
+}
+
+// Left is the number of chars from the left margin to where the highlight
+// should start. right is the number of chars to where the highlight should end.
+// If right == 0, we take it as the last char in the line.
+// 1234 |  text highlight text
+//         ^    ^-------^
+//         |origin
+//         |----| left
+//         |------------| right
+function make_highlight(line_number, left, right) {
+    var line_div = $("#src_line_" + line_number);
+    var highlight = $("<div>&nbsp;</div>");
+    highlight.addClass("selected floating_highlight");
+
+    left *= CHAR_WIDTH;
+    right *= CHAR_WIDTH;
+    if (right == 0) {
+        right = line_div.width();
+    }
+    var width = right - left;
+    var padding = parseInt(line_div.css("padding-left"));
+    if (left > 0) {
+        left += padding;
+    } else {
+        width += padding;
+    }
+    highlight.offset({ "left": line_div.offset().left + left});
+    highlight.width(width);
+    line_div.before(highlight);
 }
 
 function do_build(data) {
@@ -164,14 +225,10 @@ function pull_data(key) {
         cache: false
     })
     .done(function (json) {
-        console.log("Success!")
-        console.log(json);
-
         // Update the snippets
         for (let snip of json.snippets) {
             var target = $("#src_span_" + snip.id);
             var html = Handlebars.templates.src_snippet_inner(snip);
-            console.log(html);
             target.html(html);
         }
     })
@@ -215,7 +272,7 @@ function disable_button(button, text) {
 }
 
 function start_build_animation() {
-    $("#div_border").css("background-color", "white");
+    $("#div_border").css("background-color", "#e3e9ff");
 
     var border = $("#div_border_animated");
     border.show();
@@ -224,7 +281,7 @@ function start_build_animation() {
 
 function stop_build_animation() {
     $("#div_border").css("background-color", "black");
-    
+
     var border = $("#div_border_animated");
     border.removeClass("animated_border");
     border.hide();
@@ -317,20 +374,24 @@ function win_src_link() {
     var element = $(this);
     var file_loc = element.attr("link").split(':');
     var file = file_loc[0];
-    var start = file_loc[1];
-    var end = file_loc[2];
+    var line_start = parseInt(file_loc[1], 10);
+    var col_start = parseInt(file_loc[2], 10);
+    var line_end = parseInt(file_loc[3], 10);
+    var col_end = parseInt(file_loc[4], 10);
 
+    if (line_start == 0) {
+        line_end = 0;
+    } else if (line_end == 0) {
+        line_end = line_start;
+    }
+
+    // FIXME the displayed span doesn't include column start and end, should it?
     var display = "";
-    if (!start) {
-        start = 0;
-        end = 0;
-    } else if (!end) {
-        end = start;
-        display = ":" + start;
-    } else if (start == end) {
-        display = ":" + start;
-    } else {
-        display = ":" + start + ":" + end;
+    if (line_start > 0) {
+        display += ":" + line_start;
+        if (!(line_end == 0 || line_end == line_start)) {
+            display += ":" + line_end;
+        }
     }
 
     $.ajax({
@@ -340,7 +401,16 @@ function win_src_link() {
         cache: false
     })
     .done(function (json) {
-        var state = { page: "source", data: json, file: file, display: display, start_line: start, end_line: end };
+        var state = {
+            "page": "source",
+            "data": json,
+            "file": file,
+            "display": display,
+            "line_start": line_start,
+            "line_end": line_end,
+            "col_start": col_start,
+            "col_end": col_end
+        };
         load_source(state);
 
         history.pushState(state, "", "#src=" + file + display);
@@ -359,7 +429,11 @@ function win_src_link() {
 function show_src_menu(event) {
     var src_menu = $("#div_src_menu");
     var target = $(event.target);
-    var data = { "position": { "top": event.pageY, "left": event.pageX }, "text": target.attr("snippet"), "location": target.attr("link") };
+    var data = {
+        "position": { "top": event.pageY, "left": event.pageX },
+        "text": target.attr("snippet"),
+        "location": target.attr("link")
+    };
 
     src_menu.show();
     src_menu.offset(data.position);

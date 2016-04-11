@@ -64,6 +64,7 @@ html {
     background-color: white;
     opacity: 1;
     position: fixed;
+    z-index: 10;
 }
 #div_header {
     width: 100%;
@@ -223,6 +224,15 @@ a.issue_link:active, a.link  { color: black }
     font-size: medium;
 }
 
+span#measure {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    white-space: pre;
+    font-family: monospace;
+    font-size: small;
+}
+
 .separator {
     width: 85%;
     margin-top: 40px;
@@ -255,12 +265,18 @@ a.issue_link:active, a.link  { color: black }
     display: block;
     white-space: pre;
     padding-left: 1em;
+    position: relative;
+    z-index: 1;
+    width: -moz-max-content;
 }
 .src_highlight {
     font-weight: bold;
 }
 .selected {
     background-color: #f3f3a5;
+}
+.floating_highlight {
+    position: absolute;
 }
 
 /* Syntax highlighting */

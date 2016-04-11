@@ -339,9 +339,11 @@ impl BuildResult {
 }
 
 
-pub fn parse_location_string(input: &str) -> [String; 3] {
+pub fn parse_location_string(input: &str) -> [String; 5] {
     let mut args = input.split(':').map(|s| s.to_owned());
     [args.next().unwrap(),
+     args.next().unwrap_or(String::new()),
+     args.next().unwrap_or(String::new()),
      args.next().unwrap_or(String::new()),
      args.next().unwrap_or(String::new())]
 }
@@ -376,7 +378,7 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
     }
 
     let edit_start = usize::from_str(&location[1]).unwrap();
-    let edit_end = usize::from_str(&location[2]).unwrap();
+    let edit_end = usize::from_str(&location[3]).unwrap();
 
     // TODO we should check that the file has not been modified since we read it,
     // otherwise the file line locations will be incorrect.
