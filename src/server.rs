@@ -24,10 +24,6 @@ use hyper::uri::RequestUri;
 use serde_json;
 use url::parse_path;
 
-// TODO separate path from dir
-// TODO need an 'absolute' path to static
-const STATIC_DIR: &'static str = "static";
-
 /// An instance of the server. Runs a session of rustw.
 pub struct Instance {
     builder: build::Builder,
@@ -90,7 +86,7 @@ impl<'a> Handler<'a> {
     fn handle_index<'b: 'a, 'k: 'a>(&mut self,
                                     _req: Request<'b, 'k>,
                                     mut res: Response<'b, Fresh>) {
-        let mut path_buf = PathBuf::from(STATIC_DIR);
+        let mut path_buf = static_path();
         path_buf.push("index.html");
 
         let mut file_cache = self.file_cache.lock().unwrap();
@@ -116,7 +112,7 @@ impl<'a> Handler<'a> {
                                      _req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>,
                                      path: &[String]) {
-        let mut path_buf = PathBuf::from(STATIC_DIR);
+        let mut path_buf = static_path();
         for p in path {
             path_buf.push(p);
         }
@@ -338,6 +334,14 @@ impl BuildResult {
     }
 }
 
+fn static_path() -> PathBuf {
+    const STATIC_DIR: &'static str = "static";
+
+    let mut result = ::std::env::current_exe().unwrap();
+    assert!(result.pop());
+    result.push(STATIC_DIR);
+    result
+}
 
 pub fn parse_location_string(input: &str) -> [String; 5] {
     let mut args = input.split(':').map(|s| s.to_owned());
@@ -410,9 +414,8 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
     Ok(())
 }
 
-// TODO shouldn't be const
-const CODE_DIR: &'static str = "src";
-
+const STATIC_REQUEST: &'static str = "static";
+const SOURCE_REQUEST: &'static str = "src";
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
@@ -431,7 +434,7 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
         return;
     }
 
-    if path[0] == STATIC_DIR {
+    if path[0] == STATIC_REQUEST {
         handler.handle_static(req, res, &path[1..]);
         return;
     }
@@ -441,7 +444,7 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
         return;
     }
 
-    if path[0] == CODE_DIR {
+    if path[0] == SOURCE_REQUEST {
         handler.handle_src(req, res, &path[1..]);
         return;
     }
