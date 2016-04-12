@@ -13,7 +13,8 @@ Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet
 
 function onLoad() {
     load_start();
-    history.replaceState({ page: "start" }, "", "/");
+    MAIN_PAGE_STATE = { page: "start" };
+    history.replaceState(MAIN_PAGE_STATE, "", "/");
 
     window.onpopstate = function(event) {
         var state = event.state;
@@ -82,6 +83,8 @@ function load_build(state) {
     enable_button($("#link_build"), "rebuild");
     $("#link_back").css("visibility", "hidden");
     init_build_results();
+
+    update_snippets(MAIN_PAGE_STATE.snippets);
 }
 
 function load_error() {
@@ -190,11 +193,11 @@ function do_build(data) {
     })
     .done(function (json) {
         stop_build_animation();
-        var state = { page: "build", results: json }
-        load_build(state);
+        MAIN_PAGE_STATE = { page: "build", results: json }
+        load_build(MAIN_PAGE_STATE);
         pull_data(json.push_data_key);
 
-        history.pushState(state, "", "#build");
+        history.pushState(MAIN_PAGE_STATE, "", "#build");
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
@@ -202,7 +205,8 @@ function do_build(data) {
         console.log(data);
         load_error();
 
-        history.pushState({ page: "error" }, "", "#build");
+        MAIN_PAGE_STATE = { page: "error" };
+        history.pushState(MAIN_PAGE_STATE, "", "#build");
         stop_build_animation();
     });
 
@@ -225,17 +229,26 @@ function pull_data(key) {
         cache: false
     })
     .done(function (json) {
-        // Update the snippets
-        for (let snip of json.snippets) {
-            var target = $("#src_span_" + snip.id);
-            var html = Handlebars.templates.src_snippet_inner(snip);
-            target.html(html);
-        }
+        MAIN_PAGE_STATE.snippets = json;
+        update_snippets(json);
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error pulling data for key " + key);
         console.log("error: " + errorThrown + "; status: " + status);
     });
+}
+
+
+function update_snippets(data) {
+    if (!data) {
+        return;
+    }
+
+    for (let snip of data.snippets) {
+        var target = $("#src_span_" + snip.id);
+        var html = Handlebars.templates.src_snippet_inner(snip);
+        target.html(html);
+    }
 }
 
 function init_build_results() {
