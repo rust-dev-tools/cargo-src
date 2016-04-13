@@ -14,6 +14,9 @@ Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet
 function onLoad() {
     $.getJSON("/config", function(data) {
         CONFIG = data;
+        if (CONFIG.build_on_load) {
+            do_build();
+        }
     });
 
     load_start();
@@ -84,7 +87,13 @@ function load_build(state) {
     }
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
-    enable_button($("#link_build"), "rebuild");
+
+    var rebuild_label = "rebuild";
+    if (CONFIG.build_on_load) {
+        rebuild_label += " (F5)";
+    }
+    enable_button($("#link_build"), rebuild_label);
+
     $("#link_back").css("visibility", "hidden");
     init_build_results();
 
