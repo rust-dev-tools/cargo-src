@@ -6,7 +6,9 @@ editing code.
 
 Be warned: very work in progress!
 
-TODO demo, screenshot
+![rustw screenshot](screenshot.png)
+
+TODO demo
 
 Contents:
 * [Building](#building)
