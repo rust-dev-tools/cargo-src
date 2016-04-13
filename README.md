@@ -94,8 +94,9 @@ documentation are very welcome, you can browse [all issues](https://github.com/n
 or [easy issues](https://github.com/nrc/rustw/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy)
 to find something to work on.
 
-If you'd like help or want to talk about rustw, you can find me on irc (nrc),
-email (my GitHub username @mozilla.com), or twitter ([@nick_r_cameron](https://twitter.com/nick_r_cameron)).
+If you'd like help or want to talk about rustw, you can find me on the
+#rust-tools irc channel (nrc), email (my irc handle @mozilla.com), or
+twitter ([@nick_r_cameron](https://twitter.com/nick_r_cameron)).
 
 The rustw server is written in Rust and uses Hyper. It runs rustc (or Cargo) as
 a separate process and only really deals with output on stdout/stderr. We make
