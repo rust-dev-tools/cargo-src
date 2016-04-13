@@ -4,6 +4,6 @@
     {{/each}}
 </span><span class="div_span_src">
     {{#each text}}
-        <div class="span_src" id="snippet_line_{{../id}}_{{add @index ../line_start}}">{{{this}}}</div>
+        <div class="span_src" id="snippet_line_{{../id}}_{{add @index ../line_start}}">{{#if this}}{{{this}}}{{else}}&nbsp;{{/if}}</div>
     {{/each}}
 </span>

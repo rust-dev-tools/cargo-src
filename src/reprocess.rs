@@ -1,6 +1,7 @@
 // Reprocessing snippets after building.
 
 use build::errors::{Diagnostic, DiagnosticSpan};
+use config::Config;
 use file_cache::Cache;
 use server::BuildResult;
 
@@ -24,13 +25,14 @@ pub fn make_key() -> String {
 // pending_push_data.
 pub fn reprocess_snippets(result: BuildResult,
                           pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-                          file_cache: Arc<Mutex<Cache>>) {
+                          file_cache: Arc<Mutex<Cache>>,
+                          config: Arc<Config>) {
     let mut snippets = ReprocessedSnippets::new(result.push_data_key.unwrap());
     for d in &result.errors {
         // Lock the file_cache on every iteration because this thread should be
         // low priority, and we're happy to wait if someone else wants access to
         // the file_cache.
-        reprocess_diagnostic(d, &file_cache, &mut snippets);
+        reprocess_diagnostic(d, &file_cache, &mut snippets, &config);
     }
 
     let mut pending_push_data = pending_push_data.lock().unwrap();
@@ -41,27 +43,42 @@ pub fn reprocess_snippets(result: BuildResult,
 
 fn reprocess_diagnostic(diagnostic: &Diagnostic,
                         file_cache: &Mutex<Cache>,
-                        result: &mut ReprocessedSnippets) {
+                        result: &mut ReprocessedSnippets,
+                        config: &Config) {
     {
         let mut file_cache = file_cache.lock().unwrap();
         for sp in &diagnostic.spans {
             // TODO ignore the span rather than panicking here
             let file = file_cache.get_highlighted(&Path::new(&sp.file_name)).unwrap();
-            let line_start = if sp.line_start == 0 {
+
+            // Lines should be 1-indexed, account for that here.
+            let mut line_start = if sp.line_start == 0 {
                 // TODO is this a SpanEnd which needs better handling?
-                1
+                0
             } else {
                 sp.line_start - 1
             };
+            // Add context lines.
+            if line_start <= config.context_lines {
+                line_start = 0;
+            } else {
+                line_start -= config.context_lines;
+            }
+            let mut line_end = sp.line_end + config.context_lines;
+            if line_end >= file.len() {
+                line_end = file.len();
+            }
+
             let snippet = Snippet::new(sp.id,
-                                       file[line_start..sp.line_end].to_owned(),
+                                       file[line_start..line_end].to_owned(),
+                                       line_start + 1,
                                        sp);
             result.snippets.push(snippet);
         }
     }
 
     for d in &diagnostic.children {
-        reprocess_diagnostic(d, file_cache, result);
+        reprocess_diagnostic(d, file_cache, result, config);
     }
 }
 
@@ -71,14 +88,14 @@ struct ReprocessedSnippets {
     key: String,
 }
 
-// TODO will want highlighting info,
-// which lines are context.
+// TODO which lines are context.
 #[derive(Serialize, Debug)]
 struct Snippet {
     id: u32,
     // TODO do we ever want to update the plain_text? Probably do to keep the
     // snippet up to date after a quick edit, etc.
     text: Vec<String>,
+    /// 1-based.
     line_start: usize,
     highlight: Highlight,
 }
@@ -114,11 +131,11 @@ impl ReprocessedSnippets {
 }
 
 impl Snippet {
-    fn new(id: u32, text: Vec<String>, span: &DiagnosticSpan) -> Snippet {
+    fn new(id: u32, text: Vec<String>, line_start: usize, span: &DiagnosticSpan) -> Snippet {
         Snippet {
             id: id,
             text: text,
-            line_start: span.line_start,
+            line_start: line_start,
             highlight: Highlight::from_diagnostic_span(span),
         }
     }

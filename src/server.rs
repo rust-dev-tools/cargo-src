@@ -27,7 +27,7 @@ use url::parse_path;
 /// An instance of the server. Runs a session of rustw.
 pub struct Instance {
     builder: build::Builder,
-    pub config: Config,
+    pub config: Arc<Config>,
     file_cache: Arc<Mutex<Cache>>,
     pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
@@ -36,7 +36,7 @@ impl Instance {
     pub fn new(config: Config) -> Instance {
         Instance {
             builder: build::Builder::from_config(&config),
-            config: config,
+            config: Arc::new(config),
             file_cache: Arc::new(Mutex::new(Cache::new())),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_push_data: Arc::new(Mutex::new(HashMap::new())),
@@ -64,7 +64,7 @@ impl ::hyper::server::Handler for Instance {
 
 // Handles a single request.
 struct Handler<'a> {
-    pub config: &'a Config,
+    pub config: &'a Arc<Config>,
     builder: &'a build::Builder,
     file_cache: &'a Arc<Mutex<Cache>>,
     pending_push_data: &'a Arc<Mutex<HashMap<String, Option<String>>>>,
@@ -199,7 +199,8 @@ impl<'a> Handler<'a> {
         if result.push_data_key.is_some() {
             let pending_push_data = self.pending_push_data.clone();
             let file_cache = self.file_cache.clone();
-            thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, file_cache));
+            let config = self.config.clone();
+            thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, file_cache, config));
         }
     }
 

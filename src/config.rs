@@ -189,4 +189,5 @@ create_config! {
     edit_command: String, String::new(), "command to call to edit; can use $file, $line, and $col.";
     port: usize, 7878, "port to run rustw on";
     demo_mode: bool, false, "run in demo mode";
+    context_lines: usize, 2, "lines of context to show before and after code snippets";
 }
