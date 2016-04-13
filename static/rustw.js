@@ -112,46 +112,49 @@ function load_err_code(state) {
 
 function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
-
-    for (var i = state.line_start; i <= state.line_end; ++i) {
-        $("#src_line_number_" + i).addClass("selected");
-    }
-
-    // Highlight all of the middle lines.
-    for (var i = state.line_start + 1; i <= state.line_end - 1; ++i) {
-        $("#src_line_" + i).addClass("selected");
-    }
-
-    // If we don't have columns (at least a start), then highlight all the lines.
-    // If we do, then highlight between columns.
-    if (state.col_start <= 0) {
-        $("#src_line_" + state.line_start).addClass("selected");
-        $("#src_line_" + state.line_end).addClass("selected");
-    } else {
-        // First line
-        var lhs = (state.col_start - 1);
-        var rhs = 0;
-        if (state.line_end == state.line_start && state.col_end > 0) {
-            // If we're only highlighting one line, then the highlight must stop
-            // before the end of the line.
-            rhs = (state.col_end - 1);
-        }
-        make_highlight(state.line_start, lhs, rhs);
-
-        // Last line
-        if (state.line_end > state.line_start) {
-            var rhs = 0;
-            if (state.col_end > 0) {
-                rhs = (state.col_end - 1);
-            }
-            make_highlight(state.line_end, 0, rhs);
-        }
-    }
+    highlight_spans(state, "src_line_number_", "src_line_");
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
+}
+
+function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
+    for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
+        $("#" + line_number_prefix + i).addClass("selected");
+    }
+
+    // Highlight all of the middle lines.
+    for (var i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
+        $("#" + src_line_prefix + i).addClass("selected");
+    }
+
+    // If we don't have columns (at least a start), then highlight all the lines.
+    // If we do, then highlight between columns.
+    if (highlight.column_start <= 0) {
+        $("#" + src_line_prefix + highlight.line_start).addClass("selected");
+        $("#" + src_line_prefix + highlight.line_end).addClass("selected");
+    } else {
+        // First line
+        var lhs = (highlight.column_start - 1);
+        var rhs = 0;
+        if (highlight.line_end == highlight.line_start && highlight.column_end > 0) {
+            // If we're only highlighting one line, then the highlight must stop
+            // before the end of the line.
+            rhs = (highlight.column_end - 1);
+        }
+        make_highlight(src_line_prefix, highlight.line_start, lhs, rhs);
+
+        // Last line
+        if (highlight.line_end > highlight.line_start) {
+            var rhs = 0;
+            if (highlight.column_end > 0) {
+                rhs = (highlight.column_end - 1);
+            }
+            make_highlight(src_line_prefix, highlight.line_end, 0, rhs);
+        }
+    }
 }
 
 // Left is the number of chars from the left margin to where the highlight
@@ -162,8 +165,8 @@ function load_source(state) {
 //         |origin
 //         |----| left
 //         |------------| right
-function make_highlight(line_number, left, right) {
-    var line_div = $("#src_line_" + line_number);
+function make_highlight(src_line_prefix, line_number, left, right) {
+    var line_div = $("#" + src_line_prefix + line_number);
     var highlight = $("<div>&nbsp;</div>");
     highlight.addClass("selected floating_highlight");
 
@@ -172,6 +175,7 @@ function make_highlight(line_number, left, right) {
     if (right == 0) {
         right = line_div.width();
     }
+
     var width = right - left;
     var padding = parseInt(line_div.css("padding-left"));
     if (left > 0) {
@@ -179,6 +183,7 @@ function make_highlight(line_number, left, right) {
     } else {
         width += padding;
     }
+
     highlight.offset({ "left": line_div.offset().left + left});
     highlight.width(width);
     line_div.before(highlight);
@@ -244,10 +249,17 @@ function update_snippets(data) {
         return;
     }
 
-    for (let snip of data.snippets) {
-        var target = $("#src_span_" + snip.id);
-        var html = Handlebars.templates.src_snippet_inner(snip);
-        target.html(html);
+    for (let s of data.snippets) {
+        let target = $("#src_span_" + s.id);
+        let snip = s;
+        target[0].update_span = function() {
+            let html = Handlebars.templates.src_snippet_inner(snip);
+            target.html(html);
+
+            highlight_spans(snip.highlight,
+                            "snippet_line_number_" + snip.id + "_",
+                            "snippet_line_" + snip.id + "_");
+        };
     }
 }
 
@@ -333,7 +345,12 @@ function hide_stdout() {
 function show_spans() {
     var element = $(this);
     show_hide(element, "-", hide_spans);
-    element.next().find(".div_all_span_src").show();
+    var span = element.next().find(".div_all_span_src");
+    span.show();
+
+    if (span[0].update_span) {
+        span[0].update_span();
+    }
 }
 
 function hide_spans() {
@@ -388,9 +405,9 @@ function win_src_link() {
     var file_loc = element.attr("link").split(':');
     var file = file_loc[0];
     var line_start = parseInt(file_loc[1], 10);
-    var col_start = parseInt(file_loc[2], 10);
+    var column_start = parseInt(file_loc[2], 10);
     var line_end = parseInt(file_loc[3], 10);
-    var col_end = parseInt(file_loc[4], 10);
+    var column_end = parseInt(file_loc[4], 10);
 
     if (line_start == 0) {
         line_end = 0;
@@ -421,8 +438,8 @@ function win_src_link() {
             "display": display,
             "line_start": line_start,
             "line_end": line_end,
-            "col_start": col_start,
-            "col_end": col_end
+            "column_start": column_start,
+            "column_end": column_end
         };
         load_source(state);
 

@@ -1,6 +1,6 @@
 // Reprocessing snippets after building.
 
-use build::errors::Diagnostic;
+use build::errors::{Diagnostic, DiagnosticSpan};
 use file_cache::Cache;
 use server::BuildResult;
 
@@ -47,9 +47,15 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
         for sp in &diagnostic.spans {
             // TODO ignore the span rather than panicking here
             let file = file_cache.get_highlighted(&Path::new(&sp.file_name)).unwrap();
+            let line_start = if sp.line_start == 0 {
+                // TODO is this a SpanEnd which needs better handling?
+                1
+            } else {
+                sp.line_start - 1
+            };
             let snippet = Snippet::new(sp.id,
-                                       file[(sp.line_start - 1)..sp.line_end].to_owned(),
-                                       sp.line_start);
+                                       file[line_start..sp.line_end].to_owned(),
+                                       sp);
             result.snippets.push(snippet);
         }
     }
@@ -74,6 +80,28 @@ struct Snippet {
     // snippet up to date after a quick edit, etc.
     text: Vec<String>,
     line_start: usize,
+    highlight: Highlight,
+}
+
+#[derive(Serialize, Debug)]
+struct Highlight {
+    /// 1-based.
+    pub line_start: usize,
+    pub line_end: usize,
+    /// 1-based, character offset.
+    pub column_start: usize,
+    pub column_end: usize,
+}
+
+impl Highlight {
+    fn from_diagnostic_span(span: &DiagnosticSpan) -> Highlight {
+        Highlight {
+            line_start: span.line_start,
+            line_end: span.line_end,
+            column_start: span.column_start,
+            column_end: span.column_end,
+        }
+    }
 }
 
 impl ReprocessedSnippets {
@@ -86,11 +114,12 @@ impl ReprocessedSnippets {
 }
 
 impl Snippet {
-    fn new(id: u32, text: Vec<String>, line_start: usize) -> Snippet {
+    fn new(id: u32, text: Vec<String>, span: &DiagnosticSpan) -> Snippet {
         Snippet {
             id: id,
             text: text,
-            line_start: line_start,
+            line_start: span.line_start,
+            highlight: Highlight::from_diagnostic_span(span),
         }
     }
 }

@@ -209,6 +209,9 @@ a.issue_link:active, a.link  { color: black }
     display: block;
     white-space: pre;
     padding-left: 1em;
+    position: relative;
+    z-index: 1;
+    width: -moz-max-content;
 }
 .err_code {
     display: inline-block;
