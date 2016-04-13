@@ -78,16 +78,9 @@ impl ConfigType for String {
     }
 }
 
-pub struct ConfigHelpItem {
-    option_name: &'static str,
-    doc_string: &'static str,
-    variant_names: String,
-    default: &'static str,
-}
-
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
-        #[derive(RustcDecodable, Clone)]
+        #[derive(Serialize, RustcDecodable, Clone)]
         pub struct Config {
             $(pub $i: $ty),+
         }
@@ -125,21 +118,6 @@ macro_rules! create_config {
                     }
                 };
                 Config::default().fill_from_parsed_config(parsed_config)
-            }
-
-            pub fn override_value(&mut self, key: &str, val: &str) {
-                match key {
-                    $(
-                        stringify!($i) => {
-                            self.$i = val.parse::<$ty>()
-                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
-                                                 stringify!($i),
-                                                 val,
-                                                 stringify!($ty)));
-                        }
-                    )+
-                    _ => panic!("Unknown config key in override: {}", key)
-                }
             }
 
             pub fn print_docs() {
@@ -190,4 +168,5 @@ create_config! {
     port: usize, 7878, "port to run rustw on";
     demo_mode: bool, false, "run in demo mode";
     context_lines: usize, 2, "lines of context to show before and after code snippets";
+    build_on_load: bool, true, "build on page load and refresh";
 }

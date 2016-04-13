@@ -12,6 +12,10 @@ Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
 Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet);
 
 function onLoad() {
+    $.getJSON("/config", function(data) {
+        CONFIG = data;
+    });
+
     load_start();
     MAIN_PAGE_STATE = { page: "start" };
     history.replaceState(MAIN_PAGE_STATE, "", "/");
@@ -43,7 +47,8 @@ function onLoad() {
 
 function load_start() {
     enable_button($("#link_build"), "build");
-    set_build_onclick();
+    $("#link_build").click(do_build);
+
     $("#link_options").click(show_options);
     
     $("#div_main").html("");
@@ -73,13 +78,12 @@ function hide_options() {
 }
 
 function load_build(state) {
-    if (DEMO_MODE) {
+    if (CONFIG.demo_mode) {
         state.results.rustw_message =
             "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff. Source links can be right-clicked for more options.";
     }
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
-    set_build_onclick();
     enable_button($("#link_build"), "rebuild");
     $("#link_back").css("visibility", "hidden");
     init_build_results();
@@ -89,7 +93,6 @@ function load_build(state) {
 
 function load_error() {
     $("#div_main").text("Server error?");
-    set_build_onclick();
 }
 
 function load_err_code(state) {
@@ -189,9 +192,17 @@ function make_highlight(src_line_prefix, line_number, left, right) {
     line_div.before(highlight);
 }
 
-function do_build(data) {
+function do_build() {
+    if (CONFIG.demo_mode) {
+        do_build_internal('test');
+    } else {
+        do_build_internal('build');
+    }
+}
+
+function do_build_internal(build_str) {
     $.ajax({
-        url: '/' + data.data,
+        url: '/' + build_str,
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -207,7 +218,6 @@ function do_build(data) {
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
         console.log("error: " + errorThrown + "; status: " + status);
-        console.log(data);
         load_error();
 
         MAIN_PAGE_STATE = { page: "error" };
@@ -560,14 +570,4 @@ function save_quick_edit(event) {
         console.log("error: " + errorThrown + "; status: " + status);
         $("#quick_edit_message").text("error trying to save edit");
     });
-}
-
-function set_build_onclick() {
-    var button = $("#link_build");
-    button.off('click');
-    if (DEMO_MODE) {
-        button.click('test', do_build);
-    } else {
-        button.click('build', do_build);
-    }
 }

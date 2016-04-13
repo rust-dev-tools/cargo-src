@@ -93,13 +93,7 @@ impl<'a> Handler<'a> {
         let msg = match file_cache.get_text(&path_buf) {
             Ok(data) => {
                 res.headers_mut().set(ContentType::html());
-                let mut res = res.start().unwrap();
-
-                res.write(data).unwrap();
-                if self.config.demo_mode {
-                    res.write("\n<script>DEMO_MODE=true; set_build_onclick();</script>\n".as_bytes()).unwrap();
-                }
-                res.end().unwrap();
+                res.send(data).unwrap();
                 return;
             }
             Err(s) => s,
@@ -160,6 +154,15 @@ impl<'a> Handler<'a> {
         };
 
         self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+    }
+
+    fn handle_config<'b: 'a, 'k: 'a>(&mut self,
+                                     _req: Request<'b, 'k>,
+                                     mut res: Response<'b, Fresh>) {
+        let text = serde_json::to_string(&self.config).unwrap();
+
+        res.headers_mut().set(ContentType::json());
+        res.send(text.as_bytes()).unwrap();
     }
 
     fn handle_test<'b: 'a, 'k: 'a>(&mut self,
@@ -417,6 +420,7 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
 
 const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
+const CONFIG_REQUEST: &'static str = "config";
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
@@ -437,6 +441,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
     if path[0] == STATIC_REQUEST {
         handler.handle_static(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == CONFIG_REQUEST {
+        handler.handle_config(req, res);
         return;
     }
 
