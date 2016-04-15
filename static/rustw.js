@@ -87,6 +87,12 @@ function load_build(state) {
     }
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
+    set_snippet_plain_text(state.results.errors.reduce(function(a, x) {
+        for (var c of x.children) {
+            a = a.concat(c.spans);
+        }
+        return a.concat(x.spans);
+    }, []));
 
     var rebuild_label = "rebuild";
     if (CONFIG.build_on_load) {
@@ -98,6 +104,13 @@ function load_build(state) {
     init_build_results();
 
     update_snippets(MAIN_PAGE_STATE.snippets);
+}
+
+function set_snippet_plain_text(spans) {
+    SNIPPET_PLAIN_TEXT = {};
+    for (var s of spans) {
+        SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = s.plain_text;
+    }
 }
 
 function load_error() {
@@ -480,8 +493,7 @@ function show_src_menu(event) {
     var target = $(event.target);
     var data = {
         "position": { "top": event.pageY, "left": event.pageX },
-        "text": target.attr("snippet"),
-        "location": target.attr("link")
+        "target": target
     };
 
     src_menu.show();
@@ -527,20 +539,24 @@ function edit(event) {
 function quick_edit(event) {
     hide_src_menu();
 
+    var id = event.data.target.attr("id");
+    var text = SNIPPET_PLAIN_TEXT[id];
+    var location = event.data.target.attr("link");
+
     var quick_edit_div = $("#div_quick_edit");
 
     quick_edit_div.show();
     quick_edit_div.offset(event.data.position);
 
     
-    $("#quick_edit_text").val(event.data.text);
+    $("#quick_edit_text").val(text);
     $("#quick_edit_text").prop("disabled", false);
 
     $("#quick_edit_message").hide();
     $("#quick_edit_cancel").text("cancel");
     $("#quick_edit_cancel").click(hide_quick_edit);
     $("#quick_edit_save").show();
-    var save_data = { "location": event.data.location };
+    var save_data = { "location": location };
     $("#quick_edit_save").click(save_data, save_quick_edit);
     $("#div_main").click(hide_quick_edit);
     $("#div_header").click(hide_quick_edit);

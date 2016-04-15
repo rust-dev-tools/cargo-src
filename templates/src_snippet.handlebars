@@ -3,7 +3,7 @@
     <span class="div_spans">
     {{#each spans}}
         <span class="div_span">
-            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{column_start}}:{{line_end}}:{{column_end}}" snippet="{{plain_text}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
+            <span class="span_loc" link="{{file_name}}:{{line_start}}:{{column_start}}:{{line_end}}:{{column_end}}"  id="span_loc_{{id}}">{{file_name}}:{{line_start}}:{{column_start}}: {{line_end}}:{{column_end}}</span>
             <div class="div_all_span_src" id="src_span_{{id}}">
                 {{> src_snippet_inner }}
             </div>
