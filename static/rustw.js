@@ -493,6 +493,7 @@ function show_src_menu(event) {
 
     $("#src_menu_edit").click(target, edit);
     $("#src_menu_quick_edit").click(data, quick_edit);
+    $("#src_menu_view").click(target, view_from_menu);
 
     return false;
 }
@@ -500,6 +501,7 @@ function show_src_menu(event) {
 function hide_src_menu() {
     $("#src_menu_edit").off("click");
     $("#src_menu_quick_edit").off("click");
+    $("#src_menu_view").off("click");
     $("#div_src_menu").hide();
 }
 
@@ -579,4 +581,9 @@ function save_quick_edit(event) {
         console.log("error: " + errorThrown + "; status: " + status);
         $("#quick_edit_message").text("error trying to save edit");
     });
+}
+
+function view_from_menu(event) {
+    hide_src_menu();
+    win_src_link.call(event.data);
 }
