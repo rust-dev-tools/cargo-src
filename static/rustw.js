@@ -109,7 +109,13 @@ function load_build(state) {
 function set_snippet_plain_text(spans) {
     SNIPPET_PLAIN_TEXT = {};
     for (var s of spans) {
-        SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = s.plain_text;
+        var data = {
+            "plain_text": s.plain_text,
+            "file_name": s.file_name,
+            "line_start": s.line_start,
+            "line_end": s.line_end
+        };
+        SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
     }
 }
 
@@ -293,6 +299,7 @@ function update_snippets(data) {
                             "snippet_line_" + snip.id + "_");
         };
     }
+    set_snippet_plain_text(data.snippets);
 }
 
 function init_build_results() {
@@ -540,7 +547,7 @@ function quick_edit(event) {
     hide_src_menu();
 
     var id = event.data.target.attr("id");
-    var text = SNIPPET_PLAIN_TEXT[id];
+    var data = SNIPPET_PLAIN_TEXT[id];
     var location = event.data.target.attr("link");
 
     var quick_edit_div = $("#div_quick_edit");
@@ -549,15 +556,14 @@ function quick_edit(event) {
     quick_edit_div.offset(event.data.position);
 
     
-    $("#quick_edit_text").val(text);
+    $("#quick_edit_text").val(data.plain_text);
     $("#quick_edit_text").prop("disabled", false);
 
     $("#quick_edit_message").hide();
     $("#quick_edit_cancel").text("cancel");
     $("#quick_edit_cancel").click(hide_quick_edit);
     $("#quick_edit_save").show();
-    var save_data = { "location": location };
-    $("#quick_edit_save").click(save_data, save_quick_edit);
+    $("#quick_edit_save").click(data, save_quick_edit);
     $("#div_main").click(hide_quick_edit);
     $("#div_header").click(hide_quick_edit);
 }
@@ -590,7 +596,7 @@ function save_quick_edit(event) {
         console.log(json);
         $("#quick_edit_message").text("edit saved");
         // TODO add a fade-out animation here
-        window.setTimeout(hide_quick_edit, 1500);
+        window.setTimeout(hide_quick_edit, 1000);
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with quick edit request");

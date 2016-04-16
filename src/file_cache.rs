@@ -16,6 +16,7 @@ pub struct Cache {
 struct CachedFile {
     plain_text: Vec<u8>,
     highlighted_lines: Vec<String>,
+    new_lines: Vec<usize>,
 }
 
 impl Cache {
@@ -35,10 +36,22 @@ impl Cache {
         Ok(&self.get(path)?.plain_text)
     }
 
+    pub fn get_lines(&mut self, path: &Path, line_start: usize, line_end: usize) -> Result<&str, String> {
+        let file = self.get(path)?;
+        if file.new_lines.is_empty() {
+            Cache::compute_new_lines(file);
+        }
+
+        let line_start = file.new_lines[line_start];
+        let line_end = file.new_lines[line_end] - 1;
+        let text = Cache::get_string(file)?;
+        Ok(&text[line_start..line_end])
+    }
+
     pub fn get_highlighted(&mut self, path: &Path) -> Result<&[String], String> {
         let file = self.get(path)?;
         if file.highlighted_lines.is_empty() {
-            let highlighted = highlight(str::from_utf8(&file.plain_text).unwrap());
+            let highlighted = highlight(Cache::get_string(file)?);
 
             for line in highlighted.lines() {
                 file.highlighted_lines.push(line.to_owned());
@@ -48,6 +61,24 @@ impl Cache {
             }
         }
         Ok(&file.highlighted_lines)
+    }
+
+    fn get_string(file: &mut CachedFile) -> Result<&str, String> {
+        Ok(str::from_utf8(&file.plain_text).unwrap())
+    }
+
+    fn compute_new_lines(file: &mut CachedFile) {
+        assert!(file.new_lines.is_empty());
+
+        let mut new_lines = vec![];
+        new_lines.push(0);
+        for (i, c) in file.plain_text.iter().enumerate() {
+            if *c == '\n' as u8 {
+                new_lines.push(i + 1);
+            }
+        }
+        new_lines.push(file.plain_text.len() + 1);
+        file.new_lines = new_lines;
     }
 
     fn get(&mut self, path: &Path) -> Result<&mut CachedFile, String> {
@@ -88,6 +119,7 @@ impl CachedFile {
         CachedFile {
             plain_text: text,
             highlighted_lines: vec![],
+            new_lines: vec![],
         }
     }
 }

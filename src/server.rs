@@ -10,7 +10,6 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write, BufRead};
 use std::path::PathBuf;
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time;
@@ -372,7 +371,9 @@ fn read_lines(file: &File) -> Result<Vec<String>, String> {
 
 #[derive(Deserialize, Debug)]
 struct QuickEditData {
-    location: String,
+    file_name: String,
+    line_start: usize,
+    line_end: usize,
     text: String,
 }
 
@@ -380,20 +381,12 @@ struct QuickEditData {
 fn quick_edit(data: QuickEditData) -> Result<(), String> {
     // TODO all these unwraps should return Err instead.
 
-    let location = parse_location_string(&data.location);
-    if location.iter().any(|s| s.is_empty()) {
-        return Err(format!("Missing location information, found `{}`", data.location));
-    }
-
-    let edit_start = usize::from_str(&location[1]).unwrap();
-    let edit_end = usize::from_str(&location[3]).unwrap();
-
     // TODO we should check that the file has not been modified since we read it,
     // otherwise the file line locations will be incorrect.
 
     // Scope is so we close file after reading.
     let lines = {
-        let file = match File::open(&location[0]) {
+        let file = match File::open(&data.file_name) {
             Ok(f) => f,
             Err(e) => return Err(e.to_string()),
         };
@@ -401,16 +394,17 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
         read_lines(&file)?
     };
 
-    assert!(edit_start < edit_end && edit_end <= lines.len());
+    assert!(data.line_start <= data.line_end && data.line_end <= lines.len());
 
-    let file = File::create(&location[0]).unwrap();
+    let file = File::create(&data.file_name).unwrap();
     let mut writer = BufWriter::new(file);
 
-    for i in 0..(edit_start - 1) {
+    for i in 0..(data.line_start - 1) {
         writer.write(lines[i].as_bytes()).unwrap();
     }
     writer.write(data.text.as_bytes()).unwrap();
-    for i in edit_end..lines.len() {
+    writer.write(&['\n' as u8]).unwrap();
+    for i in data.line_end..lines.len() {
         writer.write(lines[i].as_bytes()).unwrap();
     }
 

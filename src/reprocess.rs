@@ -48,8 +48,7 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
     {
         let mut file_cache = file_cache.lock().unwrap();
         for sp in &diagnostic.spans {
-            // TODO ignore the span rather than panicking here
-            let file = file_cache.get_highlighted(&Path::new(&sp.file_name)).unwrap();
+            let path = &Path::new(&sp.file_name);
 
             // Lines should be 1-indexed, account for that here.
             let mut line_start = if sp.line_start == 0 {
@@ -65,13 +64,23 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                 line_start -= config.context_lines;
             }
             let mut line_end = sp.line_end + config.context_lines;
-            if line_end >= file.len() {
-                line_end = file.len();
-            }
+
+            let text = {
+                // TODO ignore the span rather than panicking here
+                let file = file_cache.get_highlighted(path).unwrap();
+
+                if line_end >= file.len() {
+                    line_end = file.len();
+                }
+                file[line_start..line_end].to_owned()
+            };
 
             let snippet = Snippet::new(sp.id,
-                                       file[line_start..line_end].to_owned(),
+                                       text,
+                                       file_cache.get_lines(path, line_start, line_end).unwrap(),
+                                       sp.file_name.to_owned(),
                                        line_start + 1,
+                                       line_end,
                                        sp);
             result.snippets.push(snippet);
         }
@@ -95,9 +104,12 @@ struct Snippet {
     // TODO do we ever want to update the plain_text? Probably do to keep the
     // snippet up to date after a quick edit, etc.
     text: Vec<String>,
+    file_name: String,
     /// 1-based.
     line_start: usize,
+    line_end: usize,
     highlight: Highlight,
+    plain_text: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -121,7 +133,7 @@ impl Highlight {
     }
 }
 
-impl ReprocessedSnippets {
+impl<'a> ReprocessedSnippets {
     fn new(key: String) -> ReprocessedSnippets {
         ReprocessedSnippets {
             snippets: vec![],
@@ -131,12 +143,22 @@ impl ReprocessedSnippets {
 }
 
 impl Snippet {
-    fn new(id: u32, text: Vec<String>, line_start: usize, span: &DiagnosticSpan) -> Snippet {
+    fn new(id: u32,
+           text: Vec<String>,
+           plain_text: &str,
+           file_name: String,
+           line_start: usize,
+           line_end: usize,
+           span: &DiagnosticSpan)
+           -> Snippet {
         Snippet {
             id: id,
             text: text,
+            file_name: file_name,
             line_start: line_start,
+            line_end: line_end,
             highlight: Highlight::from_diagnostic_span(span),
+            plain_text: plain_text.to_owned(),
         }
     }
 }
