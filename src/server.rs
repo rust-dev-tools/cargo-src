@@ -102,7 +102,7 @@ impl<'a> Handler<'a> {
     }
 
     fn handle_static<'b: 'a, 'k: 'a>(&mut self,
-                                     _req: Request<'b, 'k>,
+                                     req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>,
                                      path: &[String]) {
         let mut path_buf = static_path();

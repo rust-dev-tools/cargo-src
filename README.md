@@ -6,8 +6,6 @@ editing code.
 
 Be warned: very work in progress!
 
-![rustw screenshot](screenshot.png)
-
 TODO demo
 
 Contents:
@@ -16,6 +14,9 @@ Contents:
 * [Customisation](#customisation)
 * [Tour](#tour)
 * [Contributing](#contributing)
+
+![rustw screenshot](screenshot.png)
+![rustw screenshot - source view](screenshot-src.png)
 
 Motivation:
 
