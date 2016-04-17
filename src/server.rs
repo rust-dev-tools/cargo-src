@@ -133,7 +133,7 @@ impl<'a> Handler<'a> {
             return;
         }        
 
-        self.handle_error(_req, res, StatusCode::NotFound, "Page not found".to_owned());
+        self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
     }
 
     fn handle_src<'b: 'a, 'k: 'a>(&mut self,
