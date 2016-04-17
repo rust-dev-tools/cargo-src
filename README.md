@@ -40,7 +40,7 @@ performed in order. Requires a nightly version of Rust to build.
   are part of the repo, so you shouldn't need to do this unless you edit the
   templates. You will need handlebars installed to do this.
 
-* TODO `./cp_static.sh` to copy the staticly served files to the target
+* `./cp_static.sh` to copy the staticly served files to the target
   directory. This will only work for debug builds. We should use a Cargo build
   script really.
 
