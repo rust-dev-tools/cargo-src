@@ -32,7 +32,7 @@ Motivation:
 ## Building
 
 You must perform the first and last step, the second is optional. They must be
-performed in order.
+performed in order. Requires a nightly version of Rust to build.
 
 * `cargo build` to build the Rust parts.
 
@@ -53,8 +53,10 @@ cargo or rustc from).
 Running `rustw` will start a web server and display a URL in the console. To
 terminate the server, use `ctrl + c`. If you point your browser at the provided
 URL, it will build your project, output will be displayed in your browser. The
-terminal is only used to display some logging, it can be ignored. See [tour](#tour) for
-more.
+terminal is only used to display some logging, it can be ignored. See
+[tour](#tour) for more.
+
+Currently, rustw has only been tested on Firefox on Linux ([issue 48](https://github.com/nrc/rustw/issues/48)).
 
 
 ## Customisation
@@ -87,9 +89,8 @@ You can click error codes to see explanations.
 
 ## Contributing
 
-TODO contributing.md, license
-
-Rustw is open source and contributions are welcome! You can help by testing and
+Rustw is open source (dual-licensed under the Apache 2.0 and MIT licenses) and
+contributions are welcome! You can help by testing and
 [reporting issues](https://github.com/nrc/rustw/issues/new). Code, tests, and
 documentation are very welcome, you can browse [all issues](https://github.com/nrc/rustw/issues)
 or [easy issues](https://github.com/nrc/rustw/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy)
