@@ -29,7 +29,7 @@ function onLoad() {
 
     load_start();
     MAIN_PAGE_STATE = { page: "start" };
-    history.replaceState(MAIN_PAGE_STATE, "", "/");
+    history.replaceState(MAIN_PAGE_STATE, "", make_url(""));
 
     window.onpopstate = function(event) {
         var state = event.state;
@@ -236,9 +236,13 @@ function do_build() {
     }
 }
 
+function make_url(suffix) {
+    return '/' + CONFIG.demo_mode_root_path + suffix;
+}
+
 function do_build_internal(build_str) {
     $.ajax({
-        url: '/' + build_str,
+        url: make_url(build_str),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -249,7 +253,7 @@ function do_build_internal(build_str) {
         load_build(MAIN_PAGE_STATE);
         pull_data(json.push_data_key);
 
-        history.pushState(MAIN_PAGE_STATE, "", "#build");
+        history.pushState(MAIN_PAGE_STATE, "", make_url("#build"));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
@@ -257,7 +261,7 @@ function do_build_internal(build_str) {
         load_error();
 
         MAIN_PAGE_STATE = { page: "error" };
-        history.pushState(MAIN_PAGE_STATE, "", "#build");
+        history.pushState(MAIN_PAGE_STATE, "", make_url("#build"));
         stop_build_animation();
     });
 
@@ -274,7 +278,7 @@ function pull_data(key) {
 
     console.log("sending pull request for key " + key);
     $.ajax({
-        url: '/pull?key=' + key,
+        url: make_url('pull?key=' + key),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -428,7 +432,7 @@ function show_back_link() {
     $("#link_back").css("visibility", "visible");
     $("#link_back").click(function() {
             load_build(backup);
-            history.pushState(backup, "", "#build");
+            history.pushState(backup, "", make_url("#build"));
     });    
 }
 
@@ -442,7 +446,7 @@ function win_err_code() {
 
     var state = { page: "err_code", data: data };
     load_err_code(state);
-    history.pushState(state, "", "#" + element.attr("code"));
+    history.pushState(state, "", make_url("#" + element.attr("code")));
 }
 
 function win_src_link() {
@@ -472,7 +476,7 @@ function win_src_link() {
     }
 
     $.ajax({
-        url: '/src/' + file,
+        url: make_url('src/' + file),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -490,14 +494,14 @@ function win_src_link() {
         };
         load_source(state);
 
-        history.pushState(state, "", "#src=" + file + display);
+        history.pushState(state, "", make_url("#src=" + file + display));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({ page: "error"}, "", "#src=" + file + display);
+        history.pushState({ page: "error"}, "", make_url("#src=" + file + display));
     });
 
     $("#div_main").text("Loading...");
@@ -534,7 +538,7 @@ function hide_src_menu() {
 
 function edit(event) {
     $.ajax({
-        url: '/edit?file=' + event.data.attr("link"),
+        url: make_url('edit?file=' + event.data.attr("link")),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -593,7 +597,7 @@ function save_quick_edit(event) {
     data.text = $("#quick_edit_text").val();
 
     $.ajax({
-        url: '/quick_edit',
+        url: make_url('quick_edit'),
         type: 'POST',
         dataType: 'JSON',
         cache: false,

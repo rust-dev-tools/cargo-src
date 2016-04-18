@@ -235,6 +235,8 @@ impl<'a> Handler<'a> {
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
                                    query: Option<String>) {
+        assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
+
         // TODO factor out query logic
         match query {
             Some(ref q) => {
