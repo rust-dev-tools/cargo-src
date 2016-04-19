@@ -29,7 +29,7 @@ function onLoad() {
 
     load_start();
     MAIN_PAGE_STATE = { page: "start" };
-    history.replaceState(MAIN_PAGE_STATE, "", make_url(""));
+    history.replaceState(MAIN_PAGE_STATE, "");
 
     window.onpopstate = function(event) {
         var state = event.state;
@@ -431,8 +431,8 @@ function show_back_link() {
     // Make the 'back' link visible and go back on click.
     $("#link_back").css("visibility", "visible");
     $("#link_back").click(function() {
-            load_build(backup);
-            history.pushState(backup, "", make_url("#build"));
+        load_build(backup);
+        history.pushState(backup, "", make_url("#build"));
     });    
 }
 

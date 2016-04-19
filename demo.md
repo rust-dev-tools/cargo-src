@@ -14,6 +14,8 @@ Or whatever you'll use for your root path.
 
 * You'll need to edit index.html and change all the URLs, e.g., `/static/favicon.ico` to `/rustw/static/favicon.ico`.
 * In rustw.js, find `onLoad()`, you'll need to change the `/config` url to include the root path, e.g, `/rustw/config`.
+* Likewise, update the URLs for the fonts in rustw.css.
+* Update the test data in `build.rs` with the JSON output from building your project.
 * Build rustw (see README.md).
 * Assuming you're running Apache, you'll need to add modify your configuration. I changed `000-default.conf` in `/etc/apache2/sites-enabled`, by adding
 

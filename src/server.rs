@@ -175,11 +175,13 @@ impl<'a> Handler<'a> {
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>) {
         let build_result = build::BuildResult::test_result();
-        let result = BuildResult::from_build(&build_result);
+        let result = self.make_build_result(&build_result);
         let text = serde_json::to_string(&result).unwrap();
 
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();
+
+        self.process_push_data(result);
     }
 
     fn handle_build<'b: 'a, 'k: 'a>(&mut self,
@@ -192,8 +194,17 @@ impl<'a> Handler<'a> {
             file_cache.reset();
         }
 
-        res.headers_mut().set(ContentType::json());
         let build_result = self.builder.build().unwrap();
+        let result = self.make_build_result(&build_result);
+        let text = serde_json::to_string(&result).unwrap();
+
+        res.headers_mut().set(ContentType::json());
+        res.send(text.as_bytes()).unwrap();
+
+        self.process_push_data(result);
+    }
+
+    fn make_build_result(&mut self, build_result: &build::BuildResult) -> BuildResult {
         let mut result = BuildResult::from_build(&build_result);
         if !result.errors.is_empty() {
             let key = reprocess::make_key();
@@ -202,15 +213,16 @@ impl<'a> Handler<'a> {
             pending_push_data.insert(key, None);
         }
 
-        let text = serde_json::to_string(&result).unwrap();
-        res.send(text.as_bytes()).unwrap();
+        result        
+    }
 
+    fn process_push_data(&self, result: BuildResult) {
         if result.push_data_key.is_some() {
             let pending_push_data = self.pending_push_data.clone();
             let file_cache = self.file_cache.clone();
             let config = self.config.clone();
             thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, file_cache, config));
-        }
+        }        
     }
 
     fn handle_quick_edit<'b: 'a, 'k: 'a>(&mut self,
