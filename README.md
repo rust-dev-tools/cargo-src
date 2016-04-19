@@ -6,8 +6,6 @@ editing code.
 
 Be warned: very work in progress!
 
-TODO demo
-
 Contents:
 * [Building](#building)
 * [Running](#running)
@@ -17,6 +15,10 @@ Contents:
 
 ![rustw screenshot](screenshot.png)
 ![rustw screenshot - source view](screenshot-src.png)
+
+You can play with a [live demo](http://www.ncameron.org/rustw). Be warned that
+it is very, very slow since it is running on a crappy server and rustw is not
+designed to be run over the internet. When run locally, it is *much* snappier.
 
 Motivation:
 

@@ -91,7 +91,7 @@ function hide_options() {
 function load_build(state) {
     if (CONFIG.demo_mode) {
         state.results.rustw_message =
-            "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff. Source links can be right-clicked for more options.";
+            "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff. Source links can be right-clicked for more options (note that edit functionality won't work in demo mode).";
     }
 
     $("#div_main").html(Handlebars.templates.build_results(state.results));
