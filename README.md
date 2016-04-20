@@ -33,19 +33,14 @@ Motivation:
 
 ## Building
 
-You must perform the first and last step, the second is optional. They must be
+You must perform the first step, the second is optional. They must be
 performed in order. Requires a nightly version of Rust to build.
 
-* `cargo build` to build the Rust parts.
+* `cargo build --release` to build the Rust parts.
 
 * `./build_templates.sh` to rebuild the handlebars templates. The compiled targets
   are part of the repo, so you shouldn't need to do this unless you edit the
   templates. You will need handlebars installed to do this.
-
-* `./cp_static.sh` to copy the staticly served files to the target
-  directory. This will only work for debug builds. We should use a Cargo build
-  script really.
-
 
 ## Running
 
