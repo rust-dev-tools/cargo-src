@@ -11,9 +11,10 @@ pub mod errors;
 use config::Config;
 
 use std::process::{Command, Output};
+use std::sync::Arc;
 
 pub struct Builder {
-    build_command: String,
+    config: Arc<Config>,
 }
 
 pub struct BuildResult {
@@ -23,14 +24,14 @@ pub struct BuildResult {
 }
 
 impl Builder {
-    pub fn from_config(config: &Config) -> Builder {
+    pub fn from_config(config: Arc<Config>) -> Builder {
         Builder {
-            build_command: config.build_command.clone(),
+            config: config,
         }
     }
 
     pub fn build(&self) -> Result<BuildResult, ()> {
-        let mut build_split = self.build_command.split(' ');
+        let mut build_split = self.config.build_command.split(' ');
         let mut cmd = if let Some(cmd) = build_split.next() {
             Command::new(cmd)
         } else {
@@ -42,7 +43,11 @@ impl Builder {
             cmd.arg(arg);
         }
 
-        cmd.env("RUSTFLAGS", "-Zunstable-options --error-format json");
+        let mut flags = "-Zunstable-options --error-format json".to_owned();
+        if self.config.save_analysis {
+            flags.push_str(" -Zsave-analysis");
+        }
+        cmd.env("RUSTFLAGS", &flags);
 
         // TODO execute async
 
@@ -58,7 +63,7 @@ impl Builder {
             }
             Err(e) => {
                 // TODO could handle this error more nicely.
-                println!("error: `{}`; command: `{}`", e, self.build_command);
+                println!("error: `{}`; command: `{}`", e, self.config.build_command);
                 return Err(());
             }
         };

@@ -178,4 +178,5 @@ create_config! {
     context_lines: usize, 2, "lines of context to show before and after code snippets";
     build_on_load: bool, true, "build on page load and refresh";
     source_directory: String, "src".to_owned(), "root of the source directory";
+    save_analysis: bool, false, "whether to run the save_analysis pass";
 }

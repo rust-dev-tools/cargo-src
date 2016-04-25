@@ -40,9 +40,10 @@ pub struct Instance {
 
 impl Instance {
     pub fn new(config: Config) -> Instance {
+        let config = Arc::new(config);
         Instance {
-            builder: build::Builder::from_config(&config),
-            config: Arc::new(config),
+            builder: build::Builder::from_config(config.clone()),
+            config: config,
             file_cache: Arc::new(Mutex::new(Cache::new())),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_push_data: Arc::new(Mutex::new(HashMap::new())),
