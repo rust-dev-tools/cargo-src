@@ -9,7 +9,7 @@
 use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
-use file_cache::Cache;
+use file_cache::{Cache, DirectoryListing};
 use reprocess;
 
 use std::collections::HashMap;
@@ -140,6 +140,17 @@ impl<'a> Handler<'a> {
                                   _req: Request<'b, 'k>,
                                   mut res: Response<'b, Fresh>,
                                   mut path: &[String]) {
+        for p in path {
+            // In demo mode this might reveal the contents of the server outside
+            // the source directory (really, rustw should run in a sandbox, but
+            // hey).
+            if p.contains("..") {
+                self.handle_error(_req, res, StatusCode::InternalServerError,
+                                  "Bad path, found `..`".to_owned());
+                return
+            }
+        }
+
         let mut path_buf = PathBuf::new();
         if path[0].is_empty() {
             path_buf.push("/");
@@ -149,17 +160,29 @@ impl<'a> Handler<'a> {
             path_buf.push(p);
         }
 
-        let mut file_cache = self.file_cache.lock().unwrap();
-        let msg = match file_cache.get_highlighted(&path_buf) {
-            Ok(ref lines) => {
-                res.headers_mut().set(ContentType::json());
-                res.send(serde_json::to_string(lines).unwrap().as_bytes()).unwrap();
-                return;
+        // TODO should cache directory listings too
+        if path_buf.is_dir() {
+            match DirectoryListing::from_path(&path_buf) {
+                Ok(listing) => {
+                    res.headers_mut().set(ContentType::json());
+                    res.send(serde_json::to_string(&SourceResult::Directory(listing)).unwrap().as_bytes()).unwrap();
+                }
+                Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
             }
-            Err(msg) => msg,
-        };
-
-        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+        } else {
+            let mut file_cache = self.file_cache.lock().unwrap();
+            match file_cache.get_highlighted(&path_buf) {
+                Ok(ref lines) => {
+                    res.headers_mut().set(ContentType::json());
+                    let result = SourceResult::Source {
+                        path: path_buf.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
+                        lines: lines,
+                    };
+                    res.send(serde_json::to_string(&result).unwrap().as_bytes()).unwrap();
+                }
+                Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
+            }
+        }
     }
 
     fn handle_config<'b: 'a, 'k: 'a>(&mut self,
@@ -338,6 +361,15 @@ impl<'a> Handler<'a> {
             }
         }
     }
+}
+
+#[derive(Serialize, Debug)]
+pub enum SourceResult<'a> {
+    Source{
+        path: Vec<String>,
+        lines: &'a [String],
+    },
+    Directory(DirectoryListing),
 }
 
 #[derive(Serialize, Debug)]

@@ -1,11 +1,14 @@
 <div id="div_src_view">
-    <span class="div_src_line_numbers">
-    {{#each this}}
-        <div class="div_src_line_number" id="src_line_number_{{inc @index}}">{{inc @index}}</div>
-    {{/each}}
-    </span><span class="div_src_lines">
-    {{#each this}}
-        <div class="div_src_line" id="src_line_{{inc @index}}">{{#if this}}{{{this}}}{{else}}&nbsp;{{/if}}</div>
-    {{/each}}
-    </span>
+    {{> bread_crumbs }}
+    <div id="div_src_contents">
+        <span class="div_src_line_numbers">
+        {{#each lines}}
+            <div class="div_src_line_number" id="src_line_number_{{inc @index}}">{{inc @index}}</div>
+        {{/each}}
+        </span><span class="div_src_lines">
+        {{#each lines}}
+            <div class="div_src_line" id="src_line_{{inc @index}}">{{#if this}}{{{this}}}{{else}}&nbsp;{{/if}}</div>
+        {{/each}}
+        </span>
+    </div>
 </div>

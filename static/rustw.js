@@ -16,8 +16,14 @@ Handlebars.registerHelper("add", function(a, b, options)
     return parseInt(a) + parseInt(b);
 });
 
+Handlebars.registerHelper("def", function(a, b, options)
+{
+    return a != undefined;
+});
+
 Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
-Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet);
+Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet_inner);
+Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
 function onLoad() {
     $.getJSON("/config", function(data) {
@@ -46,6 +52,8 @@ function onLoad() {
             load_err_code(state);
         } else if (state.page == "source") {
             load_source(state);
+        } else if (state.page == "source_dir") {
+            load_dir(state);
         } else {
             console.log("ERROR: Unknown page state: ");
             console.log(state);
@@ -59,9 +67,9 @@ function onLoad() {
 function load_start() {
     enable_button($("#link_build"), "build");
     $("#link_build").click(do_build);
-
     $("#link_options").click(show_options);
-    
+    $("#link_browse").click(do_browse);
+
     $("#div_main").html("");
     $("#div_options").hide();
     $("#div_src_menu").hide();
@@ -109,6 +117,7 @@ function load_build(state) {
     enable_button($("#link_build"), rebuild_label);
 
     $("#link_back").css("visibility", "hidden");
+    $("#link_browse").css("visibility", "visible");
     init_build_results();
 
     update_snippets(MAIN_PAGE_STATE.snippets);
@@ -151,6 +160,7 @@ function load_err_code(state) {
 
 function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
+    $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     highlight_spans(state, "src_line_number_", "src_line_");
 
     // Jump to the start line. 100 is a fudge so that the start line is not
@@ -160,6 +170,10 @@ function load_source(state) {
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
+    if (!highlight.line_start || !highlight.line_end || !highlight.column_start || !highlight.column_end) {
+        return;
+    }
+
     for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
         $("#" + line_number_prefix + i).addClass("selected");
     }
@@ -266,6 +280,7 @@ function do_build_internal(build_str) {
     });
 
     $("#link_back").css("visibility", "hidden");
+    $("#link_browse").css("visibility", "hidden");
     disable_button($("#link_build"), "building...");
     hide_options();
     start_build_animation();
@@ -449,6 +464,68 @@ function win_err_code() {
     history.pushState(state, "", make_url("#" + element.attr("code")));
 }
 
+function do_browse() {
+    get_source(CONFIG.source_directory);
+}
+
+function get_source(file_name) {
+    show_back_link();
+
+    $.ajax({
+        url: 'src' + make_url(file_name),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        if (json.Directory) {
+            var state = {
+                "page": "source_dir",
+                "data": json.Directory,
+                "file": file_name,
+            };
+            load_dir(state);
+            history.pushState(state, "", make_url("#src=" + file_name));
+        } else if (json.Source) {
+            var state = {
+                "page": "source",
+                "data": json.Source,
+                "file": file_name,
+            };
+            load_source(state);
+            history.pushState(state, "", make_url("#src=" + file_name));
+        } else {
+            console.log("Unexpected source data.")
+            console.log(json);
+        }
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with source request for " + file_name);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#src=" + file_name));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
+function load_dir(state) {
+    $("#div_main").html(Handlebars.templates.dir_view(state.data));
+    $(".div_entry_name").click(state.file, handle_dir_link);
+    $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+}
+
+function handle_dir_link(event) {
+    get_source(event.data + "/" + event.target.innerText);
+}
+
+function handle_bread_crumb_link(event) {
+    var crumbs = event.data.split('/');
+    var slice = crumbs.slice(0, parseInt(event.target.id.substring("breadcrumb_".length), 10) + 1);
+    get_source(slice.join('/'));
+}
+
 function win_src_link() {
     show_back_link();
 
@@ -484,7 +561,7 @@ function win_src_link() {
     .done(function (json) {
         var state = {
             "page": "source",
-            "data": json,
+            "data": json.Source,
             "file": file,
             "display": display,
             "line_start": line_start,
@@ -497,7 +574,7 @@ function win_src_link() {
         history.pushState(state, "", make_url("#src=" + file + display));
     })
     .fail(function (xhr, status, errorThrown) {
-        console.log("Error with build request");
+        console.log("Error with source request");
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();

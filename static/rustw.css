@@ -61,11 +61,16 @@ html {
     background-color: #f0f0f0;
     cursor: pointer;
 }
-#link_back {
+.header_link {
     display: inline-block;
     margin-right: 1em;
     text-decoration: underline;
     cursor: pointer;
+}
+#link_back {
+    visibility: hidden;
+}
+#link_browse {
     visibility: hidden;
 }
 
@@ -237,6 +242,31 @@ a.issue_link:active, a.link  { color: black }
     font-size: medium;
 }
 
+.div_entry {
+    margin: 2px;
+}
+.div_dir_entry {
+    display: inline-block;
+    background-image: url(/static/folder.png);
+    background-repeat: no-repeat;
+    padding-left: 20px;
+}
+
+.div_file_entry {
+    display: inline-block;
+    background-image: url(/static/file.png);
+    background-repeat: no-repeat;
+    padding-left: 20px;
+}
+.div_entry_name {
+    text-decoration: underline;
+    cursor: pointer;
+}
+.link_breadcrumb {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 span#measure {
     padding: 0;
     margin: 0;
@@ -252,9 +282,9 @@ span#measure {
     margin-bottom: 40px;
 }
 
-#div_src_view {
+#div_src_contents {
     font-family: monospace;
-    margin-top: -10px;
+    margin-top: 2px;
     margin-left: -15px;
     margin-bottom: 20px;
     white-space: nowrap;

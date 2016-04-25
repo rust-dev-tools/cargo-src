@@ -177,4 +177,5 @@ create_config! {
     demo_mode_root_path: String, String::new(), "path to use in URLs in demo mode";
     context_lines: usize, 2, "lines of context to show before and after code snippets";
     build_on_load: bool, true, "build on page load and refresh";
+    source_directory: String, "src".to_owned(), "root of the source directory";
 }

@@ -21,6 +21,24 @@ pub struct Cache {
     size: usize,
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct DirectoryListing {
+    pub path: Vec<String>,
+    pub files: Vec<Listing>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct Listing {
+    kind: ListingKind,
+    name: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub enum ListingKind {
+    File,
+    Directory,
+}
+
 struct CachedFile {
     plain_text: Vec<u8>,
     highlighted_lines: Vec<String>,
@@ -56,6 +74,7 @@ impl Cache {
         Ok(&text[line_start..line_end])
     }
 
+    // TODO handle non-rs files by returning plain text lines
     pub fn get_highlighted(&mut self, path: &Path) -> Result<&[String], String> {
         let file = self.get(path)?;
         if file.highlighted_lines.is_empty() {
@@ -115,7 +134,6 @@ impl Cache {
                 Ok(buf)
             }
             Err(msg) => {
-                println!("Error opening file: `{}`; {}", path.to_str().unwrap(), msg);
                 Err(format!("Error opening file: `{}`; {}", path.to_str().unwrap(), msg))
             }
         }
@@ -132,6 +150,33 @@ impl CachedFile {
     }
 }
 
+impl DirectoryListing {
+    pub fn from_path(path: &Path) -> Result<DirectoryListing, String> {
+        let mut files = vec![];
+        let dir = match path.read_dir() {
+            Ok(d) => d,
+            Err(s) => return Err(s.to_string()),
+        };
+        for entry in dir {
+            if let Ok(entry) = entry {
+                let name = entry.file_name().to_str().unwrap().to_owned();
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_dir() {
+                        files.push(Listing { kind: ListingKind::Directory, name: name });
+                    } else if file_type.is_file() {
+                        files.push(Listing { kind: ListingKind::File, name: name });
+                    }
+                }
+            }
+        }
+
+        // TODO order files
+        Ok(DirectoryListing {
+            path: path.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
+            files: files,
+        })
+    }
+}
 
 
 // TODO copypasta from rustdoc, change rustdoc...
