@@ -230,6 +230,8 @@ a.issue_link:active, a.link  { color: black }
 }
 .err_code {
     display: inline-block;
+}
+.err_code_link {
     text-decoration: underline;
     cursor: pointer;
 }

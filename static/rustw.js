@@ -339,8 +339,9 @@ function init_build_results() {
     var expand_children = $(".expand_children");
     expand_children.each(show_children);
 
-    var err_codes = $(".err_code");
+    var err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("explain"); });
     err_codes.click(win_err_code);
+    err_codes.addClass("err_code_link");
 
     var src_links = $(".span_loc");
     src_links.click(win_src_link);
@@ -452,12 +453,17 @@ function show_back_link() {
 }
 
 function win_err_code() {
+    var element = $(this);
+    var explain = element.attr("explain");
+    if (!explain) {
+        return;
+    }
+
     show_back_link();
 
     // Prepare the data for the error code window.
-    var element = $(this);
     var error_html = element.parent().html();
-    var data = { "code": element.attr("code"), "explain": marked(element.attr("explain")), "error": error_html };
+    var data = { "code": element.attr("code"), "explain": marked(explain), "error": error_html };
 
     var state = { page: "err_code", data: data };
     load_err_code(state);
