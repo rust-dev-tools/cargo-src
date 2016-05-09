@@ -80,7 +80,7 @@ impl Cache {
     pub fn get_highlighted(&mut self, path: &Path) -> Result<&[String], String> {
         let file = self.get(path)?;
         if file.highlighted_lines.is_empty() {
-            let highlighted = highlight::render_inner_with_highlighting(Cache::get_string(file)?);
+            let highlighted = highlight::render_inner_with_highlighting(Cache::get_string(file)?).unwrap();
 
             for line in highlighted.lines() {
                 file.highlighted_lines.push(line.to_owned());
