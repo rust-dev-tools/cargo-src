@@ -161,7 +161,7 @@ function load_err_code(state) {
 function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
-    highlight_spans(state, "src_line_number_", "src_line_");
+    highlight_spans(state, "src_line_number_", "src_line_", "selected");
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
@@ -169,25 +169,27 @@ function load_source(state) {
     window.scroll(0, y);
 }
 
-function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
+function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
     if (!highlight.line_start || !highlight.line_end || !highlight.column_start || !highlight.column_end) {
         return;
     }
 
     for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
-        $("#" + line_number_prefix + i).addClass("selected");
+        $("#" + line_number_prefix + i).addClass(css_class);
     }
 
     // Highlight all of the middle lines.
     for (var i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
-        $("#" + src_line_prefix + i).addClass("selected");
+        $("#" + src_line_prefix + i).addClass(css_class);
     }
 
     // If we don't have columns (at least a start), then highlight all the lines.
     // If we do, then highlight between columns.
     if (highlight.column_start <= 0) {
-        $("#" + src_line_prefix + highlight.line_start).addClass("selected");
-        $("#" + src_line_prefix + highlight.line_end).addClass("selected");
+        $("#" + src_line_prefix + highlight.line_start).addClass(css_class);
+        $("#" + src_line_prefix + highlight.line_end).addClass(css_class);
+
+        // TODO hover text
     } else {
         // First line
         var lhs = (highlight.column_start - 1);
@@ -197,7 +199,7 @@ function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
             // before the end of the line.
             rhs = (highlight.column_end - 1);
         }
-        make_highlight(src_line_prefix, highlight.line_start, lhs, rhs);
+        make_highlight(src_line_prefix, highlight.line_start, lhs, rhs, css_class);
 
         // Last line
         if (highlight.line_end > highlight.line_start) {
@@ -205,7 +207,7 @@ function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
             if (highlight.column_end > 0) {
                 rhs = (highlight.column_end - 1);
             }
-            make_highlight(src_line_prefix, highlight.line_end, 0, rhs);
+            make_highlight(src_line_prefix, highlight.line_end, 0, rhs, css_class);
         }
     }
 }
@@ -218,10 +220,10 @@ function highlight_spans(highlight, line_number_prefix, src_line_prefix) {
 //         |origin
 //         |----| left
 //         |------------| right
-function make_highlight(src_line_prefix, line_number, left, right) {
+function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     var line_div = $("#" + src_line_prefix + line_number);
     var highlight = $("<div>&nbsp;</div>");
-    highlight.addClass("selected floating_highlight");
+    highlight.addClass(css_class + " floating_highlight");
 
     left *= CHAR_WIDTH;
     right *= CHAR_WIDTH;
@@ -315,16 +317,48 @@ function update_snippets(data) {
     }
 
     for (let s of data.snippets) {
+        // Used by set_snippet_plain_text.
+        s.id = s.ids[0];
+
+        var loc = $("#span_loc_" + s.id);
+        var p = s.primary_span;
+        loc.attr("link", s.file_name + ":" + p.line_start + ":" + p.column_start + ":" + p.line_end + ":" + p.column_end);
+        loc.text(s.file_name + ":" + p.line_start + ":" + p.column_start + ": " + p.line_end + ":" + p.column_end);
+
+        $("#div_span_label_" + s.id).text("");
+
         let target = $("#src_span_" + s.id);
         let snip = s;
+        // TODO if the spans are shown before we call this, then we won't call
+        // show_spans and we won't call update_span.
         target[0].update_span = function() {
             let html = Handlebars.templates.src_snippet_inner(snip);
             target.html(html);
 
-            highlight_spans(snip.highlight,
-                            "snippet_line_number_" + snip.id + "_",
-                            "snippet_line_" + snip.id + "_");
+            for (let h of snip.highlights) {
+                var css_class = "selected_secondary";
+                if (JSON.stringify(h[0]) == JSON.stringify(snip.primary_span)) {
+                    css_class = "selected";
+                }
+                highlight_spans(h[0],
+                                "snippet_line_number_" + snip.id + "_",
+                                "snippet_line_" + snip.id + "_",
+                                css_class);
+
+                if (h[1]) {
+                    var line_span = $("#snippet_line_" + snip.id + "_" + h[0].line_start);
+                    var label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
+                    line_span.append(label_span);
+                }
+            }
         };
+
+        // We are replacing multiple spans with a single one. We put everything
+        // in the first slot, so hide the others.
+        for (var i = 1; i < s.ids.length; ++i) {
+            let div = $("#div_span_" + s.ids[i]);
+            div.hide();
+        }
     }
     set_snippet_plain_text(data.snippets);
 }
@@ -412,11 +446,13 @@ function hide_stdout() {
 function show_spans() {
     var element = $(this);
     show_hide(element, "-", hide_spans);
-    var span = element.next().find(".div_all_span_src");
-    span.show();
+    var spans = element.next().find(".div_all_span_src");
+    spans.show();
 
-    if (span[0].update_span) {
-        span[0].update_span();
+    for (let s of spans) {
+        if (s.update_span) {
+            s.update_span();
+        }
     }
 }
 

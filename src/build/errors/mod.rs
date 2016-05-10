@@ -8,6 +8,8 @@
 
 use serde_json;
 
+use std::cmp::{Ordering, Ord, PartialOrd};
+
 mod rustc_errors;
 
 pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
@@ -43,7 +45,7 @@ pub struct Diagnostic {
     pub children: Vec<Diagnostic>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 pub struct DiagnosticSpan {
     pub id: u32,
     pub file_name: String,
@@ -55,11 +57,12 @@ pub struct DiagnosticSpan {
     /// 1-based, character offset.
     pub column_start: usize,
     pub column_end: usize,
+    pub is_primary: bool,
     /// Source text from the start of line_start to the end of line_end.
     pub text: Vec<String>,
     pub plain_text: String,
+    pub label: String,
 }
-
 
 #[derive(Serialize, Debug)]
 pub struct DiagnosticCode {
@@ -67,6 +70,40 @@ pub struct DiagnosticCode {
     code: String,
     /// An explanation for the code.
     explanation: Option<String>,
+}
+
+impl ::reprocess::Close for DiagnosticSpan {
+    // Invariant: next comes after self, i.e., `other.line_start >= self.line_start`.
+    fn is_close(&self, next: &DiagnosticSpan, max_lines: usize) -> bool {
+        if self.file_name != next.file_name {
+            return false;
+        }
+
+        if self.line_end < next.line_start {
+            // The spans overlap.
+            return true;
+        }
+
+        next.line_start - self.line_end <= max_lines
+    }
+}
+
+impl PartialOrd for DiagnosticSpan {
+    fn partial_cmp(&self, other: &DiagnosticSpan) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DiagnosticSpan {
+    fn cmp(&self, other: &DiagnosticSpan) -> Ordering {
+        let file_ord = self.file_name.cmp(&other.file_name);
+        match file_ord {
+            Ordering::Less | Ordering::Greater => {
+                return file_ord;
+            }
+            _ => self.file_name.cmp(&other.file_name),
+        }
+    }
 }
 
 #[cfg(test)]

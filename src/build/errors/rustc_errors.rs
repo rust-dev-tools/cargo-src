@@ -34,8 +34,22 @@ struct DiagnosticSpan {
     /// 1-based, character offset.
     column_start: usize,
     column_end: usize,
+    /// Is this a "primary" span -- meaning the point, or one of the points,
+    /// where the error occurred?
+    is_primary: bool,
     /// Source text from the start of line_start to the end of line_end.
     text: Vec<DiagnosticSpanLine>,
+    /// Label that should be placed at this location (if any)
+    label: Option<String>,
+
+    // TODO suggestions and macros
+    // /// If we are suggesting a replacement, this will contain text
+    // /// that should be sliced in atop this span. You may prefer to
+    // /// load the fully rendered version from the parent `Diagnostic`,
+    // /// however.
+    // suggested_replacement: Option<String>,
+    // /// Macro invocations that created the code at this span, if any.
+    // expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -117,8 +131,10 @@ impl DiagnosticSpan {
             line_end: self.line_end,
             column_start: col_start,
             column_end: col_end,
+            is_primary: self.is_primary,
             text: self.text.into_iter().map(|l| l.lower(ctxt)).collect(),
             plain_text: plain_text,
+            label: self.label.unwrap_or(String::new()),
         }
     }
 }
@@ -330,7 +346,6 @@ fn push_char(buf: &mut String, c: char) {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::codify_message;
 
     #[test]

@@ -168,6 +168,13 @@ html {
     position: relative;
     top: 2px;
 }
+.div_span {
+    display: block;
+}
+.div_span_label {
+    display: inline-block;
+    margin-left: 2em;
+}
 
 .level_error {
     color: red;
@@ -320,8 +327,19 @@ span#measure {
 .selected {
     background-color: #f3f3a5;
 }
+.selected_secondary {
+    background-color: #d5f3b5;
+}
 .floating_highlight {
     position: absolute;
+}
+.highlight_label {
+    display: inline-block;
+    margin-left: 3em;
+    font-style: italic;
+    font-family:  'Fira Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: #f0f0f0;
+    padding: 1px 4px 1px 4px;
 }
 
 /* Syntax highlighting */

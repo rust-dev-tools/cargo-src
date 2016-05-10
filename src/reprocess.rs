@@ -55,15 +55,24 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                         config: &Config) {
     {
         let mut file_cache = file_cache.lock().unwrap();
-        for sp in &diagnostic.spans {
-            let path = &Path::new(&sp.file_name);
+        let mut spans = diagnostic.spans.clone();
+        spans.sort();
+        let span_groups = partition(&spans, config.context_lines);
+
+        for sg in &span_groups {
+            if sg.is_empty() {
+                continue;
+            }
+
+            let first = &sg[0];
+            let last = &sg[sg.len() - 1];
 
             // Lines should be 1-indexed, account for that here.
-            let mut line_start = if sp.line_start == 0 {
+            let mut line_start = if first.line_start == 0 {
                 // TODO is this a SpanEnd which needs better handling?
                 0
             } else {
-                sp.line_start - 1
+                first.line_start - 1
             };
             // Add context lines.
             if line_start <= config.context_lines {
@@ -71,8 +80,9 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
             } else {
                 line_start -= config.context_lines;
             }
-            let mut line_end = sp.line_end + config.context_lines;
+            let mut line_end = last.line_end + config.context_lines;
 
+            let path = &Path::new(&first.file_name);
             let text = {
                 // TODO ignore the span rather than panicking here
                 let file = file_cache.get_highlighted(path).unwrap();
@@ -83,13 +93,23 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                 file[line_start..line_end].to_owned()
             };
 
-            let snippet = Snippet::new(sp.id,
+            let mut primary_span = None;
+            for s in *sg {
+                if s.is_primary {
+                    primary_span = Some(Highlight::from_diagnostic_span(s));
+                    break;
+                }
+            }
+            let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
+
+            let snippet = Snippet::new(sg.iter().map(|s| s.id).collect(),
                                        text,
                                        file_cache.get_lines(path, line_start, line_end).unwrap(),
-                                       sp.file_name.to_owned(),
+                                       first.file_name.to_owned(),
                                        line_start + 1,
                                        line_end,
-                                       sp);
+                                       sg.iter().map(|s| (Highlight::from_diagnostic_span(s), s.label.clone())).collect(),
+                                       primary_span);
             result.snippets.push(snippet);
         }
     }
@@ -97,6 +117,35 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
     for d in &diagnostic.children {
         reprocess_diagnostic(d, file_cache, result, config);
     }
+}
+
+pub trait Close {
+    fn is_close(&self, next: &Self, max_lines: usize) -> bool;
+}
+
+fn partition<T: Close>(input: &[T], max_lines: usize) -> Vec<&[T]> {
+    let mut result = vec![];
+    if input.is_empty() {
+        return result;
+    }
+
+    let mut prev = &input[0];
+    let mut cur_first = 0;
+    let mut cur_last = 0;
+
+    for (i, ds) in input.iter().enumerate().skip(1) {
+        cur_last = i;
+        if !prev.is_close(ds, max_lines) {
+            result.push(&input[cur_first..cur_last]);
+            cur_first = cur_last;
+        }
+        prev = ds;
+    }
+    if cur_last + 1 > cur_first {
+        result.push(&input[cur_first..cur_last + 1]);
+    }
+
+    result
 }
 
 #[derive(Serialize, Debug)]
@@ -108,7 +157,7 @@ struct ReprocessedSnippets {
 // TODO which lines are context.
 #[derive(Serialize, Debug)]
 struct Snippet {
-    id: u32,
+    ids: Vec<u32>,
     // TODO do we ever want to update the plain_text? Probably do to keep the
     // snippet up to date after a quick edit, etc.
     text: Vec<String>,
@@ -116,8 +165,9 @@ struct Snippet {
     /// 1-based.
     line_start: usize,
     line_end: usize,
-    highlight: Highlight,
+    highlights: Vec<(Highlight, String)>,
     plain_text: String,
+    primary_span: Highlight,
 }
 
 #[derive(Serialize, Debug)]
@@ -151,22 +201,53 @@ impl<'a> ReprocessedSnippets {
 }
 
 impl Snippet {
-    fn new(id: u32,
+    fn new(ids: Vec<u32>,
            text: Vec<String>,
            plain_text: &str,
            file_name: String,
            line_start: usize,
            line_end: usize,
-           span: &DiagnosticSpan)
+           highlights: Vec<(Highlight, String)>,
+           primary_span: Highlight,)
            -> Snippet {
         Snippet {
-            id: id,
+            ids: ids,
             text: text,
             file_name: file_name,
             line_start: line_start,
             line_end: line_end,
-            highlight: Highlight::from_diagnostic_span(span),
+            highlights: highlights,
             plain_text: plain_text.to_owned(),
+            primary_span: primary_span,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{partition, Close};
+
+    impl Close for i32 {
+        fn is_close(&self, next: &i32, max_lines: usize) -> bool {
+            (next - self) as usize <= max_lines
+        }
+    }
+
+    #[test]
+    fn test_partition() {
+        let input: &[i32] = &[];
+        let result = partition(input, 2);
+        let expected: Vec<&[i32]> = vec![];
+        assert!(result == expected);
+
+        let input: &[i32] = &[1, 2, 3];
+        let result = partition(input, 2);
+        assert!(result == vec![&[1, 2, 3]]);
+
+        let input: &[i32] = &[1, 3, 15];
+        let a: &[i32] = &[1, 3];
+        let b: &[i32] = &[15];
+        let result = partition(input, 2);
+        assert!(result == vec![a, b]);
     }
 }
