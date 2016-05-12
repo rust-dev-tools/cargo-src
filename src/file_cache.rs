@@ -254,6 +254,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
     fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
         match klass {
             Class::None => write!(self.buf, "{}", text),
+            // TODO separate out Ident and Op, for op  if text == "*"
             Class::Ident | Class::Op => {
                 let title = tas.map(|t| {
                     let lo = self.codemap.lookup_char_pos(t.sp.lo);

@@ -52,6 +52,9 @@ impl Analysis {
         }
     }
 
+    // TODO next - css id from def/ref id - needs fixing DefIndexs in Rust
+    // TODO then - titles by cross-referencing
+
     pub fn get_title(&self, lo: Loc, hi: Loc) -> Option<&str> {
         let span = Span {
             file_name: lo.file.name.clone(),

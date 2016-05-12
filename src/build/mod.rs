@@ -11,6 +11,8 @@ pub mod errors;
 use config::Config;
 use file_cache::{DirectoryListing, ListingKind};
 
+use serde;
+use serde::Deserialize;
 use serde_json;
 
 use std::process::{Command, Output};
@@ -41,19 +43,33 @@ pub struct Analysis {
 
 #[derive(Deserialize, Debug)]
 pub struct Import {
-    // TODO giving a Serde error
-    //pub kind: ImportKind,
+    pub kind: ImportKind,
     // TODO id
     pub span: SpanData,
     pub name: String,
     pub value: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub enum ImportKind {
     ExternCrate,
     Use,
     GlobUse,
+}
+
+// Custom impl to read rustc_serialize's format.
+impl Deserialize for ImportKind {
+    fn deserialize<D>(deserializer: &mut D) -> Result<ImportKind, D::Error>
+        where D: serde::Deserializer,
+    {
+        let s = String::deserialize(deserializer)?;
+        match &*s {
+            "ExternCrate" => Ok(ImportKind::ExternCrate),
+            "Use" => Ok(ImportKind::Use),
+            "GlobUse" => Ok(ImportKind::GlobUse),
+            _ => Err(serde::de::Error::custom("unexpected import kind")),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
