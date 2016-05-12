@@ -9,9 +9,15 @@
 pub mod errors;
 
 use config::Config;
+use file_cache::{DirectoryListing, ListingKind};
+
+use serde_json;
 
 use std::process::{Command, Output};
 use std::sync::Arc;
+use std::path::Path;
+use std::fs::File;
+use std::io::Read;
 
 pub struct Builder {
     config: Arc<Config>,
@@ -21,6 +27,46 @@ pub struct BuildResult {
     pub status: Option<i32>,
     pub stdout: String,
     pub stderr: String,
+    pub analysis: Vec<Analysis>,
+}
+
+// TODO
+// Need to create save-analysis structs, read and deserialise analysis data
+// In file_cache, add our own stuff (deglob/type on hover)
+
+#[derive(Deserialize, Debug)]
+pub struct Analysis {
+    pub imports: Vec<Import>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Import {
+    // TODO giving a Serde error
+    //pub kind: ImportKind,
+    // TODO id
+    pub span: SpanData,
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum ImportKind {
+    ExternCrate,
+    Use,
+    GlobUse,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SpanData {
+    pub file_name: String,
+    pub byte_start: u32,
+    pub byte_end: u32,
+    /// 1-based.
+    pub line_start: usize,
+    pub line_end: usize,
+    /// 1-based, character offset.
+    pub column_start: usize,
+    pub column_end: usize,
 }
 
 impl Builder {
@@ -68,18 +114,52 @@ impl Builder {
             }
         };
 
-        let result = BuildResult::from_process_output(output);
+        let result = BuildResult::from_process_output(output, self.read_analysis());
 
         Ok(result)
+    }
+
+    fn read_analysis(&self) -> Vec<Analysis> {
+        let mut result = vec![];
+
+        if !self.config.save_analysis {
+            return result;
+        }
+
+        // TODO shouldn't hard-code this path, it's cargo-specific
+        let path = &Path::new("target/debug/save-analysis");
+        let listing = DirectoryListing::from_path(path);
+        let listing = match listing {
+            Ok(l) => l,
+            Err(_) => { return result; }
+        };
+
+        for l in &listing.files {
+            if l.kind == ListingKind::File {
+                let mut path = path.to_path_buf();
+                path.push(&l.name);
+                // TODO unwraps
+                let mut file = File::open(&path).unwrap();
+                let mut buf = String::new();
+                file.read_to_string(&mut buf).unwrap();
+                match serde_json::from_str(&buf) {
+                    Ok(a) => result.push(a),
+                    Err(e) => println!("{}", e),
+                }
+            }
+        }
+
+        result
     }
 }
 
 impl BuildResult {
-    fn from_process_output(output: Output) -> BuildResult {
+    fn from_process_output(output: Output, analysis: Vec<Analysis>) -> BuildResult {
         BuildResult {
             status: output.status.code(),
             stdout: String::from_utf8(output.stdout).unwrap(),
             stderr: String::from_utf8(output.stderr).unwrap(),
+            analysis: analysis,
         }
     }
 
@@ -96,6 +176,7 @@ r#"{"message":"use of deprecated item: use raw accessors/constructors in `slice`
 {"message":"unused variable: `f`, #[warn(unused_variables)] on by default","code":null,"level":"warning","spans":[{"file_name":"src/hash.rs","byte_start":45988,"byte_end":45989,"line_start":43,"line_end":43,"column_start":48,"column_end":49,"text":[{"text":"    pub fn lookup<'a, F>(&'a self, name: &str, f: F) -> &'a Entry","highlight_start":48,"highlight_end":49}]}],"children":[]}
 {"message":"unused import, #[warn(unused_imports)] on by default","code":null,"level":"warning","spans":[{"file_name":"src/bin/main.rs","byte_start":108,"byte_end":114,"line_start":4,"line_end":4,"column_start":32,"column_end":38,"text":[{"text":"use xmas_elf::sections::{self, ShType};","highlight_start":32,"highlight_end":38}]}],"children":[]}
 "#.to_owned(),
+            analysis: vec![],
         }
     }
 }

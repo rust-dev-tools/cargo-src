@@ -24,6 +24,7 @@ extern crate serde_json;
 extern crate syntax;
 extern crate toml;
 
+mod analysis;
 mod build;
 mod config;
 mod file_cache;

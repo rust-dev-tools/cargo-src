@@ -205,7 +205,8 @@ impl<'a> Handler<'a> {
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();
 
-        self.process_push_data(result);
+        // TODO mock analysis
+        self.process_push_data(result, vec![]);
     }
 
     fn handle_build<'b: 'a, 'k: 'a>(&mut self,
@@ -225,7 +226,7 @@ impl<'a> Handler<'a> {
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();
 
-        self.process_push_data(result);
+        self.process_push_data(result, build_result.analysis);
     }
 
     fn make_build_result(&mut self, build_result: &build::BuildResult) -> BuildResult {
@@ -240,12 +241,12 @@ impl<'a> Handler<'a> {
         result        
     }
 
-    fn process_push_data(&self, result: BuildResult) {
+    fn process_push_data(&self, result: BuildResult, analysis: Vec<build::Analysis>) {
         if result.push_data_key.is_some() {
             let pending_push_data = self.pending_push_data.clone();
             let file_cache = self.file_cache.clone();
             let config = self.config.clone();
-            thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, file_cache, config));
+            thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, analysis, file_cache, config));
         }        
     }
 
