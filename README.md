@@ -42,7 +42,8 @@ are seeing errors building dependencies try nightly-2016-05-12
 
 * `./build_templates.sh` to rebuild the handlebars templates. The compiled targets
   are part of the repo, so you shouldn't need to do this unless you edit the
-  templates. You will need handlebars installed to do this.
+  templates. You will need handlebars
+  [installed](http://handlebarsjs.com/) to do this.
 
 ## Running
 
