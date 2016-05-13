@@ -34,7 +34,9 @@ Motivation:
 ## Building
 
 You must perform the first step, the second is optional. They must be
-performed in order. Requires a nightly version of Rust to build.
+performed in order. Requires a nightly version of Rust to build. If you
+are seeing errors building dependencies try nightly-2016-05-12
+(4ec5ce5e4).
 
 * `cargo build --release` to build the Rust parts.
 
