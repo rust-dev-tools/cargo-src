@@ -80,7 +80,7 @@ function load_start() {
 function show_options(event) {
     var options = $("#div_options");
 
-    options.show();
+    options.show("slow", function() {});
     options.offset({ "top": event.pageY, "left": event.pageX });
 
     $("#div_main").click(hide_options);
@@ -89,11 +89,14 @@ function show_options(event) {
     return false;
 }
 
-function hide_options() {
+function hide_options(options) {
     $("#div_main").off("click");
     $("#div_header").off("click");
-
-    $("#div_options").hide();
+    var hide_options = {duration: "fast"};
+    if (options && options.animate === true){
+      hide_options.duration = "slow";
+    }
+    $("#div_options").hide(hide_options);
 }
 
 function load_build(state) {
@@ -416,7 +419,7 @@ function stop_build_animation() {
 function show_hide(element, text, fn) {
     element.text(text);
     element.off("click");
-    element.click(fn);    
+    element.click(fn);
 }
 
 function show_stdout() {
@@ -485,7 +488,7 @@ function show_back_link() {
     $("#link_back").click(function() {
         load_build(backup);
         history.pushState(backup, "", make_url("#build"));
-    });    
+    });
 }
 
 function win_err_code() {
@@ -686,7 +689,7 @@ function quick_edit(event) {
     quick_edit_div.show();
     quick_edit_div.offset(event.data.position);
 
-    
+
     $("#quick_edit_text").val(data.plain_text);
     $("#quick_edit_text").prop("disabled", false);
 
