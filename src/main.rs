@@ -7,6 +7,7 @@
 // except according to those terms.
 
 #![feature(question_mark)]
+#![feature(const_fn)]
 #![feature(custom_derive, plugin)]
 #![feature(type_ascription)]
 #![feature(rustdoc)]

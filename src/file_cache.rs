@@ -240,6 +240,23 @@ impl<'a> Highlighter<'a> {
             codemap: codemap,
         }
     }
+
+    fn write_span(buf: &mut Vec<u8>,
+                  klass: Class,
+                  text: String,
+                  title: Option<&str>,
+                  extra_class: Option<String>)
+                  -> io::Result<()> {
+        write!(buf, "<span class='{}", klass.rustdoc_class())?;
+        if let Some(s) = extra_class {
+            write!(buf, "{}", s)?;
+        }
+        write!(buf, "'")?;
+        if let Some(s) = title {
+            write!(buf, " title='{}'", s)?;
+        }
+        write!(buf, ">{}</span>", text)
+    }
 }
 
 impl<'a> highlight::Writer for Highlighter<'a> {
@@ -252,21 +269,38 @@ impl<'a> highlight::Writer for Highlighter<'a> {
     }
 
     fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
+        let text = text.to_string();
+        
         match klass {
             Class::None => write!(self.buf, "{}", text),
-            // TODO separate out Ident and Op, for op  if text == "*"
-            Class::Ident | Class::Op => {
-                let title = tas.map(|t| {
+            Class::Ident => {
+                let (title, css_class) = match tas {
+                    Some(t) => {
+                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
+                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                        let title = self.analysis.get_title(&lo, &hi);
+
+                        let css_class = match self.analysis.get_class_id(&lo, &hi) {
+                            Some(i) => Some(format!(" class_id class_id_{}", i)),
+                            None => None,
+                        };
+
+                        (title, css_class)
+                    }
+                    None => (None, None),
+                };
+
+                Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class)
+            }
+            Class::Op if text == "*" => {
+                let title = tas.and_then(|t| {
                     let lo = self.codemap.lookup_char_pos(t.sp.lo);
                     let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                    self.analysis.get_title(lo, hi)
+                    self.analysis.get_title(&lo, &hi)
                 });
-                match title {
-                    Some(Some(t)) => write!(self.buf, "<span class='{}' title='{}'>{}</span>", Class::Ident.rustdoc_class(), t, text),
-                    _ => write!(self.buf, "<span class='{}'>{}</span>", klass.rustdoc_class(), text),
-                }
+                Highlighter::write_span(&mut self.buf, Class::Op, text, title, None)
             }
-            klass => write!(self.buf, "<span class='{}'>{}</span>", klass.rustdoc_class(), text),
+            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None),
         }
     }
 }

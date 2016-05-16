@@ -162,11 +162,34 @@ function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
+    add_highlighters();
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
+}
+
+function add_highlighters() {
+    var all_idents = $(".class_id");
+    all_idents.each(function() {
+        var classes = this.className.split(' ');
+        for (var c of classes) {
+            if (c.startsWith('class_id_')) {
+                $(this).hover(function() {
+                    console.log(classes);
+                    var similar = $("." + c);
+                    console.log(similar);
+                    similar.css("background-color", "#d5f3b5");
+                }, function() {
+                    var similar = $("." + c);
+                    similar.css("background-color", "");
+                });
+
+                break;
+            }
+        }
+    });
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {

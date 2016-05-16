@@ -33,57 +33,9 @@ pub struct BuildResult {
 }
 
 // TODO
-// Need to create save-analysis structs, read and deserialise analysis data
 // In file_cache, add our own stuff (deglob/type on hover)
 
-#[derive(Deserialize, Debug)]
-pub struct Analysis {
-    pub imports: Vec<Import>,
-}
 
-#[derive(Deserialize, Debug)]
-pub struct Import {
-    pub kind: ImportKind,
-    // TODO id
-    pub span: SpanData,
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(Debug)]
-pub enum ImportKind {
-    ExternCrate,
-    Use,
-    GlobUse,
-}
-
-// Custom impl to read rustc_serialize's format.
-impl Deserialize for ImportKind {
-    fn deserialize<D>(deserializer: &mut D) -> Result<ImportKind, D::Error>
-        where D: serde::Deserializer,
-    {
-        let s = String::deserialize(deserializer)?;
-        match &*s {
-            "ExternCrate" => Ok(ImportKind::ExternCrate),
-            "Use" => Ok(ImportKind::Use),
-            "GlobUse" => Ok(ImportKind::GlobUse),
-            _ => Err(serde::de::Error::custom("unexpected import kind")),
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct SpanData {
-    pub file_name: String,
-    pub byte_start: u32,
-    pub byte_end: u32,
-    /// 1-based.
-    pub line_start: usize,
-    pub line_end: usize,
-    /// 1-based, character offset.
-    pub column_start: usize,
-    pub column_end: usize,
-}
 
 impl Builder {
     pub fn from_config(config: Arc<Config>) -> Builder {
@@ -135,6 +87,7 @@ impl Builder {
         Ok(result)
     }
 
+    // TODO just save the strings here, parse JSON in reprocess.rs
     fn read_analysis(&self) -> Vec<Analysis> {
         let mut result = vec![];
 
@@ -167,6 +120,162 @@ impl Builder {
 
         result
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Analysis {
+    pub prelude: Option<CratePreludeData>,
+    pub imports: Vec<Import>,
+    pub defs: Vec<Def>,
+    pub refs: Vec<Ref>,
+    pub macro_refs: Vec<MacroRef>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Id {
+    pub krate: u32,
+    pub index: u32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CratePreludeData {
+    pub crate_name: String,
+    pub crate_root: String,
+    pub external_crates: Vec<ExternalCrateData>,
+    pub span: SpanData,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ExternalCrateData {
+    pub name: String,
+    pub num: u32,
+    pub file_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Def {
+    pub kind: DefKind,
+    pub id: Id,
+    pub span: SpanData,
+    pub name: String,
+    pub qualname: String,
+    pub value: String,
+}
+
+#[derive(Debug)]
+pub enum DefKind {
+    Enum,
+    Tuple,
+    Struct,
+    Trait,
+    Function,
+    Macro,
+    Mod,
+    Type,
+    Variable,
+}
+
+// Custom impl to read rustc_serialize's format.
+impl Deserialize for DefKind {
+    fn deserialize<D>(deserializer: &mut D) -> Result<DefKind, D::Error>
+        where D: serde::Deserializer,
+    {
+        let s = String::deserialize(deserializer)?;
+        match &*s {
+            "Enum" => Ok(DefKind::Enum),
+            "Tuple" => Ok(DefKind::Tuple),
+            "Struct" => Ok(DefKind::Struct),
+            "Trait" => Ok(DefKind::Trait),
+            "Function" => Ok(DefKind::Function),
+            "Macro" => Ok(DefKind::Macro),
+            "Mod" => Ok(DefKind::Mod),
+            "Type" => Ok(DefKind::Type),
+            "Variable" => Ok(DefKind::Variable),
+            _ => Err(serde::de::Error::custom("unexpected def kind")),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Ref {
+    pub kind: RefKind,
+    pub span: SpanData,
+    pub ref_id: Id,
+}
+
+#[derive(Debug)]
+pub enum RefKind {
+    Function,
+    Mod,
+    Type,
+    Variable,
+}
+
+// Custom impl to read rustc_serialize's format.
+impl Deserialize for RefKind {
+    fn deserialize<D>(deserializer: &mut D) -> Result<RefKind, D::Error>
+        where D: serde::Deserializer,
+    {
+        let s = String::deserialize(deserializer)?;
+        match &*s {
+            "Function" => Ok(RefKind::Function),
+            "Mod" => Ok(RefKind::Mod),
+            "Type" => Ok(RefKind::Type),
+            "Variable" => Ok(RefKind::Variable),
+            _ => Err(serde::de::Error::custom("unexpected ref kind")),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct MacroRef {
+    pub span: SpanData,
+    pub qualname: String,
+    pub callee_span: SpanData,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Import {
+    pub kind: ImportKind,
+    pub id: Id,
+    pub span: SpanData,
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug)]
+pub enum ImportKind {
+    ExternCrate,
+    Use,
+    GlobUse,
+}
+
+// Custom impl to read rustc_serialize's format.
+impl Deserialize for ImportKind {
+    fn deserialize<D>(deserializer: &mut D) -> Result<ImportKind, D::Error>
+        where D: serde::Deserializer,
+    {
+        let s = String::deserialize(deserializer)?;
+        match &*s {
+            "ExternCrate" => Ok(ImportKind::ExternCrate),
+            "Use" => Ok(ImportKind::Use),
+            "GlobUse" => Ok(ImportKind::GlobUse),
+            _ => Err(serde::de::Error::custom("unexpected import kind")),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SpanData {
+    pub file_name: String,
+    pub byte_start: u32,
+    pub byte_end: u32,
+    /// 1-based.
+    pub line_start: usize,
+    pub line_end: usize,
+    /// 1-based, character offset.
+    pub column_start: usize,
+    pub column_end: usize,
 }
 
 impl BuildResult {
