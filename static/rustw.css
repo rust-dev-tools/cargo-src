@@ -361,6 +361,11 @@ span#measure {
 .div_all_span_src .lifetime { color: #B76514; }
 .div_all_span_src .comment, .div_all_span_src .doccomment { color: #808080; }
 
+.src_link {
+    text-decoration: underline;
+    cursor: pointer;    
+}
+
 #div_options {
     position: absolute;
     width: 300px;

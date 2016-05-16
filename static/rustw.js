@@ -163,6 +163,7 @@ function load_source(state) {
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
     add_highlighters();
+    add_links();
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
@@ -190,6 +191,13 @@ function add_highlighters() {
             }
         }
     });
+}
+
+function add_links() {
+    var linkables = $(".src_link");
+    linkables.off("click");
+    // TODO special case links to the same file
+    linkables.click(load_link);
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
@@ -593,7 +601,10 @@ function handle_bread_crumb_link(event) {
 
 function win_src_link() {
     show_back_link();
+    load_link();
+}
 
+function load_link() {
     var element = $(this);
     var file_loc = element.attr("link").split(':');
     var file = file_loc[0];
@@ -646,7 +657,7 @@ function win_src_link() {
         history.pushState({ page: "error"}, "", make_url("#src=" + file + display));
     });
 
-    $("#div_main").text("Loading...");
+    $("#div_main").text("Loading...");    
 }
 
 function show_src_menu(event) {

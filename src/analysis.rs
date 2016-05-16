@@ -111,6 +111,20 @@ impl Analysis {
         };
         self.class_ids.get(&span).map(|i| *i)
     }
+
+    pub fn get_link(&self, lo: &Loc, hi: &Loc) -> Option<String> {
+        let span = Span {
+            file_name: lo.file.name.clone(),
+            line_start: lo.line as usize,
+            column_start: lo.col.0 as usize + 1,
+            line_end: hi.line as usize,
+            column_end: hi.col.0 as usize + 1,            
+        };
+        self.refs.get(&span).and_then(|id| self.defs.get(id)).map(|def| {
+            let s = &def.span;
+            format!("{}:{}:{}:{}:{}", s.file_name, s.line_start, s.column_start, s.line_end, s.column_end)
+        })
+    }
 }
 
 // Used to indicate a missing index in the Id.

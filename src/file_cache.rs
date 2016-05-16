@@ -245,15 +245,22 @@ impl<'a> Highlighter<'a> {
                   klass: Class,
                   text: String,
                   title: Option<&str>,
-                  extra_class: Option<String>)
+                  extra_class: Option<String>,
+                  link: Option<String>)
                   -> io::Result<()> {
         write!(buf, "<span class='{}", klass.rustdoc_class())?;
         if let Some(s) = extra_class {
             write!(buf, "{}", s)?;
         }
+        if let Some(_) = link {
+            write!(buf, " src_link")?;            
+        }
         write!(buf, "'")?;
         if let Some(s) = title {
             write!(buf, " title='{}'", s)?;
+        }
+        if let Some(s) = link {
+            write!(buf, " link='{}'", s)?;
         }
         write!(buf, ">{}</span>", text)
     }
@@ -274,23 +281,24 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         match klass {
             Class::None => write!(self.buf, "{}", text),
             Class::Ident => {
-                let (title, css_class) = match tas {
+                let (title, css_class, link) = match tas {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
                         let title = self.analysis.get_title(&lo, &hi);
+                        let link = self.analysis.get_link(&lo, &hi);
 
                         let css_class = match self.analysis.get_class_id(&lo, &hi) {
                             Some(i) => Some(format!(" class_id class_id_{}", i)),
                             None => None,
                         };
 
-                        (title, css_class)
+                        (title, css_class, link)
                     }
-                    None => (None, None),
+                    None => (None, None, None),
                 };
 
-                Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class)
+                Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, link)
             }
             Class::Op if text == "*" => {
                 let title = tas.and_then(|t| {
@@ -298,9 +306,9 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     let hi = self.codemap.lookup_char_pos(t.sp.hi);
                     self.analysis.get_title(&lo, &hi)
                 });
-                Highlighter::write_span(&mut self.buf, Class::Op, text, title, None)
+                Highlighter::write_span(&mut self.buf, Class::Op, text, title, None, None)
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None),
+            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None),
         }
     }
 }
