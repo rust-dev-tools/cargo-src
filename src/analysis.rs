@@ -72,7 +72,7 @@ impl Analysis {
         }
         for r in crate0.refs {
             let id = r.ref_id.index;
-            if id != NULL {
+            if id != NULL && defs.contains_key(&id) {
                 let span = Span::from_build(&r.span);
                 // TODO class_ids = refs + defs.keys
                 class_ids.insert(span.clone(), id);
@@ -96,9 +96,7 @@ impl Analysis {
             line_end: hi.line as usize,
             column_end: hi.col.0 as usize + 1,
         };
-        self.titles.get(&span).map(|s| &**s).or_else(|| {
-            self.refs.get(&span).and_then(|id| self.defs.get(id).map(|def| &*def.value))
-        })
+        self.refs.get(&span).and_then(|id| self.defs.get(id).map(|def| &*def.value))
     }
 
     pub fn get_class_id(&self, lo: &Loc, hi: &Loc) -> Option<u32> {
