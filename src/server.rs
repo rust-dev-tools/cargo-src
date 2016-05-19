@@ -87,7 +87,7 @@ impl<'a> Handler<'a> {
         //println!("ERROR: {} ({})", msg, status);
 
         *res.status_mut() = status;
-        res.send(msg.as_bytes()).unwrap();        
+        res.send(msg.as_bytes()).unwrap();
     }
 
     fn handle_index<'b: 'a, 'k: 'a>(&mut self,
@@ -132,7 +132,7 @@ impl<'a> Handler<'a> {
             res.headers_mut().set(content_type);
             res.send(s).unwrap();
             return;
-        }        
+        }
 
         self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
     }
@@ -238,7 +238,7 @@ impl<'a> Handler<'a> {
             pending_push_data.insert(key, None);
         }
 
-        result        
+        result
     }
 
     fn process_push_data(&self, result: BuildResult, analysis: Vec<build::Analysis>) {
@@ -247,7 +247,7 @@ impl<'a> Handler<'a> {
             let file_cache = self.file_cache.clone();
             let config = self.config.clone();
             thread::spawn(|| reprocess::reprocess_snippets(result, pending_push_data, analysis, file_cache, config));
-        }        
+        }
     }
 
     fn handle_quick_edit<'b: 'a, 'k: 'a>(&mut self,
@@ -265,7 +265,7 @@ impl<'a> Handler<'a> {
             return;
         }
 
-        res.send("{}".as_bytes()).unwrap();                    
+        res.send("{}".as_bytes()).unwrap();
     }
 
     fn handle_edit<'b: 'a, 'k: 'a>(&mut self,
@@ -417,7 +417,10 @@ fn read_lines(file: &File) -> Result<Vec<String>, String> {
     loop {
         let mut buf = String::new();
         match reader.read_line(&mut buf) {
-            Ok(0) => return Ok(result),
+            Ok(0) => {
+                result.push(buf);
+                return Ok(result);
+            }
             Ok(_) => result.push(buf),
             Err(e) => return Err(e.to_string()),
         }
