@@ -115,6 +115,7 @@ function load_build(state) {
         rebuild_label += " (F5)";
     }
     enable_button($("#link_build"), rebuild_label);
+    $("#link_build").click(do_build);
 
     $("#link_back").css("visibility", "hidden");
     $("#link_browse").css("visibility", "visible");
@@ -195,6 +196,7 @@ function add_highlighters() {
 
 function add_links() {
     var linkables = $(".src_link");
+    // TODO is this just cargo culting?
     linkables.off("click");
     // TODO special case links to the same file
     linkables.click(load_link);
@@ -447,7 +449,7 @@ function stop_build_animation() {
 function show_hide(element, text, fn) {
     element.text(text);
     element.off("click");
-    element.click(fn);    
+    element.click(fn);
 }
 
 function show_stdout() {
@@ -516,7 +518,7 @@ function show_back_link() {
     $("#link_back").click(function() {
         load_build(backup);
         history.pushState(backup, "", make_url("#build"));
-    });    
+    });
 }
 
 function win_err_code() {
@@ -601,7 +603,7 @@ function handle_bread_crumb_link(event) {
 
 function win_src_link() {
     show_back_link();
-    load_link();
+    load_link.call(this);
 }
 
 function load_link() {
@@ -657,7 +659,7 @@ function load_link() {
         history.pushState({ page: "error"}, "", make_url("#src=" + file + display));
     });
 
-    $("#div_main").text("Loading...");    
+    $("#div_main").text("Loading...");
 }
 
 function show_src_menu(event) {
@@ -720,7 +722,7 @@ function quick_edit(event) {
     quick_edit_div.show();
     quick_edit_div.offset(event.data.position);
 
-    
+
     $("#quick_edit_text").val(data.plain_text);
     $("#quick_edit_text").prop("disabled", false);
 
