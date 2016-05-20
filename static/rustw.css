@@ -7,7 +7,7 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
- 
+
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
@@ -92,7 +92,7 @@ html {
 #div_border {
     width: 100%;
     height: 3px;
-    background-color: black;    
+    background-color: black;
     opacity: 1;
 }
 #div_border_animated {
@@ -110,7 +110,7 @@ html {
 }
 @keyframes border {
   from {
-    width: 0%; 
+    width: 0%;
   }
 
   to {
@@ -164,12 +164,15 @@ html {
     top: 5px;
 }
 
+.expand_spans.small_button {
+    vertical-align: top;
+}
+.div_span {
+    display: inline-block;
+}
 .div_spans {
     position: relative;
     top: 2px;
-}
-.div_span {
-    display: block;
 }
 .div_span_label {
     display: inline-block;
@@ -218,7 +221,7 @@ a.issue_link:active, a.link  { color: black }
 }
 .div_span_src {
     display: inline-block;
-    width: calc(100% - 2em - 4px);    
+    width: calc(100% - 2em - 4px);
 }
 .span_src_number {
     display: block;
@@ -331,10 +334,12 @@ span#measure {
     background-color: #d5f3b5;
 }
 .floating_highlight {
+    display: block;
     position: absolute;
 }
 .highlight_label {
-    display: inline-block;
+    display: block;
+    position: absolute;
     margin-left: 3em;
     font-style: italic;
     font-family:  'Fira Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -363,7 +368,7 @@ span#measure {
 
 .src_link {
     text-decoration: underline;
-    cursor: pointer;    
+    cursor: pointer;
 }
 
 #div_options {
@@ -394,7 +399,7 @@ span#measure {
 }
 .src_menu_link {
     text-decoration: underline;
-    cursor: pointer;    
+    cursor: pointer;
 }
 
 #div_quick_edit {

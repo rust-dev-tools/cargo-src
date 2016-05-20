@@ -272,9 +272,11 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
         width += padding;
     }
 
-    highlight.offset({ "left": line_div.offset().left + left});
+    var offset = line_div.offset();
+    line_div.after(highlight);
+    offset.left += left;
+    highlight.offset(offset);
     highlight.width(width);
-    line_div.before(highlight);
 }
 
 function do_build() {
@@ -378,10 +380,15 @@ function update_snippets(data) {
                                 "snippet_line_" + snip.id + "_",
                                 css_class);
 
+                // Make a label for the message.
                 if (h[1]) {
                     var line_span = $("#snippet_line_" + snip.id + "_" + h[0].line_start);
+                    var old_width = line_span.width();
                     var label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
                     line_span.append(label_span);
+                    var offset = line_span.offset();
+                    offset.left += old_width + 40;
+                    label_span.offset(offset);
                 }
             }
         };
