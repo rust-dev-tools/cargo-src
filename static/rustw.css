@@ -73,6 +73,12 @@ html {
 #link_browse {
     visibility: hidden;
 }
+#search_box {
+    display: inline-block;
+    float: right;
+    margin-top: 4px;
+    margin-right: 7em;
+}
 
 #div_header_group {
     width: 100%;
@@ -417,4 +423,26 @@ span#measure {
 }
 #quick_edit_message {
     padding-right: 1em;
+}
+
+.div_search_title {
+    font-size: large;
+}
+.div_search_file_link {
+    padding-top: 0.2em;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.div_search_results {
+    padding-left: 2em;
+    padding-bottom: 1.5em;
+}
+.div_search_results .div_all_span_src {
+    padding-left: 2em;
+}
+.div_search_results .div_span_src_number {
+    cursor: pointer;
+}
+.div_search_results .span_src {
+    cursor: pointer;
 }

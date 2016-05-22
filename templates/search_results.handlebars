@@ -1,0 +1,36 @@
+{{#if defs}}
+    <div class="div_search_title">Definitions:</div>
+    <div class="div_search_results">
+        {{#each defs}}
+            <div class="div_search_file_link" link="{{file_name}}">{{file_name}}</div>
+            <div class="div_all_span_src">
+                {{#each lines}}
+                    <span class="div_span_src_number" link="{{../file_name}}:{{line_start}}">
+                        <div class="span_src_number" id="snippet_line_number_def_{{@../index}}_{{line_start}}">{{line_start}}</div>
+                    </span><span class="div_span_src">
+                        <div class="span_src" id="snippet_line_def_{{@../index}}_{{line_start}}" link="{{../file_name}}:{{line_start}}:{{column_start}}:{{line_start}}:{{column_end}}">{{{line}}}</div>
+                    </span>
+                    <br>
+                {{/each}}
+            </div>
+        {{/each}}
+    </div>
+    <div class="div_search_title">References:</div>
+    <div class="div_search_results">
+        {{#each refs}}
+            <div class="div_search_file_link" link="{{file_name}}">{{file_name}}</div>
+            <div class="div_all_span_src">
+                {{#each lines}}
+                    <span class="div_span_src_number" link="{{../file_name}}:{{line_start}}">
+                        <div class="span_src_number" id="snippet_line_number_ref_{{@../index}}_{{line_start}}">{{line_start}}</div>
+                    </span><span class="div_span_src">
+                        <div class="span_src" id="snippet_line_ref_{{@../index}}_{{line_start}}" link="{{../file_name}}:{{line_start}}:{{column_start}}:{{line_start}}:{{column_end}}">{{{line}}}</div>
+                    </span>
+                    <br>
+                {{/each}}
+            </div>
+        {{/each}}
+    </div>
+{{else}}
+    <span class="div_search_no_results">No results found</span>
+{{/if}}

@@ -20,16 +20,19 @@ pub struct Analysis {
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
     defs: HashMap<u32, build::Def>,
+    def_names: HashMap<String, Vec<u32>>,
     refs: HashMap<Span, u32>,
+    ref_spans: HashMap<u32, Vec<Span>>,
 }
 
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-struct Span {
-    file_name: String,
-    line_start: usize,
-    column_start: usize,
-    line_end: usize,
-    column_end: usize,
+pub struct Span {
+    // NOte the ordering of fields for the Ord impl.
+    pub file_name: String,
+    pub line_start: usize,
+    pub column_start: usize,
+    pub line_end: usize,
+    pub column_end: usize,
 }
 
 impl Analysis {
@@ -38,7 +41,9 @@ impl Analysis {
             titles: HashMap::new(),
             class_ids: HashMap::new(),
             defs: HashMap::new(),
+            def_names: HashMap::new(),
             refs: HashMap::new(),
+            ref_spans: HashMap::new(),
         }
     }
 
@@ -50,7 +55,9 @@ impl Analysis {
         let mut titles = HashMap::new();
         let mut class_ids = HashMap::new();
         let mut defs = HashMap::new();
+        let mut def_names = HashMap::new();
         let mut refs = HashMap::new();
+        let mut ref_spans = HashMap::new();
 
         // TODO multi-crate - need to normalise IDs
         let mut build = build;
@@ -66,8 +73,9 @@ impl Analysis {
             }
             let id = d.id.index;
             if id != NULL {
-                defs.insert(id, d);
                 class_ids.insert(span, id);
+                def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
+                defs.insert(id, d);
             }
         }
         for r in crate0.refs {
@@ -76,7 +84,8 @@ impl Analysis {
                 let span = Span::from_build(&r.span);
                 // TODO class_ids = refs + defs.keys
                 class_ids.insert(span.clone(), id);
-                refs.insert(span, id);
+                refs.insert(span.clone(), id);
+                ref_spans.entry(id).or_insert_with(|| vec![]).push(span);
             }
         }
 
@@ -84,8 +93,22 @@ impl Analysis {
             titles: titles,
             class_ids: class_ids,
             defs: defs,
+            def_names: def_names,
             refs: refs,
+            ref_spans: ref_spans,
         }
+    }
+
+    pub fn lookup_def_ids(&self, name: &str) -> Option<&Vec<u32>> {
+        self.def_names.get(name)
+    }
+
+    pub fn lookup_def(&self, id: u32) -> &build::Def {
+        &self.defs[&id]
+    }
+
+    pub fn lookup_refs(&self, id: u32) -> &[Span] {
+        &self.ref_spans[&id]
     }
 
     pub fn get_title(&self, lo: &Loc, hi: &Loc) -> Option<&str> {
@@ -105,7 +128,7 @@ impl Analysis {
             line_start: lo.line as usize,
             column_start: lo.col.0 as usize + 1,
             line_end: hi.line as usize,
-            column_end: hi.col.0 as usize + 1,            
+            column_end: hi.col.0 as usize + 1,
         };
         self.class_ids.get(&span).map(|i| *i)
     }
@@ -116,7 +139,7 @@ impl Analysis {
             line_start: lo.line as usize,
             column_start: lo.col.0 as usize + 1,
             line_end: hi.line as usize,
-            column_end: hi.col.0 as usize + 1,            
+            column_end: hi.col.0 as usize + 1,
         };
         self.refs.get(&span).and_then(|id| self.defs.get(id)).map(|def| {
             let s = &def.span;

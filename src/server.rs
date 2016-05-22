@@ -319,6 +319,40 @@ impl<'a> Handler<'a> {
         }
     }
 
+    fn handle_search<'b: 'a, 'k: 'a>(&mut self,
+                                     _req: Request<'b, 'k>,
+                                     mut res: Response<'b, Fresh>,
+                                     query: Option<String>) {
+        match query {
+            Some(ref q) => {
+                // Extract the `key` value from the query string.
+                let start = match q.find("needle=") {
+                    Some(i) => i + 7,  // 5 = "needle=".len()
+                    None => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad search string: {:?}", query));
+                        return;
+                    }
+                };
+                let needle = &q[start..];
+
+                let mut file_cache = self.file_cache.lock().unwrap();
+                match file_cache.ident_search(needle) {
+                    Ok(data) => {
+                        res.headers_mut().set(ContentType::json());
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                        return;
+                    }
+                    Err(s) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                    }
+                }
+            }
+            None => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad search string".to_owned());
+            }
+        }
+    }
+
     fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
@@ -327,7 +361,7 @@ impl<'a> Handler<'a> {
             Some(ref q) => {
                 // Extract the `key` value from the query string.
                 let start = match q.find("key=") {
-                    Some(i) => i + 4,  // 5 = "key=".len()
+                    Some(i) => i + 4,  // 4 = "key=".len()
                     None => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
                         return;
@@ -359,7 +393,7 @@ impl<'a> Handler<'a> {
                 }
             }
             None => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
             }
         }
     }
@@ -478,6 +512,7 @@ const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
+const SEARCH_REQUEST: &'static str = "search";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
                              handler: &'a mut Handler<'a>,
@@ -508,6 +543,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
     if path[0] == SOURCE_REQUEST {
         handler.handle_src(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == SEARCH_REQUEST {
+        handler.handle_search(req, res, query);
         return;
     }
 

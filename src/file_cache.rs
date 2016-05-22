@@ -19,7 +19,7 @@ use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::CodeMap;
 
-use analysis::Analysis;
+use analysis::{Analysis, Span};
 use build;
 
 // TODO maximum size and evication policy
@@ -32,7 +32,7 @@ pub struct Cache {
 
 struct FileCache {
     files: HashMap<PathBuf, CachedFile>,
-    size: usize,    
+    size: usize,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -51,6 +51,37 @@ pub struct Listing {
 pub enum ListingKind {
     File,
     Directory,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SearchResult {
+    pub defs: Vec<FileResult>,
+    pub refs: Vec<FileResult>,
+}
+
+#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FileResult {
+    pub file_name: String,
+    pub lines: Vec<LineResult>,
+}
+
+#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct LineResult {
+    pub line_start: usize,
+    pub column_start: usize,
+    pub column_end: usize,
+    pub line: String,
+}
+
+impl LineResult {
+    fn new(span: &Span, line: String) -> LineResult {
+        LineResult {
+            line_start: span.line_start,
+            column_start: span.column_start,
+            column_end: span.column_end,
+            line: line,
+        }
+    }
 }
 
 struct CachedFile {
@@ -104,12 +135,72 @@ impl Cache {
         Ok(&file.highlighted_lines)
     }
 
+    // line is 1-indexed
+    pub fn get_highlighted_line(&mut self, file_name: &str, line: usize) -> Result<String, String> {
+        let lines = self.get_highlighted(Path::new(file_name))?;
+        Ok(lines[line - 1].clone())
+    }
+
     pub fn update_analysis(&mut self, analysis: Vec<build::Analysis>) {
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
         // need to invalidate Rust files.
         self.files.reset();
 
         self.analysis = Analysis::from_build(analysis);
+    }
+
+    pub fn ident_search(&mut self, needle: &str) -> Result<SearchResult, String> {
+        // First see if the needle corresponds to any definitions, if it does, get a list of the
+        // ids, otherwise, return an empty search result.
+        let ids = match self.analysis.lookup_def_ids(needle) {
+            Some(ids) => ids.to_owned(),
+            None => {
+                return Ok(SearchResult {
+                    defs: vec![],
+                    refs: vec![],
+                });
+            }
+        };
+
+        // For each of the ids, push a search result to the appropriate list - one def and
+        // potentially many refs. We store these in buckets per file name.
+        let mut defs = HashMap::new();
+        let mut refs = HashMap::new();
+
+        for id in ids {
+            let span = self.analysis.lookup_def(id).span.clone();
+            let text = self.get_highlighted_line(&span.file_name, span.line_start)?;
+            let line = LineResult::new(&Span::from_build(&span), text);
+            defs.entry(span.file_name).or_insert_with(|| vec![]).push(line);
+
+            let rfs = self.analysis.lookup_refs(id).to_owned();
+            for rf in rfs.into_iter() {
+                let text = self.get_highlighted_line(&rf.file_name, rf.line_start)?;
+                let line = LineResult::new(&rf, text);
+                refs.entry(rf.file_name).or_insert_with(|| vec![]).push(line);
+            }
+        }
+
+        // TODO need to save the span for highlighting
+        // We then save each bucket of defs/refs as a vec, and put it together to return.
+        return Ok(SearchResult {
+            defs: make_file_results(defs),
+            refs: make_file_results(refs),
+        });
+
+        fn make_file_results(bucket: HashMap<String, Vec<LineResult>>) -> Vec<FileResult> {
+            let mut list = vec![];
+            for (file_name, mut lines) in bucket.into_iter() {
+                lines.sort();
+                let per_file = FileResult {
+                    file_name: file_name.to_owned(),
+                    lines: lines,
+                };
+                list.push(per_file);
+            }
+            list.sort();
+            list
+        }
     }
 
     fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> String {
@@ -253,7 +344,7 @@ impl<'a> Highlighter<'a> {
             write!(buf, "{}", s)?;
         }
         if let Some(_) = link {
-            write!(buf, " src_link")?;            
+            write!(buf, " src_link")?;
         }
         write!(buf, "'")?;
         if let Some(s) = title {
@@ -277,7 +368,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
     fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
         let text = text.to_string();
-        
+
         match klass {
             Class::None => write!(self.buf, "{}", text),
             Class::Ident => {

@@ -34,6 +34,11 @@ function onLoad() {
     });
 
     load_start();
+    $(document).on("keypress", "#search_box", function(e) {
+         if (e.which == 13) {
+             win_search(this.value);
+         }
+    });
     MAIN_PAGE_STATE = { page: "start" };
     history.replaceState(MAIN_PAGE_STATE, "");
 
@@ -54,6 +59,8 @@ function onLoad() {
             load_source(state);
         } else if (state.page == "source_dir") {
             load_dir(state);
+          } else if (state.page == "search") {
+              load_search(state);
         } else {
             console.log("ERROR: Unknown page state: ");
             console.log(state);
@@ -122,6 +129,56 @@ function load_build(state) {
     init_build_results();
 
     update_snippets(MAIN_PAGE_STATE.snippets);
+}
+
+function win_search(needle) {
+    $.ajax({
+        url: make_url('search?needle=' + needle),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "search",
+            "data": json,
+            "needle": needle,
+        };
+        load_search(state);
+        history.pushState(state, "", make_url("#search=" + needle));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with search request for " + needle);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#search=" + needle));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
+function load_search(state) {
+    show_back_link();
+    $("#div_main").html(Handlebars.templates.search_results(state.data));
+    $(".src_link").removeClass("src_link");
+    $(".div_search_file_link").click(load_link);
+    $(".div_span_src_number").click(load_link);
+    $(".span_src").click(load_link);
+    highlight_needle(state.data.defs, "def");
+    highlight_needle(state.data.refs, "ref");
+}
+
+function highlight_needle(results, tag) {
+    for (var i in results) {
+        for (var line of results[i].lines) {
+            line.line_end = line.line_start;
+            highlight_spans(line,
+                            null,
+                            "snippet_line_" + tag + "_" + i + "_",
+                            "selected");
+        }
+    }
 }
 
 function set_snippet_plain_text(spans) {
@@ -203,12 +260,18 @@ function add_links() {
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
-    if (!highlight.line_start || !highlight.line_end || !highlight.column_start || !highlight.column_end) {
+    if (!highlight.line_start || !highlight.line_end) {
         return;
     }
 
-    for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
-        $("#" + line_number_prefix + i).addClass(css_class);
+    if (line_number_prefix) {
+        for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
+            $("#" + line_number_prefix + i).addClass(css_class);
+        }
+    }
+
+    if (!highlight.column_start || !highlight.column_end || !src_line_prefix) {
+        return;
     }
 
     // Highlight all of the middle lines.
@@ -622,10 +685,18 @@ function load_link() {
     var line_end = parseInt(file_loc[3], 10);
     var column_end = parseInt(file_loc[4], 10);
 
-    if (line_start == 0) {
+    console.log(line_start + " " + line_end + " " + column_start + " " + column_end);
+
+    if (line_start == 0 || isNaN(line_start)) {
+        line_start = 0;
         line_end = 0;
-    } else if (line_end == 0) {
+    } else if (line_end == 0 || isNaN(line_end)) {
         line_end = line_start;
+    }
+
+    if (isNaN(column_start) || isNaN(column_end)) {
+        column_start = 0;
+        column_end = 0;
     }
 
     // FIXME the displayed span doesn't include column start and end, should it?
