@@ -394,7 +394,6 @@ function pull_data(key) {
         return;
     }
 
-    console.log("sending pull request for key " + key);
     $.ajax({
         url: make_url('pull?key=' + key),
         type: 'POST',
@@ -688,8 +687,6 @@ function load_link() {
     var line_end = parseInt(file_loc[3], 10);
     var column_end = parseInt(file_loc[4], 10);
 
-    console.log(line_start + " " + line_end + " " + column_start + " " + column_end);
-
     if (line_start == 0 || isNaN(line_start)) {
         line_start = 0;
         line_end = 0;
@@ -805,7 +802,6 @@ function edit(event) {
     })
     .done(function (json) {
         console.log("edit - success");
-        console.log(json);
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with edit request");
@@ -848,7 +844,6 @@ function quick_edit_line_number(event) {
     })
     .done(function (json) {
         console.log("retrieve plain text - success");
-        console.log(json);
         $("#quick_edit_text").val(json.text);
         $("#quick_edit_save").show();
         $("#quick_edit_save").click(json, save_quick_edit);
@@ -906,7 +901,6 @@ function save_quick_edit(event) {
     })
     .done(function (json) {
         console.log("quick edit - success");
-        console.log(json);
         $("#quick_edit_message").text("edit saved");
         // TODO add a fade-out animation here
         window.setTimeout(hide_quick_edit, 1000);
