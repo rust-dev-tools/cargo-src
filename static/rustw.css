@@ -392,7 +392,7 @@ span#measure {
     float: right;
 }
 
-#div_src_menu {
+.div_menu {
     position: absolute;
     width: 150px;
     height: 100px;

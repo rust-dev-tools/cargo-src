@@ -15,8 +15,9 @@ use reprocess;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write, BufRead};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time;
@@ -274,21 +275,10 @@ impl<'a> Handler<'a> {
                                    query: Option<String>) {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
 
-        // TODO factor out query logic
-        match query {
-            Some(ref q) => {
-                // Extract the `file` value from the query string.
-                let start = match q.find("file=") {
-                    Some(i) => i + 5,  // 5 = "file=".len()
-                    None => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
-                        return;
-                    }
-                };
-                let end = q[start..].find("&").unwrap_or(q.len());
-
+        match parse_query_value(&query, "file=") {
+            Some(location) => {
                 // Split the 'filename' on colons for line and column numbers.
-                let args = parse_location_string(&q[start..end]);
+                let args = parse_location_string(&location);
 
                 let cmd_line = &self.config.edit_command;
                 if !cmd_line.is_empty() {
@@ -323,20 +313,10 @@ impl<'a> Handler<'a> {
                                      _req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>,
                                      query: Option<String>) {
-        match query {
-            Some(ref q) => {
-                // Extract the `key` value from the query string.
-                let start = match q.find("needle=") {
-                    Some(i) => i + 7,  // 5 = "needle=".len()
-                    None => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad search string: {:?}", query));
-                        return;
-                    }
-                };
-                let needle = &q[start..];
-
+        match parse_query_value(&query, "needle=") {
+            Some(needle) => {
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.ident_search(needle) {
+                match file_cache.ident_search(&needle) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -353,28 +333,68 @@ impl<'a> Handler<'a> {
         }
     }
 
+    fn handle_plain_text<'b: 'a, 'k: 'a>(&mut self,
+                                         _req: Request<'b, 'k>,
+                                         mut res: Response<'b, Fresh>,
+                                         query: Option<String>) {
+        match (parse_query_value(&query, "file="), parse_query_value(&query, "line=")) {
+            (Some(file_name), Some(line)) => {
+                let line = match usize::from_str(&line) {
+                    Ok(l) => l,
+                    Err(_) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad line number: {}", line));
+                        return;
+                    }
+                };
+                let mut file_cache = self.file_cache.lock().unwrap();
+
+                // Hard-coded 2 lines of context before and after target line.
+                let line_start = line.saturating_sub(3);
+                let mut line_end = line + 2;
+                let len = match file_cache.get_line_count(&Path::new(&file_name)) {
+                    Ok(l) => l,
+                    Err(msg) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+                        return;
+                    }
+                };
+                if line_end >= len {
+                    line_end = len - 1;
+                }
+
+                match file_cache.get_lines(&Path::new(&file_name), line_start, line_end) {
+                    Ok(ref lines) => {
+                        res.headers_mut().set(ContentType::json());
+                        let result = TextResult {
+                            text: lines,
+                            file_name: file_name,
+                            line_start: line_start + 1,
+                            line_end: line_end,
+                        };
+                        res.send(serde_json::to_string(&result).unwrap().as_bytes()).unwrap();
+                    }
+                    Err(msg) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+                    }
+                }
+            }
+            _ => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
+            }
+        }
+    }
+
     fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
                                    query: Option<String>) {
-        match query {
-            Some(ref q) => {
-                // Extract the `key` value from the query string.
-                let start = match q.find("key=") {
-                    Some(i) => i + 4,  // 4 = "key=".len()
-                    None => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
-                        return;
-                    }
-                };
-                let end = q[start..].find("&").unwrap_or(q.len());
-                let key = &q[start..end];
-
+        match parse_query_value(&query, "key=") {
+            Some(key) => {
                 res.headers_mut().set(ContentType::json());
 
                 loop {
                     let pending_push_data = self.pending_push_data.lock().unwrap();
-                    match pending_push_data.get(key) {
+                    match pending_push_data.get(&key) {
                         Some(&Some(ref s)) => {
                             // Data is ready, return it.
                             res.send(s.as_bytes()).unwrap();
@@ -406,6 +426,14 @@ pub enum SourceResult<'a> {
         lines: &'a [String],
     },
     Directory(DirectoryListing),
+}
+
+#[derive(Serialize, Debug)]
+pub struct TextResult<'a> {
+    text: &'a str,
+    file_name: String,
+    line_start: usize,
+    line_end: usize,
 }
 
 #[derive(Serialize, Debug)]
@@ -442,6 +470,24 @@ pub fn parse_location_string(input: &str) -> [String; 5] {
      args.next().unwrap_or(String::new()),
      args.next().unwrap_or(String::new()),
      args.next().unwrap_or(String::new())]
+}
+
+// key should include `=` suffix.
+fn parse_query_value(query: &Option<String>, key: &str) -> Option<String> {
+    match *query {
+        Some(ref q) => {
+            let start = match q.find(key) {
+                Some(i) => i + key.len(),
+                None => {
+                    return None;
+                }
+            };
+            let end = q[start..].find("&").map(|e| e + start).unwrap_or(q.len());
+            let value = &q[start..end];
+            Some(value.to_owned())
+        }
+        None => None,
+    }
 }
 
 fn read_lines(file: &File) -> Result<Vec<String>, String> {
@@ -506,6 +552,7 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
 
 const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
+const PLAIN_TEXT: &'static str = "plain_text";
 const CONFIG_REQUEST: &'static str = "config";
 const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
@@ -543,6 +590,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
     if path[0] == SOURCE_REQUEST {
         handler.handle_src(req, res, &path[1..]);
+        return;
+    }
+
+    if path[0] == PLAIN_TEXT {
+        handler.handle_plain_text(req, res, query);
         return;
     }
 

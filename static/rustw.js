@@ -221,7 +221,8 @@ function load_source(state) {
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
     add_highlighters();
-    add_links();
+    add_source_jump_links();
+    add_quick_edit_links();
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
@@ -236,9 +237,7 @@ function add_highlighters() {
         for (var c of classes) {
             if (c.startsWith('class_id_')) {
                 $(this).hover(function() {
-                    console.log(classes);
                     var similar = $("." + c);
-                    console.log(similar);
                     similar.css("background-color", "#d5f3b5");
                 }, function() {
                     var similar = $("." + c);
@@ -251,12 +250,16 @@ function add_highlighters() {
     });
 }
 
-function add_links() {
+function add_source_jump_links() {
     var linkables = $(".src_link");
-    // TODO is this just cargo culting?
-    linkables.off("click");
     // TODO special case links to the same file
     linkables.click(load_link);
+}
+
+function add_quick_edit_links() {
+    var line_nums = $(".div_src_line_number");
+    line_nums.on("contextmenu", show_line_number_menu);
+    // TODO nrc - on click of quick edit
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
@@ -482,7 +485,7 @@ function init_build_results() {
 
     var src_links = $(".span_loc");
     src_links.click(win_src_link);
-    src_links.on("contextmenu", show_src_menu);
+    src_links.on("contextmenu", show_src_link_menu);
 }
 
 // Doesn't actually add an action to the button, just makes it look active.
@@ -740,38 +743,62 @@ function load_link() {
     $("#div_main").text("Loading...");
 }
 
-function show_src_menu(event) {
-    var src_menu = $("#div_src_menu");
+function show_menu(menu, event, hide_fn) {
     var target = $(event.target);
     var data = {
         "position": { "top": event.pageY, "left": event.pageX },
         "target": target
     };
 
-    src_menu.show();
-    src_menu.offset(data.position);
+    menu.show();
+    menu.offset(data.position);
 
     // TODO can we do better than this to close the menu? (Also options menu).
-    $("#div_main").click(hide_src_menu);
-    $("#div_header").click(hide_src_menu);
+    $("#div_main").click(hide_fn);
+    $("#div_header").click(hide_fn);
 
-    $("#src_menu_edit").click(target, edit);
-    $("#src_menu_quick_edit").click(data, quick_edit);
-    $("#src_menu_view").click(target, view_from_menu);
+    return data;
+}
+
+function show_src_link_menu(event) {
+    var src_menu = $("#div_src_menu");
+    var data = show_menu(src_menu, event, hide_src_link_menu);
+
+    var edit_data = { 'link': data.target.attr("link"), 'hide_fn': hide_src_link_menu };
+    $("#src_menu_edit").click(edit_data, edit);
+    $("#src_menu_quick_edit").click(data, quick_edit_link);
+    $("#src_menu_view").click(data.target, view_from_menu);
 
     return false;
 }
 
-function hide_src_menu() {
+function hide_src_link_menu() {
     $("#src_menu_edit").off("click");
     $("#src_menu_quick_edit").off("click");
     $("#src_menu_view").off("click");
     $("#div_src_menu").hide();
 }
 
+function show_line_number_menu(event) {
+    var menu = $("#div_line_number_menu");
+    var data = show_menu(menu, event, hide_line_number_menu);
+
+    var edit_data = { 'link': history.state.file + ":" + line_number_for_span(data.target), 'hide_fn': hide_line_number_menu };
+    $("#line_number_menu_edit").click(edit_data, edit);
+    $("#line_number_quick_edit").click(data, quick_edit_line_number);
+
+    return false;
+}
+
+function hide_line_number_menu() {
+    $("#line_number_menu_edit").off("click");
+    $("#line_number_quick_edit").off("click");
+    $("#div_line_number_menu").hide();
+}
+
 function edit(event) {
     $.ajax({
-        url: make_url('edit?file=' + event.data.attr("link")),
+        url: make_url('edit?file=' + event.data.link),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -785,32 +812,69 @@ function edit(event) {
         console.log("error: " + errorThrown + "; status: " + status);
     });
 
-    hide_src_menu();
+    event.data.hide_fn();
 }
 
-function quick_edit(event) {
-    hide_src_menu();
-
-    var id = event.data.target.attr("id");
-    var data = SNIPPET_PLAIN_TEXT[id];
-    var location = event.data.target.attr("link");
-
+function show_quick_edit(event) {
     var quick_edit_div = $("#div_quick_edit");
 
     quick_edit_div.show();
     quick_edit_div.offset(event.data.position);
 
-
-    $("#quick_edit_text").val(data.plain_text);
     $("#quick_edit_text").prop("disabled", false);
 
     $("#quick_edit_message").hide();
     $("#quick_edit_cancel").text("cancel");
     $("#quick_edit_cancel").click(hide_quick_edit);
-    $("#quick_edit_save").show();
-    $("#quick_edit_save").click(data, save_quick_edit);
     $("#div_main").click(hide_quick_edit);
     $("#div_header").click(hide_quick_edit);
+}
+
+function line_number_for_span(target) {
+    var line_id = target.attr("id");
+    return parseInt(line_id.slice("src_line_number_".length));
+}
+
+function quick_edit_line_number(event) {
+    hide_line_number_menu();
+    var file_name = history.state.file;
+    var line = line_number_for_span(event.data.target);
+
+    $.ajax({
+        url: make_url('plain_text?file=' + file_name + '&line=' + line),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false,
+    })
+    .done(function (json) {
+        console.log("retrieve plain text - success");
+        console.log(json);
+        $("#quick_edit_text").val(json.text);
+        $("#quick_edit_save").show();
+        $("#quick_edit_save").click(json, save_quick_edit);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with plain text request");
+        console.log("error: " + errorThrown + "; status: " + status);
+        $("#quick_edit_text").val("Error: could not load text");
+        $("#quick_edit_save").off("click");
+        $("#quick_edit_save").hide();
+    });
+
+    show_quick_edit(event);
+}
+
+// Quick edit for a source link in an error message.
+function quick_edit_link(event) {
+    hide_src_link_menu();
+
+    var id = event.data.target.attr("id");
+    var data = SNIPPET_PLAIN_TEXT[id];
+    show_quick_edit(event);
+    $("#quick_edit_save").show();
+    $("#quick_edit_save").click(data, save_quick_edit);
+
+    $("#quick_edit_text").val(data.plain_text);
 }
 
 function hide_quick_edit() {
@@ -819,12 +883,16 @@ function hide_quick_edit() {
     $("#div_quick_edit").hide();
 }
 
-function save_quick_edit(event) {
+function show_quick_edit_saving() {
     $("#quick_edit_message").show();
     $("#quick_edit_message").text("saving...");
     $("#quick_edit_save").hide();
     $("#quick_edit_cancel").text("close");
     $("#quick_edit_text").prop("disabled", true);
+}
+
+function save_quick_edit(event) {
+    show_quick_edit_saving();
 
     var data = event.data;
     data.text = $("#quick_edit_text").val();
@@ -851,6 +919,6 @@ function save_quick_edit(event) {
 }
 
 function view_from_menu(event) {
-    hide_src_menu();
+    hide_src_link_menu();
     win_src_link.call(event.data);
 }

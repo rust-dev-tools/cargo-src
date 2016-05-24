@@ -106,6 +106,15 @@ impl Cache {
         Ok(&self.files.get(path)?.plain_text)
     }
 
+    pub fn get_line_count(&mut self, path: &Path) -> Result<usize, String> {
+        let file = self.files.get(path)?;
+        if file.new_lines.is_empty() {
+            FileCache::compute_new_lines(file);
+        }
+
+        Ok(file.new_lines.len())
+    }
+
     pub fn get_lines(&mut self, path: &Path, line_start: usize, line_end: usize) -> Result<&str, String> {
         let file = self.files.get(path)?;
         if file.new_lines.is_empty() {
