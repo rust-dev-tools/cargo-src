@@ -313,21 +313,41 @@ impl<'a> Handler<'a> {
                                      _req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>,
                                      query: Option<String>) {
-        match parse_query_value(&query, "needle=") {
-            Some(needle) => {
+        match (parse_query_value(&query, "needle="), parse_query_value(&query, "id=")) {
+            (Some(needle), None) => {
+                // Identifier search.
                 let mut file_cache = self.file_cache.lock().unwrap();
                 match file_cache.ident_search(&needle) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
-                        return;
                     }
                     Err(s) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, s);
                     }
                 }
             }
-            None => {
+            (None, Some(id)) => {
+                // Search by id.
+                let id = match u32::from_str(&id) {
+                    Ok(l) => l,
+                    Err(_) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
+                        return;
+                    }
+                };
+                let mut file_cache = self.file_cache.lock().unwrap();
+                match file_cache.id_search(id) {
+                    Ok(data) => {
+                        res.headers_mut().set(ContentType::json());
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                    }
+                    Err(s) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                    }
+                }
+            }
+            _ => {
                 self.handle_error(_req, res, StatusCode::InternalServerError, "Bad search string".to_owned());
             }
         }

@@ -158,6 +158,10 @@ impl Cache {
         self.analysis = Analysis::from_build(analysis);
     }
 
+    pub fn id_search(&mut self, id: u32) -> Result<SearchResult, String> {
+        self.ids_search(vec![id])
+    }
+
     pub fn ident_search(&mut self, needle: &str) -> Result<SearchResult, String> {
         // First see if the needle corresponds to any definitions, if it does, get a list of the
         // ids, otherwise, return an empty search result.
@@ -171,6 +175,10 @@ impl Cache {
             }
         };
 
+        self.ids_search(ids)
+    }
+
+    fn ids_search(&mut self, ids: Vec<u32>) -> Result<SearchResult, String> {
         // For each of the ids, push a search result to the appropriate list - one def and
         // potentially many refs. We store these in buckets per file name.
         let mut defs = HashMap::new();

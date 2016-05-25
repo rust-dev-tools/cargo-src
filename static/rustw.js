@@ -220,9 +220,10 @@ function load_source(state) {
     $("#div_main").html(Handlebars.templates.src_view(state.data));
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
-    add_highlighters();
+    add_ref_functionality();
     add_source_jump_links();
-    add_quick_edit_links();
+    add_line_number_menus();
+
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
@@ -230,9 +231,10 @@ function load_source(state) {
     window.scroll(0, y);
 }
 
-function add_highlighters() {
+// Menus, highlighting on mouseover.
+function add_ref_functionality() {
     var all_idents = $(".class_id");
-    all_idents.each(function() {
+    all_idents.each(function(index, ident) {
         var classes = this.className.split(' ');
         for (var c of classes) {
             if (c.startsWith('class_id_')) {
@@ -243,6 +245,9 @@ function add_highlighters() {
                     var similar = $("." + c);
                     similar.css("background-color", "");
                 });
+
+                var id = c.slice('class_id_'.length);
+                $(ident).on("contextmenu", null, id, show_ref_menu);
 
                 break;
             }
@@ -256,10 +261,9 @@ function add_source_jump_links() {
     linkables.click(load_link);
 }
 
-function add_quick_edit_links() {
+function add_line_number_menus() {
     var line_nums = $(".div_src_line_number");
     line_nums.on("contextmenu", show_line_number_menu);
-    // TODO nrc - on click of quick edit
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
@@ -774,6 +778,48 @@ function hide_src_link_menu() {
     $("#src_menu_quick_edit").off("click");
     $("#src_menu_view").off("click");
     $("#div_src_menu").hide();
+}
+
+function show_ref_menu(event) {
+    var menu = $("#div_ref_menu");
+    var data = show_menu(menu, event, hide_ref_menu);
+
+    $("#ref_menu_find_uses").click(event.data, find_uses);
+
+    return false;
+}
+
+function hide_ref_menu() {
+    $("#ref_menu_find_uses").off("click");
+    $("#div_ref_menu").hide();
+}
+
+function find_uses(event) {
+    $.ajax({
+        url: make_url('search?id=' + event.data),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "search",
+            "data": json,
+            "id": event.data,
+        };
+        load_search(state);
+        history.pushState(state, "", make_url("#search=" + event.data));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with search request for " + event.data);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#search=" + event.data));
+    });
+
+    hide_ref_menu();
+    $("#div_main").text("Loading...");
 }
 
 function show_line_number_menu(event) {
