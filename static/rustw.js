@@ -79,9 +79,11 @@ function load_start() {
 
     $("#div_main").html("");
     $("#div_options").hide();
+    // TODO at this point, it makes sense to make these programatically.
     $("#div_src_menu").hide();
     $("#div_line_number_menu").hide();
     $("#div_ref_menu").hide();
+    $("#div_glob_menu").hide();
     $("#div_quick_edit").hide();
     $("#measure").hide();
 }
@@ -225,6 +227,7 @@ function load_source(state) {
     add_ref_functionality();
     add_source_jump_links();
     add_line_number_menus();
+    add_glob_menus();
 
 
     // Jump to the start line. 100 is a fudge so that the start line is not
@@ -255,6 +258,11 @@ function add_ref_functionality() {
             }
         }
     });
+}
+
+function add_glob_menus() {
+    var globs = $(".glob");
+    globs.on("contextmenu", show_glob_menu);
 }
 
 function add_source_jump_links() {
@@ -640,7 +648,6 @@ function get_source(file_name) {
             load_dir(state);
             history.pushState(state, "", make_url("#src=" + file_name));
         } else if (json.Source) {
-            console.log(json.Source);
             var state = {
                 "page": "source",
                 "data": json.Source,
@@ -781,6 +788,59 @@ function hide_src_link_menu() {
     $("#src_menu_quick_edit").off("click");
     $("#src_menu_view").off("click");
     $("#div_src_menu").hide();
+}
+
+function show_glob_menu(event) {
+    var menu = $("#div_glob_menu");
+    var data = show_menu(menu, event, hide_glob_menu);
+
+    $("#glob_menu_deglob").click(event.target, deglob);
+
+    return false;
+}
+
+function hide_glob_menu() {
+    $("#glob_menu_deglob").off("click");
+    $("#div_glob_menu").hide();
+}
+
+function deglob(event) {
+    let glob = $(event.data);
+    let location = glob.attr("location").split(":");
+    let file_name = history.state.file;
+    let deglobbed = glob.attr("title");
+
+    let data = {
+        file_name: file_name,
+        line_start: location[0],
+        line_end: location[0],
+        column_start: location[1],
+        column_end: parseInt(location[1]) + 1,
+        // TODO we could be much smarter here - don't use {} if there is only one item, delete the
+        // line if there are none. Put on multiple lines if necessary or use rustfmt.
+        text: "{" + deglobbed + "}"
+    };
+
+    $.ajax({
+        url: make_url('subst'),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false,
+        'data': JSON.stringify(data)
+    })
+    .done(function (json) {
+        console.log("success");
+        // TODO update page
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with subsitution for " + data);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#subst"));
+    });
+
+    hide_glob_menu();
 }
 
 function show_ref_menu(event) {

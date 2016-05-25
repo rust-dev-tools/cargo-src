@@ -357,7 +357,8 @@ impl<'a> Highlighter<'a> {
                   text: String,
                   title: Option<&str>,
                   extra_class: Option<String>,
-                  link: Option<String>)
+                  link: Option<String>,
+                  extra: Option<String>)
                   -> io::Result<()> {
         write!(buf, "<span class='{}", klass.rustdoc_class())?;
         if let Some(s) = extra_class {
@@ -376,6 +377,9 @@ impl<'a> Highlighter<'a> {
         }
         if let Some(s) = link {
             write!(buf, " link='{}'", s)?;
+        }
+        if let Some(s) = extra {
+            write!(buf, " {}", s)?;
         }
         write!(buf, ">{}</span>", text)
     }
@@ -425,17 +429,23 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     None => (None, None, None),
                 };
 
-                Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, link)
+                Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, None)
             }
             Class::Op if text == "*" => {
-                let title = tas.and_then(|t| {
-                    let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                    let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                    self.analysis.get_title(&lo, &hi)
-                });
-                Highlighter::write_span(&mut self.buf, Class::Op, text, title, None, None)
+                match tas {
+                    Some(t) => {
+                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
+                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                        let title = self.analysis.get_title(&lo, &hi);
+                        let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
+                        let css_class = Some(" glob".to_owned());
+
+                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, location)
+                    }
+                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None)
+                }
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None),
+            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None),
         }
     }
 }

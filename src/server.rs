@@ -267,6 +267,25 @@ impl<'a> Handler<'a> {
         res.send("{}".as_bytes()).unwrap();
     }
 
+    fn handle_subst<'b: 'a, 'k: 'a>(&mut self,
+                                         mut req: Request<'b, 'k>,
+                                         mut res: Response<'b, Fresh>) {
+        assert!(!self.config.demo_mode, "Substitution shouldn't happen in demo mode");
+
+        res.headers_mut().set(ContentType::json());
+
+        let mut buf = String::new();
+        req.read_to_string(&mut buf).unwrap();
+
+        if let Err(msg) = substitute(serde_json::from_str(&buf).unwrap()) {
+            *res.status_mut() = StatusCode::InternalServerError;
+            res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
+            return;
+        }
+
+        res.send("{}".as_bytes()).unwrap();
+    }
+
     fn handle_edit<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
@@ -508,7 +527,12 @@ fn parse_query_value(query: &Option<String>, key: &str) -> Option<String> {
     }
 }
 
-fn read_lines(file: &File) -> Result<Vec<String>, String> {
+fn read_lines(file_name: &str) -> Result<Vec<String>, String> {
+    let file = match File::open(file_name) {
+        Ok(f) => f,
+        Err(e) => return Err(e.to_string()),
+    };
+
     let mut result = Vec::new();
     let mut reader = BufReader::new(file);
 
@@ -526,11 +550,45 @@ fn read_lines(file: &File) -> Result<Vec<String>, String> {
 }
 
 #[derive(Deserialize, Debug)]
+struct SubstData {
+    file_name: String,
+    line_start: usize,
+    line_end: usize,
+    column_start: usize,
+    column_end: usize,
+    text: String,
+}
+
+#[derive(Deserialize, Debug)]
 struct QuickEditData {
     file_name: String,
     line_start: usize,
     line_end: usize,
     text: String,
+}
+
+
+fn substitute(data: SubstData) -> Result<(), String> {
+    // TODO could factor more closely with quick edit
+    let lines = read_lines(&data.file_name)?;
+
+    assert!(data.line_start <= data.line_end && data.line_end < lines.len());
+
+    let file = File::create(&data.file_name).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    for i in 0..(data.line_start - 1) {
+        writer.write(lines[i].as_bytes()).unwrap();
+    }
+    writer.write(lines[data.line_start-1].chars().take(data.column_start - 1).collect::<String>().as_bytes()).unwrap();
+    writer.write(data.text.as_bytes()).unwrap();
+    writer.write(lines[data.line_end-1].chars().skip(data.column_end - 1).collect::<String>().as_bytes()).unwrap();
+    for i in data.line_end..lines.len() {
+        writer.write(lines[i].as_bytes()).unwrap();
+    }
+
+    writer.flush().unwrap();
+    Ok(())
 }
 
 // FIXME there may well be a better place for this functionality.
@@ -540,15 +598,7 @@ fn quick_edit(data: QuickEditData) -> Result<(), String> {
     // TODO we should check that the file has not been modified since we read it,
     // otherwise the file line locations will be incorrect.
 
-    // Scope is so we close file after reading.
-    let lines = {
-        let file = match File::open(&data.file_name) {
-            Ok(f) => f,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        read_lines(&file)?
-    };
+    let lines = read_lines(&data.file_name)?;
 
     assert!(data.line_start <= data.line_end && data.line_end <= lines.len());
 
@@ -577,6 +627,7 @@ const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
+const SUBST_REQUEST: &'static str = "subst";
 const SEARCH_REQUEST: &'static str = "search";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
@@ -639,6 +690,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
         if path[0] == QUICK_EDIT_REQUEST {
             handler.handle_quick_edit(req, res);
+            return;
+        }
+
+        if path[0] == SUBST_REQUEST {
+            handler.handle_subst(req, res);
             return;
         }
     }

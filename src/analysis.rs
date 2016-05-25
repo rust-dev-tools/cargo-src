@@ -118,7 +118,7 @@ impl Analysis {
             line_end: hi.line as usize,
             column_end: hi.col.0 as usize + 1,
         };
-        self.refs.get(&span).and_then(|id| self.defs.get(id).map(|def| &*def.value))
+        self.titles.get(&span).map(|s| &**s).or_else(|| self.refs.get(&span).and_then(|id| self.defs.get(id).map(|def| &*def.value)))
     }
 
     pub fn get_class_id(&self, lo: &Loc, hi: &Loc) -> Option<u32> {
