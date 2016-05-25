@@ -27,7 +27,7 @@ pub struct Analysis {
 
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Span {
-    // NOte the ordering of fields for the Ord impl.
+    // Note the ordering of fields for the Ord impl.
     pub file_name: String,
     pub line_start: usize,
     pub column_start: usize,

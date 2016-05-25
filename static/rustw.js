@@ -640,6 +640,7 @@ function get_source(file_name) {
             load_dir(state);
             history.pushState(state, "", make_url("#src=" + file_name));
         } else if (json.Source) {
+            console.log(json.Source);
             var state = {
                 "page": "source",
                 "data": json.Source,

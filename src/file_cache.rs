@@ -47,8 +47,6 @@ pub struct Listing {
     pub name: String,
 }
 
-
-
 #[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ListingKind {
     Directory,
@@ -137,7 +135,7 @@ impl Cache {
             let highlighted = Cache::highlight(&self.analysis, file_name, FileCache::get_string(file)?.to_owned());
 
             for line in highlighted.lines() {
-                file.highlighted_lines.push(line.to_owned());
+                file.highlighted_lines.push(line.replace("<br>", "\n"));
             }
             if file.plain_text.ends_with(&['\n' as u8]) {
                 file.highlighted_lines.push(String::new());
@@ -370,12 +368,28 @@ impl<'a> Highlighter<'a> {
         }
         write!(buf, "'")?;
         if let Some(s) = title {
-            write!(buf, " title='{}'", s)?;
+            write!(buf, " title='")?;
+            for c in s.chars() {
+                push_char(buf, c)?;
+            }
+            write!(buf, "'")?;
         }
         if let Some(s) = link {
             write!(buf, " link='{}'", s)?;
         }
         write!(buf, ">{}</span>", text)
+    }
+}
+
+fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
+    match c {
+        '>' => write!(buf, "&gt;"),
+        '<' => write!(buf, "&lt;"),
+        '&' => write!(buf, "&amp;"),
+        '\'' => write!(buf, "&#39;"),
+        '"' => write!(buf, "&quot;"),
+        '\n' => write!(buf, "<br>"),
+        _ => write!(buf, "{}", c),
     }
 }
 
