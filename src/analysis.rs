@@ -60,32 +60,31 @@ impl Analysis {
         let mut ref_spans = HashMap::new();
 
         // TODO multi-crate - need to normalise IDs
-        let mut build = build;
-        let crate0 = build.remove(0);
-
-        for i in crate0.imports {
-            titles.insert(Span::from_build(&i.span), i.value);
-        }
-        for d in crate0.defs {
-            let span = Span::from_build(&d.span);
-            if !d.value.is_empty() {
-                titles.insert(span.clone(), d.value.clone());
+        for krate in build.into_iter() {
+            for i in krate.imports {
+                titles.insert(Span::from_build(&i.span), i.value);
             }
-            let id = d.id.index;
-            if id != NULL {
-                class_ids.insert(span, id);
-                def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
-                defs.insert(id, d);
+            for d in krate.defs {
+                let span = Span::from_build(&d.span);
+                if !d.value.is_empty() {
+                    titles.insert(span.clone(), d.value.clone());
+                }
+                let id = d.id.index;
+                if id != NULL {
+                    class_ids.insert(span, id);
+                    def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
+                    defs.insert(id, d);
+                }
             }
-        }
-        for r in crate0.refs {
-            let id = r.ref_id.index;
-            if id != NULL && defs.contains_key(&id) {
-                let span = Span::from_build(&r.span);
-                // TODO class_ids = refs + defs.keys
-                class_ids.insert(span.clone(), id);
-                refs.insert(span.clone(), id);
-                ref_spans.entry(id).or_insert_with(|| vec![]).push(span);
+            for r in krate.refs {
+                let id = r.ref_id.index;
+                if id != NULL && defs.contains_key(&id) {
+                    let span = Span::from_build(&r.span);
+                    // TODO class_ids = refs + defs.keys
+                    class_ids.insert(span.clone(), id);
+                    refs.insert(span.clone(), id);
+                    ref_spans.entry(id).or_insert_with(|| vec![]).push(span);
+                }
             }
         }
 

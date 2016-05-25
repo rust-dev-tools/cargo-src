@@ -232,12 +232,10 @@ impl<'a> Handler<'a> {
 
     fn make_build_result(&mut self, build_result: &build::BuildResult) -> BuildResult {
         let mut result = BuildResult::from_build(&build_result);
-        if !result.errors.is_empty() {
-            let key = reprocess::make_key();
-            result.push_data_key = Some(key.clone());
-            let mut pending_push_data = self.pending_push_data.lock().unwrap();
-            pending_push_data.insert(key, None);
-        }
+        let key = reprocess::make_key();
+        result.push_data_key = Some(key.clone());
+        let mut pending_push_data = self.pending_push_data.lock().unwrap();
+        pending_push_data.insert(key, None);
 
         result
     }

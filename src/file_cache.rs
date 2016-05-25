@@ -41,16 +41,18 @@ pub struct DirectoryListing {
     pub files: Vec<Listing>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Listing {
     pub kind: ListingKind,
     pub name: String,
 }
 
-#[derive(Serialize, Debug, Clone, Eq, PartialEq)]
+
+
+#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ListingKind {
-    File,
     Directory,
+    File,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -155,7 +157,9 @@ impl Cache {
         // need to invalidate Rust files.
         self.files.reset();
 
+        println!("Processing analysis...");
         self.analysis = Analysis::from_build(analysis);
+        println!("done");
     }
 
     pub fn id_search(&mut self, id: u32) -> Result<SearchResult, String> {
@@ -326,7 +330,8 @@ impl DirectoryListing {
             }
         }
 
-        // TODO order files
+        files.sort();
+
         Ok(DirectoryListing {
             path: path.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
             files: files,

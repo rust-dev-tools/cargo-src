@@ -80,6 +80,8 @@ function load_start() {
     $("#div_main").html("");
     $("#div_options").hide();
     $("#div_src_menu").hide();
+    $("#div_line_number_menu").hide();
+    $("#div_ref_menu").hide();
     $("#div_quick_edit").hide();
     $("#measure").hide();
 }
