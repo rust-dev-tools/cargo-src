@@ -446,3 +446,7 @@ span#measure {
 .div_search_results .span_src {
     cursor: pointer;
 }
+
+.hand_cursor {
+    cursor: pointer;
+}

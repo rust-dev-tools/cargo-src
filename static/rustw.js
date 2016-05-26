@@ -253,6 +253,7 @@ function add_ref_functionality() {
 
                 var id = c.slice('class_id_'.length);
                 $(ident).on("contextmenu", null, id, show_ref_menu);
+                $(ident).addClass("hand_cursor");
 
                 break;
             }
@@ -263,6 +264,7 @@ function add_ref_functionality() {
 function add_glob_menus() {
     var globs = $(".glob");
     globs.on("contextmenu", show_glob_menu);
+    globs.addClass("hand_cursor");
 }
 
 function add_source_jump_links() {
@@ -274,6 +276,7 @@ function add_source_jump_links() {
 function add_line_number_menus() {
     var line_nums = $(".div_src_line_number");
     line_nums.on("contextmenu", show_line_number_menu);
+    line_nums.addClass("hand_cursor");
 }
 
 function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
