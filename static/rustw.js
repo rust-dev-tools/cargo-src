@@ -892,9 +892,19 @@ function show_line_number_menu(event) {
     var menu = $("#div_line_number_menu");
     var data = show_menu(menu, event, hide_line_number_menu);
 
-    var edit_data = { 'link': history.state.file + ":" + line_number_for_span(data.target), 'hide_fn': hide_line_number_menu };
+    var line_number = line_number_for_span(data.target);
+    var file_name = history.state.file;
+    var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
     $("#line_number_menu_edit").click(edit_data, edit);
     $("#line_number_quick_edit").click(data, quick_edit_line_number);
+
+    if (CONFIG.vcs_link) {
+        let link = $("#line_number_vcs").children().first();
+        link.click(function() { hide_line_number_menu(); return true; });
+        link.attr("href", CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number))
+    } else {
+        $("#line_number_vcs").hide();
+    }
 
     return false;
 }

@@ -179,4 +179,5 @@ create_config! {
     build_on_load: bool, true, "build on page load and refresh";
     source_directory: String, "src".to_owned(), "root of the source directory";
     save_analysis: bool, false, "whether to run the save_analysis pass";
+    vcs_link: String, String::new(), "link to use for VCS; should use $file and $line.";
 }
