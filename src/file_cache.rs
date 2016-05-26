@@ -102,6 +102,10 @@ impl Cache {
         self.files.reset();
     }
 
+    pub fn reset_file(&mut self, path: &Path) {
+        self.files.reset_file(path);
+    }
+
     pub fn get_text(&mut self, path: &Path) -> Result<&[u8], String> {
         Ok(&self.files.get(path)?.plain_text)
     }
@@ -243,9 +247,15 @@ impl FileCache {
         }
     }
 
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.files = HashMap::new();
         self.size = 0;
+    }
+
+    fn reset_file(&mut self, path: &Path) {
+        if self.files.remove(path).is_some() {
+            self.size -= 1;
+        }
     }
 
     fn get_string(file: &mut CachedFile) -> Result<&str, String> {

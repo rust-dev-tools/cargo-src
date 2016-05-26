@@ -725,33 +725,37 @@ function load_link() {
         }
     }
 
+    var data = {
+        "file": file,
+        "display": display,
+        "line_start": line_start,
+        "line_end": line_end,
+        "column_start": column_start,
+        "column_end": column_end
+    };
+    load_source_view(data);
+}
+
+function load_source_view(data) {
     $.ajax({
-        url: make_url('src/' + file),
+        url: make_url('src/' + data.file),
         type: 'POST',
         dataType: 'JSON',
         cache: false
     })
     .done(function (json) {
-        var state = {
-            "page": "source",
-            "data": json.Source,
-            "file": file,
-            "display": display,
-            "line_start": line_start,
-            "line_end": line_end,
-            "column_start": column_start,
-            "column_end": column_end
-        };
-        load_source(state);
+        data.page = "source";
+        data.data = json.Source;
+        load_source(data);
 
-        history.pushState(state, "", make_url("#src=" + file + display));
+        history.pushState(data, "", make_url("#src=" + data.file + data.display));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with source request");
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({ page: "error"}, "", make_url("#src=" + file + display));
+        history.pushState({ page: "error"}, "", make_url("#src=" + data.file + data.display));
     });
 
     $("#div_main").text("Loading...");
@@ -833,7 +837,15 @@ function deglob(event) {
     })
     .done(function (json) {
         console.log("success");
-        // TODO update page
+        var source_data = {
+            "file": data.file_name,
+            "display": ":" + data.line_start,
+            "line_start": data.line_start,
+            "line_end": data.line_end,
+            "column_start": data.column_start,
+            "column_end": parseInt(data.column_start) + parseInt(data.text.length)
+        };
+        load_source_view(source_data);
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with subsitution for " + data);
@@ -1024,6 +1036,19 @@ function save_quick_edit(event) {
     .done(function (json) {
         console.log("quick edit - success");
         $("#quick_edit_message").text("edit saved");
+
+        if (history.state.page == "source") {
+            var source_data = {
+                "file": history.state.file,
+                "display": "",
+                "line_start": 0,
+                "line_end": 0,
+                "column_start": 0,
+                "column_end": 0
+            };
+            load_source_view(source_data);
+        }
+
         // TODO add a fade-out animation here
         window.setTimeout(hide_quick_edit, 1000);
     })

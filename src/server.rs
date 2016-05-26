@@ -258,7 +258,7 @@ impl<'a> Handler<'a> {
 
         let mut buf = String::new();
         req.read_to_string(&mut buf).unwrap();
-        if let Err(msg) = quick_edit(serde_json::from_str(&buf).unwrap()) {
+        if let Err(msg) = self.quick_edit(serde_json::from_str(&buf).unwrap()) {
             *res.status_mut() = StatusCode::InternalServerError;
             res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
             return;
@@ -268,8 +268,8 @@ impl<'a> Handler<'a> {
     }
 
     fn handle_subst<'b: 'a, 'k: 'a>(&mut self,
-                                         mut req: Request<'b, 'k>,
-                                         mut res: Response<'b, Fresh>) {
+                                    mut req: Request<'b, 'k>,
+                                    mut res: Response<'b, Fresh>) {
         assert!(!self.config.demo_mode, "Substitution shouldn't happen in demo mode");
 
         res.headers_mut().set(ContentType::json());
@@ -277,7 +277,7 @@ impl<'a> Handler<'a> {
         let mut buf = String::new();
         req.read_to_string(&mut buf).unwrap();
 
-        if let Err(msg) = substitute(serde_json::from_str(&buf).unwrap()) {
+        if let Err(msg) = self.substitute(serde_json::from_str(&buf).unwrap()) {
             *res.status_mut() = StatusCode::InternalServerError;
             res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
             return;
@@ -454,6 +454,66 @@ impl<'a> Handler<'a> {
             }
         }
     }
+
+    // FIXME there may well be a better place for this functionality.
+    fn quick_edit(&self, data: QuickEditData) -> Result<(), String> {
+        // TODO all these unwraps should return Err instead.
+
+        // TODO we should check that the file has not been modified since we read it,
+        // otherwise the file line locations will be incorrect.
+
+        let lines = read_lines(&data.file_name)?;
+
+        {
+            let mut file_cache = self.file_cache.lock().unwrap();
+            file_cache.reset_file(&Path::new(&data.file_name));
+        }
+
+        assert!(data.line_start <= data.line_end && data.line_end <= lines.len());
+
+        let file = File::create(&data.file_name).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        for i in 0..(data.line_start - 1) {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+        writer.write(data.text.as_bytes()).unwrap();
+        writer.write(&['\n' as u8]).unwrap();
+        for i in data.line_end..lines.len() {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+
+        writer.flush().unwrap();
+        Ok(())
+    }
+
+    fn substitute(&self, data: SubstData) -> Result<(), String> {
+        // TODO could factor more closely with quick edit
+        let lines = read_lines(&data.file_name)?;
+
+        {
+            let mut file_cache = self.file_cache.lock().unwrap();
+            file_cache.reset_file(&Path::new(&data.file_name));
+        }
+
+        assert!(data.line_start <= data.line_end && data.line_end < lines.len());
+
+        let file = File::create(&data.file_name).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        for i in 0..(data.line_start - 1) {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+        writer.write(lines[data.line_start-1].chars().take(data.column_start - 1).collect::<String>().as_bytes()).unwrap();
+        writer.write(data.text.as_bytes()).unwrap();
+        writer.write(lines[data.line_end-1].chars().skip(data.column_end - 1).collect::<String>().as_bytes()).unwrap();
+        for i in data.line_end..lines.len() {
+            writer.write(lines[i].as_bytes()).unwrap();
+        }
+
+        writer.flush().unwrap();
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -567,56 +627,6 @@ struct QuickEditData {
     text: String,
 }
 
-
-fn substitute(data: SubstData) -> Result<(), String> {
-    // TODO could factor more closely with quick edit
-    let lines = read_lines(&data.file_name)?;
-
-    assert!(data.line_start <= data.line_end && data.line_end < lines.len());
-
-    let file = File::create(&data.file_name).unwrap();
-    let mut writer = BufWriter::new(file);
-
-    for i in 0..(data.line_start - 1) {
-        writer.write(lines[i].as_bytes()).unwrap();
-    }
-    writer.write(lines[data.line_start-1].chars().take(data.column_start - 1).collect::<String>().as_bytes()).unwrap();
-    writer.write(data.text.as_bytes()).unwrap();
-    writer.write(lines[data.line_end-1].chars().skip(data.column_end - 1).collect::<String>().as_bytes()).unwrap();
-    for i in data.line_end..lines.len() {
-        writer.write(lines[i].as_bytes()).unwrap();
-    }
-
-    writer.flush().unwrap();
-    Ok(())
-}
-
-// FIXME there may well be a better place for this functionality.
-fn quick_edit(data: QuickEditData) -> Result<(), String> {
-    // TODO all these unwraps should return Err instead.
-
-    // TODO we should check that the file has not been modified since we read it,
-    // otherwise the file line locations will be incorrect.
-
-    let lines = read_lines(&data.file_name)?;
-
-    assert!(data.line_start <= data.line_end && data.line_end <= lines.len());
-
-    let file = File::create(&data.file_name).unwrap();
-    let mut writer = BufWriter::new(file);
-
-    for i in 0..(data.line_start - 1) {
-        writer.write(lines[i].as_bytes()).unwrap();
-    }
-    writer.write(data.text.as_bytes()).unwrap();
-    writer.write(&['\n' as u8]).unwrap();
-    for i in data.line_end..lines.len() {
-        writer.write(lines[i].as_bytes()).unwrap();
-    }
-
-    writer.flush().unwrap();
-    Ok(())
-}
 
 const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
