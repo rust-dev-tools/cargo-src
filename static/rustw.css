@@ -424,6 +424,18 @@ span#measure {
 #quick_edit_message {
     padding-right: 1em;
 }
+#div_rename {
+    position: absolute;
+    background-color: #f8f8f0;
+    border: solid black 1px;
+    border-radius: 6px;
+    border-top-left-radius: 0;
+    padding: 10px;
+    z-index: 1;
+}
+#rename_message {
+    padding-right: 1em;
+}
 
 .div_search_title {
     font-size: large;

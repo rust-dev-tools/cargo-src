@@ -85,6 +85,7 @@ function load_start() {
     $("#div_ref_menu").hide();
     $("#div_glob_menu").hide();
     $("#div_quick_edit").hide();
+    $("#div_rename").hide();
     $("#measure").hide();
 }
 
@@ -861,14 +862,18 @@ function deglob(event) {
 function show_ref_menu(event) {
     var menu = $("#div_ref_menu");
     var data = show_menu(menu, event, hide_ref_menu);
+    data.id = event.data;
+    var target = $(event.target);
 
     $("#ref_menu_find_uses").click(event.data, find_uses);
+    $("#ref_menu_rename").click(data, show_rename);
 
     return false;
 }
 
 function hide_ref_menu() {
     $("#ref_menu_find_uses").off("click");
+    $("#ref_menu_rename").off("click");
     $("#div_ref_menu").hide();
 }
 
@@ -898,6 +903,69 @@ function find_uses(event) {
 
     hide_ref_menu();
     $("#div_main").text("Loading...");
+}
+
+function show_rename(event) {
+    hide_ref_menu();
+
+    var div_rename = $("#div_rename");
+
+    div_rename.show();
+    div_rename.offset(event.data.position);
+
+    $("#rename_text").prop("disabled", false);
+
+    $("#rename_message").hide();
+    $("#rename_cancel").text("cancel");
+    $("#rename_cancel").click(hide_rename);
+    $("#div_main").click(hide_rename);
+    $("#div_header").click(hide_rename);
+    $("#rename_save").show();
+    $("#rename_save").click(event.data, save_rename);
+    $(document).on("keypress", "#rename_text", function(e) {
+         if (e.which == 13) {
+             save_rename({ data: event.data });
+         }
+    });
+
+    $("#rename_text").val(event.data.target[0].textContent);
+    $("#rename_text").select();
+}
+
+function hide_rename() {
+    $("#rename_save").off("click");
+    $("#rename_cancel").off("click");
+    $("#div_rename").hide();
+}
+
+// Note event is not necessarily an actual event, might be faked.
+function save_rename(event) {
+    $("#rename_message").show();
+    $("#rename_message").text("saving...");
+    $("#rename_save").hide();
+    $("#rename_cancel").text("close");
+    $("#rename_text").prop("disabled", true);
+
+    $.ajax({
+        url: make_url('rename?id=' + event.data.id + "&text=" + $("#rename_text").val()),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        console.log("rename - success");
+        $("#rename_message").text("rename saved");
+
+        reload_source();
+
+        // TODO add a fade-out animation here
+        window.setTimeout(hide_rename, 1000);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with rename request");
+        console.log("error: " + errorThrown + "; status: " + status);
+        $("#rename_message").text("error trying to save rename");
+    });
 }
 
 function show_line_number_menu(event) {
@@ -1037,17 +1105,7 @@ function save_quick_edit(event) {
         console.log("quick edit - success");
         $("#quick_edit_message").text("edit saved");
 
-        if (history.state.page == "source") {
-            var source_data = {
-                "file": history.state.file,
-                "display": "",
-                "line_start": 0,
-                "line_end": 0,
-                "column_start": 0,
-                "column_end": 0
-            };
-            load_source_view(source_data);
-        }
+        reload_source();
 
         // TODO add a fade-out animation here
         window.setTimeout(hide_quick_edit, 1000);
@@ -1057,6 +1115,20 @@ function save_quick_edit(event) {
         console.log("error: " + errorThrown + "; status: " + status);
         $("#quick_edit_message").text("error trying to save edit");
     });
+}
+
+function reload_source() {
+    if (history.state.page == "source") {
+        var source_data = {
+            "file": history.state.file,
+            "display": "",
+            "line_start": 0,
+            "line_end": 0,
+            "column_start": 0,
+            "column_end": 0
+        };
+        load_source_view(source_data);
+    }
 }
 
 function view_from_menu(event) {

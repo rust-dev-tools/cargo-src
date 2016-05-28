@@ -11,7 +11,7 @@ use std::collections::hash_map::Entry;
 use std::path::{Path, PathBuf};
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, BufWriter};
 use std::str;
 
 use rustdoc::html::highlight::{self, Classifier, Class};
@@ -27,7 +27,7 @@ use build;
 
 pub struct Cache {
     files: FileCache,
-    analysis: Analysis,
+    pub analysis: Analysis,
 }
 
 struct FileCache {
@@ -182,6 +182,73 @@ impl Cache {
         };
 
         self.ids_search(ids)
+    }
+
+    pub fn replace_str_for_id(&mut self, id: u32, new_text: &str) -> Result<(), String> {
+        // TODO do better than unwrap
+
+        let new_bytes = new_text.as_bytes();
+        let mut spans = self.analysis.get_spans(id);
+        spans.sort();
+
+        let by_file = partition(&spans, |a, b| a.file_name == b.file_name);
+        for file_bucket in by_file {
+            let file_name = &file_bucket[0].file_name;
+            let file_path = &Path::new(file_name);
+            {
+                let file = self.files.get(file_path)?;
+                if file.new_lines.is_empty() {
+                    FileCache::compute_new_lines(file);
+                }
+                let file_str = str::from_utf8(&file.plain_text).unwrap();
+
+                // TODO should do a two-step file write here.
+                let out_file = File::create(&file_name).unwrap();
+                let mut writer = BufWriter::new(out_file);
+
+                let mut last = 0;
+                let mut next_index = 0;
+                // TODO off by one error for line number
+                let mut next_line = file_bucket[next_index].line_start;
+                for (i, &line_end) in file.new_lines.iter().enumerate().skip(1) {
+                    // For convenience elsewhere (ha!), new_lines has an extra entry at the end beyond
+                    // the end of the file, we have to catch that and run away crying.
+                    if line_end > file_str.len() {
+                        break;
+                    }
+                    let line_str = &file_str[last..line_end];
+
+                    if i == next_line {
+                        // Need to replace one or more spans on the line.
+                        let mut last_char = 0;
+                        while next_line == i {
+                            assert!(file_bucket[next_index].line_end == file_bucket[next_index].line_start, "Can't handle multi-line idents for replacement");
+                            // TODO WRONG using char offsets for byte offsets
+                            writer.write(line_str[last_char..(file_bucket[next_index].column_start - 1)].as_bytes()).unwrap();
+                            writer.write(new_bytes).unwrap();
+
+                            last_char = file_bucket[next_index].column_end - 1;
+                            next_index += 1;
+                            if next_index >= file_bucket.len() {
+                                next_line = 0;
+                                break;
+                            }
+                            next_line = file_bucket[next_index].line_start;
+                        }
+                        writer.write(line_str[last_char..].as_bytes()).unwrap();
+                    } else {
+                        // Nothing to replace.
+                        writer.write(line_str.as_bytes()).unwrap();
+                    }
+
+                    last = line_end;
+                }
+            }
+
+            self.reset_file(file_path);
+        }
+
+        Ok(())
     }
 
     fn ids_search(&mut self, ids: Vec<u32>) -> Result<SearchResult, String> {
@@ -457,5 +524,52 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             }
             klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None),
         }
+    }
+}
+
+
+fn partition<T, F>(input: &[T], f: F) -> Vec<&[T]>
+    where F: Fn(&T, &T) -> bool
+{
+    if input.len() <= 1 {
+        return vec![input];
+    }
+
+    let mut result = vec![];
+    let mut last = &input[0];
+    let mut last_index = 0;
+    for (i, x) in input[1..].iter().enumerate() {
+        if !f(last, x) {
+            result.push(&input[last_index..(i+1)]);
+            last = x;
+            last_index = i + 1;
+        }
+    }
+    if last_index < input.len() {
+        result.push(&input[last_index..input.len()]);
+    }
+    result
+}
+
+#[cfg(test)]
+mod test {
+    use super:: partition;
+
+    #[test]
+    fn test_partition() {
+        let input: Vec<i32> = vec![];
+        let result = partition(&input, |a, b| a == b);
+        assert!(result == vec![&[]]);
+
+        let input: Vec<i32> = vec![1, 1, 1];
+        let result = partition(&input, |a, b| a == b);
+        assert!(result == vec![&[1, 1, 1]]);
+
+        let input: Vec<i32> = vec![1, 1, 1, 2, 5, 5];
+        let result = partition(&input, |a, b| a == b);
+        let a: &[_] = &[1, 1, 1];
+        let b: &[_] = &[2];
+        let c: &[_] = &[5, 5];
+        assert!(result == vec![a, b, c]);
     }
 }

@@ -421,6 +421,31 @@ impl<'a> Handler<'a> {
         }
     }
 
+    fn handle_rename<'b: 'a, 'k: 'a>(&mut self,
+                                     _req: Request<'b, 'k>,
+                                     mut res: Response<'b, Fresh>,
+                                     query: Option<String>) {
+        match (parse_query_value(&query, "id="), parse_query_value(&query, "text=")) {
+            (Some(id), Some(text)) => {
+                // TODO we could do some verification on text here.
+
+                let mut file_cache = self.file_cache.lock().unwrap();
+                match file_cache.replace_str_for_id(u32::from_str(&id).unwrap(), &text) {
+                   Ok(()) => {
+                       res.headers_mut().set(ContentType::json());
+                       res.send("{}".as_bytes()).unwrap();
+                   }
+                   Err(msg) => {
+                       self.handle_error(_req, res, StatusCode::InternalServerError, format!("Error renaming: {}", msg));
+                   }
+               }
+            }
+            _ => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
+            }
+        }
+    }
+
     fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
@@ -504,6 +529,7 @@ impl<'a> Handler<'a> {
         for i in 0..(data.line_start - 1) {
             writer.write(lines[i].as_bytes()).unwrap();
         }
+        // TODO WRONG! Using char offsets as byte offsets
         writer.write(lines[data.line_start-1].chars().take(data.column_start - 1).collect::<String>().as_bytes()).unwrap();
         writer.write(data.text.as_bytes()).unwrap();
         writer.write(lines[data.line_end-1].chars().skip(data.column_end - 1).collect::<String>().as_bytes()).unwrap();
@@ -627,7 +653,6 @@ struct QuickEditData {
     text: String,
 }
 
-
 const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
 const PLAIN_TEXT: &'static str = "plain_text";
@@ -638,6 +663,7 @@ const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
 const SUBST_REQUEST: &'static str = "subst";
+const RENAME_REQUEST: &'static str = "rename";
 const SEARCH_REQUEST: &'static str = "search";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
@@ -705,6 +731,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
         if path[0] == SUBST_REQUEST {
             handler.handle_subst(req, res);
+            return;
+        }
+
+        if path[0] == RENAME_REQUEST {
+            handler.handle_rename(req, res, query);
             return;
         }
     }

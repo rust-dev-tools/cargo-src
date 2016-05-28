@@ -110,6 +110,12 @@ impl Analysis {
         &self.ref_spans[&id]
     }
 
+    pub fn get_spans(&self, id: u32) -> Vec<Span> {
+        let mut result = self.lookup_refs(id).to_owned();
+        result.push(Span::from_build(&self.lookup_def(id).span));
+        result
+    }
+
     pub fn get_title(&self, lo: &Loc, hi: &Loc) -> Option<&str> {
         let span = Span {
             file_name: lo.file.name.clone(),
