@@ -96,24 +96,27 @@ impl Builder {
         }
 
         // TODO shouldn't hard-code this path, it's cargo-specific
-        let path = &Path::new("target/debug/save-analysis");
-        let listing = DirectoryListing::from_path(path);
-        let listing = match listing {
-            Ok(l) => l,
-            Err(_) => { return result; }
-        };
+        // TODO deps path allows to break out of sandbox - is that Ok?
+        let paths = &[&Path::new("target/debug/save-analysis"), &Path::new("target/debug/deps/save-analysis")];
 
-        for l in &listing.files {
-            if l.kind == ListingKind::File {
-                let mut path = path.to_path_buf();
-                path.push(&l.name);
-                // TODO unwraps
-                let mut file = File::open(&path).unwrap();
-                let mut buf = String::new();
-                file.read_to_string(&mut buf).unwrap();
-                match serde_json::from_str(&buf) {
-                    Ok(a) => result.push(a),
-                    Err(e) => println!("{}", e),
+        for p in paths {
+            let listing = match DirectoryListing::from_path(p) {
+                Ok(l) => l,
+                Err(_) => { continue; },
+            };
+            for l in &listing.files {
+                if l.kind == ListingKind::File {
+                    let mut path = p.to_path_buf();
+                    path.push(&l.name);
+                    println!("reading {:?}", path);
+                    // TODO unwraps
+                    let mut file = File::open(&path).unwrap();
+                    let mut buf = String::new();
+                    file.read_to_string(&mut buf).unwrap();
+                    match serde_json::from_str(&buf) {
+                        Ok(a) => result.push(a),
+                        Err(e) => println!("{}", e),
+                    }
                 }
             }
         }
@@ -132,7 +135,7 @@ pub struct Analysis {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Id {
+pub struct CompilerId {
     pub krate: u32,
     pub index: u32,
 }
@@ -155,7 +158,7 @@ pub struct ExternalCrateData {
 #[derive(Deserialize, Debug)]
 pub struct Def {
     pub kind: DefKind,
-    pub id: Id,
+    pub id: CompilerId,
     pub span: SpanData,
     pub name: String,
     pub qualname: String,
@@ -200,7 +203,7 @@ impl Deserialize for DefKind {
 pub struct Ref {
     pub kind: RefKind,
     pub span: SpanData,
-    pub ref_id: Id,
+    pub ref_id: CompilerId,
 }
 
 #[derive(Debug)]
@@ -237,7 +240,7 @@ pub struct MacroRef {
 #[derive(Deserialize, Debug)]
 pub struct Import {
     pub kind: ImportKind,
-    pub id: Id,
+    pub id: CompilerId,
     pub span: SpanData,
     pub name: String,
     pub value: String,

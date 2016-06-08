@@ -25,6 +25,74 @@ pub struct Analysis {
     ref_spans: HashMap<u32, Vec<Span>>,
 }
 
+struct CrateReader {
+    crate_map: Vec<u8>,
+}
+
+impl CrateReader {
+    fn from_prelude(mut prelude: build::CratePreludeData, master_crate_map: &mut HashMap<String, u8>) -> CrateReader {
+        // println!("building crate map for {}", prelude.crate_name);
+        let next = master_crate_map.len() as u8;
+        let mut crate_map = vec![*master_crate_map.entry(prelude.crate_name.clone()).or_insert_with(|| next)];
+        // println!("  {} -> {}", prelude.crate_name, master_crate_map[&prelude.crate_name]);
+
+        prelude.external_crates.sort_by(|a, b| a.num.cmp(&b.num));
+        for c in prelude.external_crates {
+            assert!(c.num == crate_map.len() as u32);
+            let next = master_crate_map.len() as u8;
+            crate_map.push(*master_crate_map.entry(c.name.clone()).or_insert_with(|| next));
+            // println!("  {} -> {}", c.name, master_crate_map[&c.name]);
+        }
+
+        CrateReader {
+            crate_map: crate_map,
+        }
+    }
+
+    fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: build::Analysis) {
+        let reader = CrateReader::from_prelude(krate.prelude.unwrap(), master_crate_map);
+
+        for i in krate.imports {
+            analysis.titles.insert(Span::from_build(&i.span), i.value);
+        }
+        for d in krate.defs {
+            let span = Span::from_build(&d.span);
+            if !d.value.is_empty() {
+                analysis.titles.insert(span.clone(), d.value.clone());
+            }
+            let id = reader.id_from_compiler_id(&d.id);
+            if id != NULL {
+                analysis.class_ids.insert(span, id);
+                analysis.def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
+                analysis.defs.insert(id, d);
+            }
+        }
+        for r in krate.refs {
+            let id = reader.id_from_compiler_id(&r.ref_id);
+            if id != NULL {
+                let span = Span::from_build(&r.span);
+                // TODO class_ids = refs + defs.keys
+                analysis.class_ids.insert(span.clone(), id);
+                analysis.refs.insert(span.clone(), id);
+                analysis.ref_spans.entry(id).or_insert_with(|| vec![]).push(span);
+            }
+        }
+    }
+
+    // TODO need to handle std libraries too.
+    fn id_from_compiler_id(&self, id: &build::CompilerId) -> u32 {
+        if id.krate == NULL || id.index == NULL {
+            return NULL;
+        }
+        // We build an id by looking up the local crate number into a global crate number and using
+        // that for the 8 high order bits, and use the least significant 24 bits of the index part
+        // of the def index as the low order bits.
+        let krate = self.crate_map[id.krate as usize] as u32;
+        let crate_local = id.index & 0x00ffffff;
+        krate << 24 | crate_local
+    }
+}
+
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Span {
     // Note the ordering of fields for the Ord impl.
@@ -48,54 +116,17 @@ impl Analysis {
     }
 
     pub fn from_build(build: Vec<build::Analysis>) -> Analysis {
+        let mut result = Analysis::new();
         if build.is_empty() {
-            return Analysis::new();
+            return result;
         }
 
-        let mut titles = HashMap::new();
-        let mut class_ids = HashMap::new();
-        let mut defs = HashMap::new();
-        let mut def_names = HashMap::new();
-        let mut refs = HashMap::new();
-        let mut ref_spans = HashMap::new();
-
-        // TODO multi-crate - need to normalise IDs
+        let mut master_crate_map = HashMap::new();
         for krate in build.into_iter() {
-            for i in krate.imports {
-                titles.insert(Span::from_build(&i.span), i.value);
-            }
-            for d in krate.defs {
-                let span = Span::from_build(&d.span);
-                if !d.value.is_empty() {
-                    titles.insert(span.clone(), d.value.clone());
-                }
-                let id = d.id.index;
-                if id != NULL {
-                    class_ids.insert(span, id);
-                    def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
-                    defs.insert(id, d);
-                }
-            }
-            for r in krate.refs {
-                let id = r.ref_id.index;
-                if id != NULL && defs.contains_key(&id) {
-                    let span = Span::from_build(&r.span);
-                    // TODO class_ids = refs + defs.keys
-                    class_ids.insert(span.clone(), id);
-                    refs.insert(span.clone(), id);
-                    ref_spans.entry(id).or_insert_with(|| vec![]).push(span);
-                }
-            }
+            CrateReader::read_crate(&mut result, &mut master_crate_map, krate);
         }
 
-        Analysis {
-            titles: titles,
-            class_ids: class_ids,
-            defs: defs,
-            def_names: def_names,
-            refs: refs,
-            ref_spans: ref_spans,
-        }
+        result
     }
 
     pub fn lookup_def_ids(&self, name: &str) -> Option<&Vec<u32>> {
@@ -112,6 +143,7 @@ impl Analysis {
 
     pub fn get_spans(&self, id: u32) -> Vec<Span> {
         let mut result = self.lookup_refs(id).to_owned();
+        // TODO what if lookup_def panics
         result.push(Span::from_build(&self.lookup_def(id).span));
         result
     }
