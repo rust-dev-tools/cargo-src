@@ -74,6 +74,6 @@ fn main() {
 
     let server = server::Instance::new(config);
 
-    println!("server running on 127.0.0.1:{}", port);
+    println!("server running on http://127.0.0.1:{}", port);
     Server::http(&*format!("127.0.0.1:{}", port)).unwrap().handle(server).unwrap();
 }
