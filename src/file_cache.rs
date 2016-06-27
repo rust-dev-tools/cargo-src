@@ -295,7 +295,7 @@ impl Cache {
 
     fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> String {
         let sess = parse::ParseSess::new();
-        let fm = sess.codemap().new_filemap(file_name, file_text);
+        let fm = sess.codemap().new_filemap(file_name, None, file_text);
 
         let mut out = Highlighter::new(analysis, sess.codemap());
         let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
