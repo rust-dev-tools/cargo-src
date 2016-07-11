@@ -199,3 +199,13 @@ impl Span {
         }
     }
 }
+
+// macro_rules! known_crates {
+//     {($name: expr, $src_url: expr, $doc_url: expr;)*} => {}
+// }
+
+// TODO If we had the spans, we could actually jump to the file and line in the source, I think we would need an index for std then though
+// TODO what about docs? Can we magically make a URL?
+// known_crates! {
+//     "std", "https://github.com/rust-lang/rust/tree/master/src/libstd", "https://doc.rust-lang.org/nightly/std";
+// }

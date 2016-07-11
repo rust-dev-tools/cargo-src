@@ -108,7 +108,7 @@ impl Builder {
                 if l.kind == ListingKind::File {
                     let mut path = p.to_path_buf();
                     path.push(&l.name);
-                    println!("reading {:?}", path);
+                    // println!("reading {:?}", path);
                     // TODO unwraps
                     let mut file = File::open(&path).unwrap();
                     let mut buf = String::new();
