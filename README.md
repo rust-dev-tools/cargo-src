@@ -58,11 +58,38 @@ terminal is only used to display some logging, it can be ignored. See
 
 Currently, rustw has only been tested on Firefox on Linux ([issue 48](https://github.com/nrc/rustw/issues/48)).
 
+If you want to play with cool features like 'jump to definition', see the customisation below.
+
 
 ## Customisation
 
 Create a `rustw.toml` file in your project's directory. See [src/config.rs](src/config.rs)
 or run `rustw -h` for the options available and their defaults.
+
+Some features **need** configuration in the rustw.toml before they can be
+properly used. Set the following properties to use the cool stuff:
+
+```
+save_analysis = true
+```
+
+This means rustw will run rustc with `-Zsave-analysis`, this gives you access to
+analysis information from the compiler which is used in `jump to defintion`,
+types on hover, refactoring, etc.
+
+```
+edit_command = "subl $file:$line"
+```
+
+To be able to open files in your local editor. This example works for sublime
+text (`subl`). Use the `$file` and `$line` variables as appropriate for your
+editor.
+
+```
+vcs_link = "https://github.com/nrc/rustw-test/blob/master/$file#L$line"
+```
+
+For links to the code in version control.
 
 
 ## Tour
