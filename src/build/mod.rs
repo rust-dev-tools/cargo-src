@@ -7,7 +7,6 @@
 // except according to those terms.
 
 pub mod errors;
-pub mod analysis;
 
 use config::Config;
 

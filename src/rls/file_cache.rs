@@ -14,7 +14,6 @@ use std::io::{Read, Write, BufWriter};
 use std::str;
 
 use rls::analysis::{Analysis, Span};
-use build;
 use super::highlight;
 
 // TODO maximum size and evication policy
@@ -138,7 +137,7 @@ impl Cache {
 
         println!("Processing analysis...");
         // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
-        self.analysis = Analysis::from_build(build::analysis::Analysis::read());
+        self.analysis = Analysis::read();
         println!("done");
     }
 
@@ -236,9 +235,9 @@ impl Cache {
         let mut refs = HashMap::new();
 
         for id in ids {
-            let span = self.analysis.lookup_def(id).span.clone();
+            let span = self.analysis.lookup_def_span(id);
             let text = self.get_highlighted_line(&span.file_name, span.line_start)?;
-            let line = LineResult::new(&Span::from_build(&span), text);
+            let line = LineResult::new(&span, text);
             defs.entry(span.file_name).or_insert_with(|| vec![]).push(line);
 
             let rfs = self.analysis.lookup_refs(id).to_owned();

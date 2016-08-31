@@ -49,7 +49,7 @@ impl Analysis {
                     file.read_to_string(&mut buf).unwrap();
                     match serde_json::from_str(&buf) {
                         Ok(a) => result.push(a),
-                        Err(e) => println!("{}", e),
+                        Err(e) => println!("Error reading raw analysis: {}", e),
                     }
                 }
             }
