@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rls::listings::{DirectoryListing, ListingKind};
+use listings::{DirectoryListing, ListingKind};
 
 use serde;
 use serde::Deserialize;

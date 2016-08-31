@@ -25,15 +25,13 @@ extern crate serde_json;
 extern crate syntax;
 extern crate toml;
 
+mod analysis;
 mod build;
 mod config;
 mod reprocess;
-mod rls {
-    pub mod file_cache;
-    pub mod analysis;
-    pub mod listings;
-    mod highlight;
-}
+mod file_cache;
+mod listings;
+mod highlight;
 mod server;
 
 use config::Config;

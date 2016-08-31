@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::{Read, Write, BufWriter};
 use std::str;
 
-use rls::analysis::{Analysis, Span};
+use analysis::{Analysis, Span};
 use super::highlight;
 
 // TODO maximum size and evication policy

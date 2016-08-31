@@ -17,7 +17,7 @@ use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::CodeMap;
 
-use rls::analysis::Analysis;
+use analysis::Analysis;
 
 pub fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> String {
     let sess = parse::ParseSess::new();
