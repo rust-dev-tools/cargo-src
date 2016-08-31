@@ -9,7 +9,8 @@
 use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
-use file_cache::{Cache, DirectoryListing};
+use rls::file_cache::Cache;
+use rls::listings::DirectoryListing;
 use reprocess;
 
 use std::collections::HashMap;

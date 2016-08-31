@@ -10,7 +10,7 @@
 
 use build::errors::{Diagnostic, DiagnosticSpan};
 use config::Config;
-use file_cache::Cache;
+use rls::file_cache::Cache;
 use server::BuildResult;
 
 use std::collections::HashMap;

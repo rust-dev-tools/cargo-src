@@ -9,48 +9,25 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::path::{Path, PathBuf};
-use std::fmt::Display;
 use std::fs::File;
-use std::io::{self, Read, Write, BufWriter};
+use std::io::{Read, Write, BufWriter};
 use std::str;
 
-use rustdoc::html::highlight::{self, Classifier, Class};
-use syntax::parse;
-use syntax::parse::lexer::{self, TokenAndSpan};
-use syntax::codemap::CodeMap;
-
-use analysis::{Analysis, Span};
+use rls::analysis::{Analysis, Span};
 use build;
+use super::highlight;
 
 // TODO maximum size and evication policy
 // TODO keep timestamps and check on every read. Then don't empty on build.
 
 pub struct Cache {
     files: FileCache,
-    pub analysis: Analysis,
+    analysis: Analysis,
 }
 
 struct FileCache {
     files: HashMap<PathBuf, CachedFile>,
     size: usize,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct DirectoryListing {
-    pub path: Vec<String>,
-    pub files: Vec<Listing>,
-}
-
-#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Listing {
-    pub kind: ListingKind,
-    pub name: String,
-}
-
-#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub enum ListingKind {
-    Directory,
-    File,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -136,7 +113,7 @@ impl Cache {
         let file_name = path.to_str().unwrap().to_owned();
         let file = self.files.get(path)?;
         if file.highlighted_lines.is_empty() {
-            let highlighted = Cache::highlight(&self.analysis, file_name, FileCache::get_string(file)?.to_owned());
+            let highlighted = highlight::highlight(&self.analysis, file_name, FileCache::get_string(file)?.to_owned());
 
             for line in highlighted.lines() {
                 file.highlighted_lines.push(line.replace("<br>", "\n"));
@@ -293,18 +270,6 @@ impl Cache {
             list
         }
     }
-
-    fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> String {
-        let sess = parse::ParseSess::new();
-        let fm = sess.codemap().new_filemap(file_name, None, file_text);
-
-        let mut out = Highlighter::new(analysis, sess.codemap());
-        let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
-                                             sess.codemap());
-        classifier.write_source(&mut out).unwrap();
-
-        String::from_utf8_lossy(&out.buf).into_owned()
-    }
 }
 
 impl FileCache {
@@ -385,149 +350,6 @@ impl CachedFile {
         }
     }
 }
-
-impl DirectoryListing {
-    pub fn from_path(path: &Path) -> Result<DirectoryListing, String> {
-        let mut files = vec![];
-        let dir = match path.read_dir() {
-            Ok(d) => d,
-            Err(s) => return Err(s.to_string()),
-        };
-        for entry in dir {
-            if let Ok(entry) = entry {
-                let name = entry.file_name().to_str().unwrap().to_owned();
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_dir() {
-                        files.push(Listing { kind: ListingKind::Directory, name: name });
-                    } else if file_type.is_file() {
-                        files.push(Listing { kind: ListingKind::File, name: name });
-                    }
-                }
-            }
-        }
-
-        files.sort();
-
-        Ok(DirectoryListing {
-            path: path.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
-            files: files,
-        })
-    }
-}
-
-struct Highlighter<'a> {
-    buf: Vec<u8>,
-    analysis: &'a Analysis,
-    codemap: &'a CodeMap,
-}
-
-impl<'a> Highlighter<'a> {
-    fn new(analysis: &'a Analysis, codemap: &'a CodeMap) -> Highlighter<'a> {
-        Highlighter {
-            buf: vec![],
-            analysis: analysis,
-            codemap: codemap,
-        }
-    }
-
-    fn write_span(buf: &mut Vec<u8>,
-                  klass: Class,
-                  text: String,
-                  title: Option<&str>,
-                  extra_class: Option<String>,
-                  link: Option<String>,
-                  extra: Option<String>)
-                  -> io::Result<()> {
-        write!(buf, "<span class='{}", klass.rustdoc_class())?;
-        if let Some(s) = extra_class {
-            write!(buf, "{}", s)?;
-        }
-        if let Some(_) = link {
-            write!(buf, " src_link")?;
-        }
-        write!(buf, "'")?;
-        if let Some(s) = title {
-            write!(buf, " title='")?;
-            for c in s.chars() {
-                push_char(buf, c)?;
-            }
-            write!(buf, "'")?;
-        }
-        if let Some(s) = link {
-            write!(buf, " link='{}'", s)?;
-        }
-        if let Some(s) = extra {
-            write!(buf, " {}", s)?;
-        }
-        write!(buf, ">{}</span>", text)
-    }
-}
-
-fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
-    match c {
-        '>' => write!(buf, "&gt;"),
-        '<' => write!(buf, "&lt;"),
-        '&' => write!(buf, "&amp;"),
-        '\'' => write!(buf, "&#39;"),
-        '"' => write!(buf, "&quot;"),
-        '\n' => write!(buf, "<br>"),
-        _ => write!(buf, "{}", c),
-    }
-}
-
-impl<'a> highlight::Writer for Highlighter<'a> {
-    fn enter_span(&mut self, klass: Class) -> io::Result<()> {
-        write!(self.buf, "<span class='{}'>", klass.rustdoc_class())
-    }
-
-    fn exit_span(&mut self) -> io::Result<()> {
-        write!(self.buf, "</span>")
-    }
-
-    fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
-        let text = text.to_string();
-
-        match klass {
-            Class::None => write!(self.buf, "{}", text),
-            Class::Ident => {
-                let (title, css_class, link) = match tas {
-                    Some(t) => {
-                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let title = self.analysis.get_title(&lo, &hi);
-                        let link = self.analysis.get_link(&lo, &hi);
-
-                        let css_class = match self.analysis.get_class_id(&lo, &hi) {
-                            Some(i) => Some(format!(" class_id class_id_{}", i)),
-                            None => None,
-                        };
-
-                        (title, css_class, link)
-                    }
-                    None => (None, None, None),
-                };
-
-                Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, None)
-            }
-            Class::Op if text == "*" => {
-                match tas {
-                    Some(t) => {
-                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let title = self.analysis.get_title(&lo, &hi);
-                        let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
-                        let css_class = Some(" glob".to_owned());
-
-                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, location)
-                    }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None)
-                }
-            }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None),
-        }
-    }
-}
-
 
 fn partition<T, F>(input: &[T], f: F) -> Vec<&[T]>
     where F: Fn(&T, &T) -> bool
