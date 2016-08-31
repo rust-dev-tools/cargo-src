@@ -24,7 +24,7 @@ pub struct Diagnostic {
 }
 
 #[derive(Deserialize, Debug)]
-struct DiagnosticSpan {
+pub struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
     byte_end: u32,
@@ -53,7 +53,7 @@ struct DiagnosticSpan {
 }
 
 #[derive(Deserialize, Debug)]
-struct DiagnosticSpanLine {
+pub struct DiagnosticSpanLine {
     text: String,
     /// 1-based, character offset in self.text.
     highlight_start: usize,
@@ -61,7 +61,7 @@ struct DiagnosticSpanLine {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DiagnosticCode {
+pub struct DiagnosticCode {
     /// The code itself.
     code: String,
     /// An explanation for the code.

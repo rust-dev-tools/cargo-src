@@ -19,7 +19,7 @@ pub struct Analysis {
     titles: HashMap<Span, String>,
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
-    defs: HashMap<u32, build::Def>,
+    defs: HashMap<u32, build::analysis::Def>,
     def_names: HashMap<String, Vec<u32>>,
     refs: HashMap<Span, u32>,
     ref_spans: HashMap<u32, Vec<Span>>,
@@ -30,7 +30,7 @@ struct CrateReader {
 }
 
 impl CrateReader {
-    fn from_prelude(mut prelude: build::CratePreludeData, master_crate_map: &mut HashMap<String, u8>) -> CrateReader {
+    fn from_prelude(mut prelude: build::analysis::CratePreludeData, master_crate_map: &mut HashMap<String, u8>) -> CrateReader {
         // println!("building crate map for {}", prelude.crate_name);
         let next = master_crate_map.len() as u8;
         let mut crate_map = vec![*master_crate_map.entry(prelude.crate_name.clone()).or_insert_with(|| next)];
@@ -49,7 +49,7 @@ impl CrateReader {
         }
     }
 
-    fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: build::Analysis) {
+    fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: build::analysis::Analysis) {
         let reader = CrateReader::from_prelude(krate.prelude.unwrap(), master_crate_map);
 
         for i in krate.imports {
@@ -80,7 +80,7 @@ impl CrateReader {
     }
 
     // TODO need to handle std libraries too.
-    fn id_from_compiler_id(&self, id: &build::CompilerId) -> u32 {
+    fn id_from_compiler_id(&self, id: &build::analysis::CompilerId) -> u32 {
         if id.krate == NULL || id.index == NULL {
             return NULL;
         }
@@ -115,7 +115,7 @@ impl Analysis {
         }
     }
 
-    pub fn from_build(build: Vec<build::Analysis>) -> Analysis {
+    pub fn from_build(build: Vec<build::analysis::Analysis>) -> Analysis {
         let mut result = Analysis::new();
         if build.is_empty() {
             return result;
@@ -133,7 +133,7 @@ impl Analysis {
         self.def_names.get(name)
     }
 
-    pub fn lookup_def(&self, id: u32) -> &build::Def {
+    pub fn lookup_def(&self, id: u32) -> &build::analysis::Def {
         &self.defs[&id]
     }
 
@@ -189,7 +189,7 @@ impl Analysis {
 const NULL: u32 = u32::max_value();
 
 impl Span {
-    pub fn from_build(build: &build::SpanData) -> Span {
+    pub fn from_build(build: &build::analysis::SpanData) -> Span {
         Span {
             file_name: build.file_name.clone(),
             line_start: build.line_start,

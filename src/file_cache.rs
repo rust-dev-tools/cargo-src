@@ -154,13 +154,14 @@ impl Cache {
         Ok(lines[line - 1].clone())
     }
 
-    pub fn update_analysis(&mut self, analysis: Vec<build::Analysis>) {
+    pub fn update_analysis(&mut self) {
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
         // need to invalidate Rust files.
         self.files.reset();
 
         println!("Processing analysis...");
-        self.analysis = Analysis::from_build(analysis);
+        // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
+        self.analysis = Analysis::from_build(build::analysis::Analysis::read());
         println!("done");
     }
 

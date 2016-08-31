@@ -8,7 +8,6 @@
 
 // Reprocessing snippets after building.
 
-use build;
 use build::errors::{Diagnostic, DiagnosticSpan};
 use config::Config;
 use file_cache::Cache;
@@ -34,12 +33,12 @@ pub fn make_key() -> String {
 // pending_push_data.
 pub fn reprocess_snippets(result: BuildResult,
                           pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-                          analysis: Vec<build::Analysis>,
+                          use_analysis: bool,
                           file_cache: Arc<Mutex<Cache>>,
                           config: Arc<Config>) {
-    {
+    if use_analysis {
         let mut file_cache = file_cache.lock().unwrap();
-        file_cache.update_analysis(analysis);
+        file_cache.update_analysis();
     }
 
     let mut snippets = ReprocessedSnippets::new(result.push_data_key.unwrap());
