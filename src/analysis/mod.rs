@@ -6,13 +6,68 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME this all needs *lots* of optimisation.
+// FIXME this whole module all needs *lots* of optimisation.
 
 mod raw;
 mod lowering;
 
 use std::collections::HashMap;
+use std::sync::Mutex;
 use syntax::codemap::Loc;
+
+pub struct AnalysisHost {
+    analysis: Mutex<Option<Analysis>>,
+}
+
+impl AnalysisHost {
+    pub fn new() -> AnalysisHost {
+        AnalysisHost {
+            analysis: Mutex::new(None),
+        }
+    }
+
+    pub fn reload(&self) -> Result<(), ()> {
+        let new_analysis = Analysis::read();
+        match self.analysis.lock() {
+            Ok(mut a) => {
+                *a = Some(new_analysis);
+                Ok(())
+            }
+            Err(_) => Err(()),
+        }
+    }
+
+    pub fn goto_def(&self, span: &Span) -> Result<Span, ()> {
+        self.read(|a| a.refs.get(span).and_then(|id| a.defs.get(id)).map(|def| {
+            lowering::lower_span(&def.span)
+        }).ok_or(()))
+    }
+
+    pub fn search(&self, name: &str) -> Result<Vec<Span>, ()> {
+        self.read(|a| {
+            a.def_names.get(name).map(|names| {
+                names.into_iter().flat_map(|id| {
+                    a.ref_spans.get(id).map_or(vec![], |v| v.clone()).into_iter()
+                }).collect(): Vec<Span>
+            }).ok_or(())
+        })
+    }
+
+    fn read<F, T>(&self, f: F) -> Result<T, ()>
+        where F: FnOnce(&Analysis) -> Result<T, ()>
+    {
+        match self.analysis.lock() {
+            Ok(a) => {
+                if let Some(ref a) = *a {
+                    f(a)
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(())
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Analysis {
@@ -26,7 +81,7 @@ pub struct Analysis {
     ref_spans: HashMap<u32, Vec<Span>>,
 }
 
-#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Deserialize)]
 pub struct Span {
     // Note the ordering of fields for the Ord impl.
     pub file_name: String,
@@ -50,7 +105,6 @@ impl Analysis {
 
     pub fn read() -> Analysis {
         let raw_analysis = raw::Analysis::read();
-
         lowering::lower(raw_analysis)
     }
 
@@ -78,24 +132,26 @@ impl Analysis {
     }
 
     pub fn get_title(&self, lo: &Loc, hi: &Loc) -> Option<&str> {
-        let span = Self::mk_span(lo, hi);
+        let span = Span::from_locs(lo, hi);
         self.titles.get(&span).map(|s| &**s).or_else(|| self.refs.get(&span).and_then(|id| self.defs.get(id).map(|def| &*def.value)))
     }
 
     pub fn get_class_id(&self, lo: &Loc, hi: &Loc) -> Option<u32> {
-        let span = Self::mk_span(lo, hi);
+        let span = Span::from_locs(lo, hi);
         self.class_ids.get(&span).map(|i| *i)
     }
 
     pub fn get_link(&self, lo: &Loc, hi: &Loc) -> Option<String> {
-        let span = Self::mk_span(lo, hi);
+        let span = Span::from_locs(lo, hi);
         self.refs.get(&span).and_then(|id| self.defs.get(id)).map(|def| {
             let s = &def.span;
             format!("{}:{}:{}:{}:{}", s.file_name, s.line_start, s.column_start, s.line_end, s.column_end)
         })
     }
+}
 
-    fn mk_span(lo: &Loc, hi: &Loc) -> Span {
+impl Span {
+    fn from_locs(lo: &Loc, hi: &Loc) -> Span {
         Span {
             file_name: lo.file.name.clone(),
             line_start: lo.line as usize,
