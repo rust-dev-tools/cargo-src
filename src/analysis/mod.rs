@@ -43,6 +43,10 @@ impl AnalysisHost {
         }).ok_or(()))
     }
 
+    pub fn show_type(&self, span: &Span) -> Result<String, ()> {
+        self.read(|a| a.titles.get(&span).map(|s| &**s).or_else(|| a.refs.get(&span).and_then(|id| a.defs.get(id).map(|def| &*def.value))).map(|s| s.to_owned()).ok_or(()))
+    }
+
     pub fn search(&self, name: &str) -> Result<Vec<Span>, ()> {
         self.read(|a| {
             a.def_names.get(name).map(|names| {
