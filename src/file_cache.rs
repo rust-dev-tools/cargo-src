@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::{Read, Write, BufWriter};
 use std::str;
 
-use analysis::{Analysis, Span};
+use analysis::{Analysis, Span, Target};
 use super::highlight;
 
 // TODO maximum size and evication policy
@@ -137,7 +137,7 @@ impl Cache {
 
         println!("Processing analysis...");
         // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
-        self.analysis = Analysis::read();
+        self.analysis = Analysis::read(".", Target::Debug);
         println!("done");
     }
 

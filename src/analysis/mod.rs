@@ -11,23 +11,28 @@
 mod raw;
 mod lowering;
 
+pub use self::raw::Target;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use syntax::codemap::Loc;
 
 pub struct AnalysisHost {
     analysis: Mutex<Option<Analysis>>,
+    path_prefix: String,
+    target: Target,
 }
 
 impl AnalysisHost {
-    pub fn new() -> AnalysisHost {
+    pub fn new(path_prefix: &str, target: Target) -> AnalysisHost {
         AnalysisHost {
             analysis: Mutex::new(None),
+            path_prefix: path_prefix.to_owned(),
+            target: target,
         }
     }
 
     pub fn reload(&self) -> Result<(), ()> {
-        let new_analysis = Analysis::read();
+        let new_analysis = Analysis::read(&self.path_prefix, self.target);
         match self.analysis.lock() {
             Ok(mut a) => {
                 *a = Some(new_analysis);
@@ -107,8 +112,8 @@ impl Analysis {
         }
     }
 
-    pub fn read() -> Analysis {
-        let raw_analysis = raw::Analysis::read();
+    pub fn read(path_prefix: &str, target: Target) -> Analysis {
+        let raw_analysis = raw::Analysis::read(path_prefix, target);
         lowering::lower(raw_analysis)
     }
 

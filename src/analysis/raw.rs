@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde_json;
 
 use std::path::Path;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 
@@ -25,13 +26,31 @@ pub struct Analysis {
     pub macro_refs: Vec<MacroRef>,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Target {
+    Release,
+    Debug,
+}
+
+impl fmt::Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Target::Release => write!(f, "release"),
+            Target::Debug => write!(f, "debug"),
+        }
+    }
+}
+
 impl Analysis {
-    pub fn read() -> Vec<Analysis> {
+    pub fn read(path_prefix: &str, target: Target) -> Vec<Analysis> {
         let mut result = vec![];
 
-        // TODO shouldn't hard-code this path, it's cargo-specific
+        // TODO shouldn't hard-code these paths, it's cargo-specific
         // TODO deps path allows to break out of sandbox - is that Ok?
-        let paths = &[&Path::new("target/debug/save-analysis"), &Path::new("target/debug/deps/save-analysis")];
+        let principle_path = format!("{}/target/{}/save-analysis", path_prefix, target);
+        let deps_path = format!("{}/target/{}/deps/save-analysis", path_prefix, target);
+        let paths = &[&Path::new(&principle_path),
+                      &Path::new(&deps_path)];
 
         for p in paths {
             let listing = match DirectoryListing::from_path(p) {

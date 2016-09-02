@@ -49,7 +49,7 @@ fn main() {
             }
         };
 
-        let host = analysis::AnalysisHost::new();
+        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
         host.reload().unwrap();
         if let Ok(s) = host.goto_def(&span) {
             println!("Goto: {:?}", s);
@@ -66,7 +66,7 @@ fn main() {
             }
         };
 
-        let host = analysis::AnalysisHost::new();
+        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
         host.reload().unwrap();
         if let Ok(t) = host.show_type(&span) {
             println!("Type: {:?}", t);
@@ -75,7 +75,7 @@ fn main() {
         }
         return;
     } else if let Some(ref s) = matches.opt_str("f") {
-        let host = analysis::AnalysisHost::new();
+        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
         host.reload().unwrap();
         if let Ok(results) = host.search(s) {
             println!("Find {}: {:?}", s, results);
