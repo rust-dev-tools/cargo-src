@@ -8,9 +8,9 @@ build = "build.rs"
 url = "0.5"
 getopts = "0.2"
 rustc-serialize = "0.3"
-serde = "0.7"
-serde_json = "0.7"
-serde_macros = "0.7"
+serde = "0.8"
+serde_json = "0.8"
+serde_macros = "0.8"
 toml = "0.1"
 
 [dependencies.hyper]

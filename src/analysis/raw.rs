@@ -51,7 +51,6 @@ impl Analysis {
         let deps_path = format!("{}/target/{}/deps/save-analysis", path_prefix, target);
         let paths = &[&Path::new(&principle_path),
                       &Path::new(&deps_path)];
-
         for p in paths {
             let listing = match DirectoryListing::from_path(p) {
                 Ok(l) => l,
@@ -61,7 +60,6 @@ impl Analysis {
                 if l.kind == ListingKind::File {
                     let mut path = p.to_path_buf();
                     path.push(&l.name);
-                    // println!("reading {:?}", path);
                     // TODO unwraps
                     let mut file = File::open(&path).unwrap();
                     let mut buf = String::new();

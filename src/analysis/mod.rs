@@ -90,7 +90,7 @@ pub struct Analysis {
     ref_spans: HashMap<u32, Vec<Span>>,
 }
 
-#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Deserialize, RustcDecodable, RustcEncodable)]
 pub struct Span {
     // Note the ordering of fields for the Ord impl.
     pub file_name: String,
