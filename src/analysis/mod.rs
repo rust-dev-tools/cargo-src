@@ -13,6 +13,7 @@ mod lowering;
 
 pub use self::raw::Target;
 use std::collections::HashMap;
+use std::env;
 use std::sync::Mutex;
 use syntax::codemap::Loc;
 
@@ -44,12 +45,21 @@ impl AnalysisHost {
 
     pub fn goto_def(&self, span: &Span) -> Result<Span, ()> {
         self.read(|a| a.refs.get(span).and_then(|id| a.defs.get(id)).map(|def| {
-            lowering::lower_span(&def.span)
+            lowering::lower_span(&def.span, None)
         }).ok_or(()))
     }
 
     pub fn show_type(&self, span: &Span) -> Result<String, ()> {
-        self.read(|a| a.titles.get(&span).map(|s| &**s).or_else(|| a.refs.get(&span).and_then(|id| a.defs.get(id).map(|def| &*def.value))).map(|s| s.to_owned()).ok_or(()))
+        self.read(|a| a.titles
+                       .get(&span)
+                       .map(|s| &**s)
+                       .or_else(|| {
+                           a.refs.get(&span).and_then(|id| {
+                               a.defs.get(id).map(|def| &*def.value)
+                           })
+                       })
+                       .map(|s| s.to_owned())
+                       .ok_or(()))
     }
 
     pub fn search(&self, name: &str) -> Result<Vec<Span>, ()> {
@@ -81,6 +91,7 @@ impl AnalysisHost {
 #[derive(Debug)]
 pub struct Analysis {
     // This only has fixed titles, not ones which use a ref.
+    // TODO not clear this is a good way to organise things tbh
     titles: HashMap<Span, String>,
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
@@ -114,7 +125,8 @@ impl Analysis {
 
     pub fn read(path_prefix: &str, target: Target) -> Analysis {
         let raw_analysis = raw::Analysis::read(path_prefix, target);
-        lowering::lower(raw_analysis)
+        let project_dir = format!("{}/{}", env::current_dir().unwrap().display(), path_prefix);
+        lowering::lower(raw_analysis, &project_dir)
     }
 
     pub fn lookup_def_ids(&self, name: &str) -> Option<&Vec<u32>> {
@@ -126,7 +138,7 @@ impl Analysis {
     }
 
     pub fn lookup_def_span(&self, id: u32) -> Span {
-        lowering::lower_span(&self.defs[&id].span)
+        lowering::lower_span(&self.defs[&id].span, None)
     }
 
     pub fn lookup_refs(&self, id: u32) -> &[Span] {
@@ -136,7 +148,7 @@ impl Analysis {
     pub fn get_spans(&self, id: u32) -> Vec<Span> {
         let mut result = self.lookup_refs(id).to_owned();
         // TODO what if lookup_def panics
-        result.push(lowering::lower_span(&self.lookup_def(id).span));
+        result.push(lowering::lower_span(&self.lookup_def(id).span, None));
         result
     }
 

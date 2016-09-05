@@ -13,19 +13,25 @@ use super::{Analysis, Span, NULL};
 
 use std::collections::HashMap;
 
-pub fn lower(raw_analysis: Vec<raw::Analysis>) -> Analysis {
+pub fn lower(raw_analysis: Vec<raw::Analysis>, project_dir: &str) -> Analysis {
     let mut result = Analysis::new();
     let mut master_crate_map = HashMap::new();
     for krate in raw_analysis.into_iter() {
-        CrateReader::read_crate(&mut result, &mut master_crate_map, krate);
+        CrateReader::read_crate(&mut result, &mut master_crate_map, krate, project_dir);
     }
 
     result
 }
 
-pub fn lower_span(raw_span: &raw::SpanData) -> Span {
+pub fn lower_span(raw_span: &raw::SpanData, project_dir: Option<&str>) -> Span {
+    let file_name = &raw_span.file_name;
+    let file_name = if file_name.starts_with('/') {
+        file_name.clone()
+    } else {
+        format!("{}/{}", project_dir.expect("Required project directory, but not supplied"), file_name)
+    };
     Span {
-        file_name: raw_span.file_name.clone(),
+        file_name: file_name,
         line_start: raw_span.line_start,
         column_start: raw_span.column_start,
         line_end: raw_span.line_end,
@@ -57,14 +63,14 @@ impl CrateReader {
         }
     }
 
-    fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: raw::Analysis) {
+    fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: raw::Analysis, project_dir: &str) {
         let reader = CrateReader::from_prelude(krate.prelude.unwrap(), master_crate_map);
 
         for i in krate.imports {
-            analysis.titles.insert(lower_span(&i.span), i.value);
+            analysis.titles.insert(lower_span(&i.span, Some(project_dir)), i.value);
         }
         for d in krate.defs {
-            let span = lower_span(&d.span);
+            let span = lower_span(&d.span, Some(project_dir));
             if !d.value.is_empty() {
                 analysis.titles.insert(span.clone(), d.value.clone());
             }
@@ -77,8 +83,10 @@ impl CrateReader {
         }
         for r in krate.refs {
             let id = reader.id_from_compiler_id(&r.ref_id);
-            if id != NULL {
-                let span = lower_span(&r.span);
+            if id != NULL && analysis.defs.contains_key(&id) {
+                let span = lower_span(&r.span, Some(project_dir));
+
+                //println!("record ref {:?} {:?} {:?} {}", r.kind, span, r.ref_id, id);
                 // TODO class_ids = refs + defs.keys
                 analysis.class_ids.insert(span.clone(), id);
                 analysis.refs.insert(span.clone(), id);
