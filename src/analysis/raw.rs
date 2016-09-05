@@ -114,10 +114,14 @@ pub enum DefKind {
     Struct,
     Trait,
     Function,
+    Method,
     Macro,
     Mod,
     Type,
-    Variable,
+    Local,
+    Static,
+    Const,
+    Field,
 }
 
 // Custom impl to read rustc_serialize's format.
@@ -132,11 +136,18 @@ impl Deserialize for DefKind {
             "Struct" => Ok(DefKind::Struct),
             "Trait" => Ok(DefKind::Trait),
             "Function" => Ok(DefKind::Function),
+            "Method" => Ok(DefKind::Method),
             "Macro" => Ok(DefKind::Macro),
             "Mod" => Ok(DefKind::Mod),
             "Type" => Ok(DefKind::Type),
-            "Variable" => Ok(DefKind::Variable),
-            _ => Err(serde::de::Error::custom("unexpected def kind")),
+            "Local" => Ok(DefKind::Local),
+            "Static" => Ok(DefKind::Static),
+            "Const" => Ok(DefKind::Const),
+            "Field" => Ok(DefKind::Field),
+            _ => {
+                println!("{:?}", s);
+                Err(serde::de::Error::custom("unexpected def kind"))
+            }
         }
     }
 }
