@@ -14,7 +14,7 @@ use super::{Analysis, Span, NULL};
 use std::collections::HashMap;
 
 pub fn lower(raw_analysis: Vec<raw::Analysis>, project_dir: &str) -> Analysis {
-    let mut result = Analysis::new();
+    let mut result = Analysis::new(project_dir);
     let mut master_crate_map = HashMap::new();
     for krate in raw_analysis.into_iter() {
         CrateReader::read_crate(&mut result, &mut master_crate_map, krate, project_dir);

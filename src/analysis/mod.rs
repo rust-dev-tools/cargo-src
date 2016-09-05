@@ -45,7 +45,7 @@ impl AnalysisHost {
 
     pub fn goto_def(&self, span: &Span) -> Result<Span, ()> {
         self.read(|a| a.refs.get(span).and_then(|id| a.defs.get(id)).map(|def| {
-            lowering::lower_span(&def.span, None)
+            lowering::lower_span(&def.span, Some(&a.project_dir))
         }).ok_or(()))
     }
 
@@ -99,6 +99,7 @@ pub struct Analysis {
     def_names: HashMap<String, Vec<u32>>,
     refs: HashMap<Span, u32>,
     ref_spans: HashMap<u32, Vec<Span>>,
+    pub project_dir: String,
 }
 
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Deserialize)]
@@ -112,7 +113,7 @@ pub struct Span {
 }
 
 impl Analysis {
-    pub fn new() -> Analysis {
+    pub fn new(project_dir: &str) -> Analysis {
         Analysis {
             titles: HashMap::new(),
             class_ids: HashMap::new(),
@@ -120,6 +121,7 @@ impl Analysis {
             def_names: HashMap::new(),
             refs: HashMap::new(),
             ref_spans: HashMap::new(),
+            project_dir: project_dir.to_owned(),
         }
     }
 
@@ -148,7 +150,7 @@ impl Analysis {
     pub fn get_spans(&self, id: u32) -> Vec<Span> {
         let mut result = self.lookup_refs(id).to_owned();
         // TODO what if lookup_def panics
-        result.push(lowering::lower_span(&self.lookup_def(id).span, None));
+        result.push(lowering::lower_span(&self.lookup_def(id).span, Some(&self.project_dir)));
         result
     }
 
