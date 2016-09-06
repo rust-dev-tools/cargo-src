@@ -113,7 +113,7 @@ pub struct Analysis {
     pub project_dir: String,
 }
 
-#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     // Note the ordering of fields for the Ord impl.
     pub file_name: String,
