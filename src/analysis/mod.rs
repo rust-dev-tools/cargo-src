@@ -49,6 +49,16 @@ impl AnalysisHost {
         }).ok_or(()))
     }
 
+    pub fn find_all_refs(&self, span: &Span) -> Result<Vec<Span>, ()> {
+        self.read(|a| a.class_ids.get(span).and_then(|id| {
+            let def = a.defs.get(id).map(|def| lowering::lower_span(&def.span, Some(&a.project_dir)));
+            match a.ref_spans.get(id) {
+                Some(refs) => Some(def.into_iter().chain(refs.iter().cloned()).collect()),
+                None => def.map(|s| vec![s]),
+            }
+        }).ok_or(()))
+    }
+
     pub fn show_type(&self, span: &Span) -> Result<String, ()> {
         self.read(|a| a.titles
                        .get(&span)
@@ -91,12 +101,13 @@ impl AnalysisHost {
 #[derive(Debug)]
 pub struct Analysis {
     // This only has fixed titles, not ones which use a ref.
-    // TODO not clear this is a good way to organise things tbh
+    // TODO not clear this is a good way to organise things tbh - use refs
     titles: HashMap<Span, String>,
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
     defs: HashMap<u32, raw::Def>,
     def_names: HashMap<String, Vec<u32>>,
+    // we don't really need this and class_ids
     refs: HashMap<Span, u32>,
     ref_spans: HashMap<u32, Vec<Span>>,
     pub project_dir: String,
