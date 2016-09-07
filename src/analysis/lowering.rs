@@ -8,7 +8,7 @@
 
 // For processing the raw save-analysis data from rustc into rustw's in-memory representation.
 
-use super::raw;
+use super::raw::{self, Format};
 use super::{Analysis, Span, NULL};
 
 use std::collections::HashMap;
@@ -69,22 +69,34 @@ impl CrateReader {
         for i in krate.imports {
             analysis.titles.insert(lower_span(&i.span, Some(project_dir)), i.value);
         }
-        for d in krate.defs {
+        for mut d in krate.defs {
             let span = lower_span(&d.span, Some(project_dir));
-            if !d.value.is_empty() {
+            if !d.value.is_empty() && krate.kind == Format::Json {
                 analysis.titles.insert(span.clone(), d.value.clone());
             }
             let id = reader.id_from_compiler_id(&d.id);
-            if id != NULL {
-                analysis.class_ids.insert(span, id);
-                analysis.def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
+            if id != NULL && !analysis.defs.contains_key(&id) {
+                if krate.kind == Format::Json {
+                    analysis.class_ids.insert(span, id);
+                    analysis.def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
+                } else {
+                    // TODO info to make doc & source URLs
+
+                    // TODO gross hack - take me out, and do something better in rustc
+                    if d.kind == super::raw::DefKind::Struct {
+                        d.value = String::new();
+                    }
+                }
+                if let Some(index) = d.docs.find("\n\n") {
+                    d.docs = d.docs[..index].to_owned();
+                }
                 analysis.defs.insert(id, d);
             }
         }
         for r in krate.refs {
             let id = reader.id_from_compiler_id(&r.ref_id);
-            if id != NULL && analysis.defs.contains_key(&id) {
-                let span = lower_span(&r.span, Some(project_dir));
+            let span = lower_span(&r.span, Some(project_dir));
+            if id != NULL && analysis.defs.contains_key(&id) && !analysis.refs.contains_key(&span) {
 
                 //println!("record ref {:?} {:?} {:?} {}", r.kind, span, r.ref_id, id);
                 // TODO class_ids = refs + defs.keys

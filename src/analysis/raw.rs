@@ -19,6 +19,7 @@ use std::io::Read;
 
 #[derive(Deserialize, Debug)]
 pub struct Analysis {
+    pub kind: Format,
     pub prelude: Option<CratePreludeData>,
     pub imports: Vec<Import>,
     pub defs: Vec<Def>,
@@ -30,6 +31,13 @@ pub struct Analysis {
 pub enum Target {
     Release,
     Debug,
+}
+
+#[derive(Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Format {
+    Csv,
+    Json,
+    JsonApi,
 }
 
 impl fmt::Display for Target {
@@ -49,9 +57,14 @@ impl Analysis {
         // TODO deps path allows to break out of sandbox - is that Ok?
         let principle_path = format!("{}/target/{}/save-analysis", path_prefix, target);
         let deps_path = format!("{}/target/{}/deps/save-analysis", path_prefix, target);
-        let paths = &[&Path::new(&principle_path),
-                      &Path::new(&deps_path)];
+        let libs_path = format!("{}/libs/save-analysis", path_prefix);
+        let paths = &[&Path::new(&libs_path),
+                      &Path::new(&deps_path),
+                      &Path::new(&principle_path)];
         for p in paths {
+            use std::time::*;
+            let t = Instant::now();
+
             let listing = match DirectoryListing::from_path(p) {
                 Ok(l) => l,
                 Err(_) => { continue; },
@@ -70,6 +83,9 @@ impl Analysis {
                     }
                 }
             }
+
+            let d = t.elapsed();
+            println!("reading {} in {}.{}s", p.display(), d.as_secs(), d.subsec_nanos());
         }
 
         result
@@ -104,11 +120,12 @@ pub struct Def {
     pub span: SpanData,
     pub name: String,
     pub qualname: String,
+    pub parent: Option<CompilerId>,
     pub value: String,
     pub docs: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum DefKind {
     Enum,
     Tuple,
