@@ -72,6 +72,12 @@ impl AnalysisHost {
                        .ok_or(()))
     }
 
+    pub fn docs(&self, span: &Span) -> Result<String, ()> {
+        self.read(|a| a.class_ids.get(span).and_then(|id| {
+            a.defs.get(id).map(|def| def.docs.to_owned())
+        }).ok_or(()))
+    }
+
     pub fn search(&self, name: &str) -> Result<Vec<Span>, ()> {
         self.read(|a| {
             a.def_names.get(name).map(|names| {

@@ -105,6 +105,7 @@ pub struct Def {
     pub name: String,
     pub qualname: String,
     pub value: String,
+    pub docs: String,
 }
 
 #[derive(Debug)]
