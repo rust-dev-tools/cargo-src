@@ -125,7 +125,7 @@ pub struct Def {
     pub docs: String,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize)]
 pub enum DefKind {
     Enum,
     Tuple,

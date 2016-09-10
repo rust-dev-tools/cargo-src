@@ -8,7 +8,7 @@
 
 // FIXME this whole module all needs *lots* of optimisation.
 
-mod raw;
+pub mod raw;
 mod lowering;
 
 pub use self::raw::Target;
@@ -88,6 +88,20 @@ impl AnalysisHost {
         })
     }
 
+    pub fn symbols(&self, file_name: &str) -> Result<Vec<SymbolResult>, ()> {
+        self.read(|a| {
+            a.defs_per_file.get(file_name).map(|ids| ids.iter().map(|id| {
+                let def = &a.defs[id];
+                SymbolResult {
+                    id: *id,
+                    name: def.name.clone(),
+                    span: lowering::lower_span(&def.span, Some(&a.project_dir)),
+                    kind: def.kind.clone(),
+                }
+            }).collect()).ok_or(())
+        })
+    }
+
     fn read<F, T>(&self, f: F) -> Result<T, ()>
         where F: FnOnce(&Analysis) -> Result<T, ()>
     {
@@ -104,6 +118,14 @@ impl AnalysisHost {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SymbolResult {
+    pub id: u32,
+    pub name: String,
+    pub kind: raw::DefKind,
+    pub span: Span,
+}
+
 #[derive(Debug)]
 pub struct Analysis {
     // This only has fixed titles, not ones which use a ref.
@@ -112,6 +134,7 @@ pub struct Analysis {
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
     defs: HashMap<u32, raw::Def>,
+    defs_per_file: HashMap<String, Vec<u32>>,
     def_names: HashMap<String, Vec<u32>>,
     // we don't really need this and class_ids
     refs: HashMap<Span, u32>,
@@ -135,6 +158,7 @@ impl Analysis {
             titles: HashMap::new(),
             class_ids: HashMap::new(),
             defs: HashMap::new(),
+            defs_per_file: HashMap::new(),
             def_names: HashMap::new(),
             refs: HashMap::new(),
             ref_spans: HashMap::new(),

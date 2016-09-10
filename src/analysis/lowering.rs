@@ -77,6 +77,9 @@ impl CrateReader {
             let id = reader.id_from_compiler_id(&d.id);
             if id != NULL && !analysis.defs.contains_key(&id) {
                 if krate.kind == Format::Json {
+                    let file_name = span.file_name.clone();
+                    analysis.defs_per_file.entry(file_name).or_insert_with(|| vec![]).push(id);
+
                     analysis.class_ids.insert(span, id);
                     analysis.def_names.entry(d.name.clone()).or_insert_with(|| vec![]).push(id);
                 } else {
