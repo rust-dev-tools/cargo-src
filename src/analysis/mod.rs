@@ -102,6 +102,20 @@ impl AnalysisHost {
         })
     }
 
+    pub fn doc_url(&self, span: &Span) -> Result<String, ()> {
+        // https://doc.rust-lang.org/nightly/std/string/String.t.html
+        self.read(|a| a.class_ids.get(span).and_then(|id| {
+            a.defs.get(id).and_then(|def| self.mk_doc_url(def, a))
+        }).ok_or(()))
+    }
+
+    pub fn src_url(&self, span: &Span) -> Result<String, ()> {
+        // https://github.com/rust-lang/rust/blob/master/src/libcollections/string.rs#L261-L263
+        self.read(|a| a.class_ids.get(span).and_then(|id| {
+            a.defs.get(id).map(|def| format!("{}/{}#L{}-L{}", a.src_url_base, def.span.file_name, def.span.line_start, def.span.line_end))
+        }).ok_or(()))
+    }
+
     fn read<F, T>(&self, f: F) -> Result<T, ()>
         where F: FnOnce(&Analysis) -> Result<T, ()>
     {
@@ -114,6 +128,36 @@ impl AnalysisHost {
                 }
             }
             _ => Err(())
+        }
+    }
+
+    fn mk_doc_url(&self, def: &Def, analysis: &Analysis) -> Option<String> {
+        if def.parent.is_none() && def.qualname.contains('<') {
+            println!("mk_doc_url, bailing, found generic qualname: `{}`", def.qualname);
+            return None;
+        }
+
+        // TODO bail out if not stdlibs
+
+        match def.parent {
+            Some(ref p) => {
+                // TODO am I getting the impl instead of the struct? Yes :-(
+                println!("{} parent id: {}", def.name, p);
+                let parent = match analysis.defs.get(p) {
+                    Some(p) => p,
+                    None => return None,
+                };
+                let parent_qualpath = parent.qualname.replace("::", "/");
+                let ns = def.kind.name_space();
+                Some(format!("{}/{}.t.html#{}.{}", analysis.doc_url_base, parent_qualpath, def.name, ns))
+            }
+            None => {
+                println!("no parent {} {}", def.name, def.id);
+                // TODO need the crate name
+                let qualpath = def.qualname.replace("::", "/");
+                let ns = def.kind.name_space();
+                Some(format!("{}/{}.{}.html", analysis.doc_url_base, qualpath, ns))
+            }
         }
     }
 }
@@ -133,13 +177,16 @@ pub struct Analysis {
     titles: HashMap<Span, String>,
     // Unique identifiers for identifiers with the same def (including the def).
     class_ids: HashMap<Span, u32>,
-    defs: HashMap<u32, raw::Def>,
+    defs: HashMap<u32, Def>,
     defs_per_file: HashMap<String, Vec<u32>>,
     def_names: HashMap<String, Vec<u32>>,
     // we don't really need this and class_ids
     refs: HashMap<Span, u32>,
     ref_spans: HashMap<u32, Vec<Span>>,
     pub project_dir: String,
+
+    pub doc_url_base: String,
+    pub src_url_base: String,
 }
 
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -150,6 +197,18 @@ pub struct Span {
     pub column_start: usize,
     pub line_end: usize,
     pub column_end: usize,
+}
+
+#[derive(Debug)]
+pub struct Def {
+    pub kind: raw::DefKind,
+    pub id: u32,
+    pub span: raw::SpanData,
+    pub name: String,
+    pub qualname: String,
+    pub parent: Option<u32>,
+    pub value: String,
+    pub docs: String,
 }
 
 impl Analysis {
@@ -163,6 +222,9 @@ impl Analysis {
             refs: HashMap::new(),
             ref_spans: HashMap::new(),
             project_dir: project_dir.to_owned(),
+            // TODO don't hardcode these
+            doc_url_base: "https://doc.rust-lang.org/nightly".to_owned(),
+            src_url_base: "https://github.com/rust-lang/rust/blob/master".to_owned(),
         }
     }
 
@@ -176,7 +238,7 @@ impl Analysis {
         self.def_names.get(name)
     }
 
-    fn lookup_def(&self, id: u32) -> &raw::Def {
+    fn lookup_def(&self, id: u32) -> &Def {
         &self.defs[&id]
     }
 

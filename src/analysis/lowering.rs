@@ -9,7 +9,7 @@
 // For processing the raw save-analysis data from rustc into rustw's in-memory representation.
 
 use super::raw::{self, Format};
-use super::{Analysis, Span, NULL};
+use super::{Analysis, Span, NULL, Def};
 
 use std::collections::HashMap;
 
@@ -64,6 +64,7 @@ impl CrateReader {
     }
 
     fn read_crate(analysis: &mut Analysis, master_crate_map: &mut HashMap<String, u8>, krate: raw::Analysis, project_dir: &str) {
+        let crate_name = krate.prelude.as_ref().unwrap().crate_name.clone();
         let reader = CrateReader::from_prelude(krate.prelude.unwrap(), master_crate_map);
 
         for i in krate.imports {
@@ -90,10 +91,22 @@ impl CrateReader {
                         d.value = String::new();
                     }
                 }
-                if let Some(index) = d.docs.find("\n\n") {
-                    d.docs = d.docs[..index].to_owned();
-                }
-                analysis.defs.insert(id, d);
+                let def = Def {
+                    kind: d.kind,
+                    id: id,
+                    span: d.span,
+                    name: d.name,
+                    value: d.value,
+                    qualname: format!("{}{}", crate_name, d.qualname),
+                    parent: d.parent.map(|id| reader.id_from_compiler_id(&id)),
+                    docs: if let Some(index) = d.docs.find("\n\n") {
+                        d.docs[..index].to_owned()
+                    } else {
+                        d.docs
+                    },
+                };
+
+                analysis.defs.insert(id, def);
             }
         }
         for r in krate.refs {

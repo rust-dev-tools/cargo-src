@@ -142,6 +142,26 @@ pub enum DefKind {
     Field,
 }
 
+impl DefKind {
+    pub fn name_space(&self) -> char {
+        match *self {
+            DefKind::Enum |
+            DefKind::Tuple |
+            DefKind::Struct |
+            DefKind::Type |
+            DefKind::Trait => 't',
+            DefKind::Function |
+            DefKind::Method |
+            DefKind::Mod |
+            DefKind::Local |
+            DefKind::Static |
+            DefKind::Const |
+            DefKind::Field => 'v',
+            DefKind::Macro => 'm',
+        }
+    }
+}
+
 // Custom impl to read rustc_serialize's format.
 impl Deserialize for DefKind {
     fn deserialize<D>(deserializer: &mut D) -> Result<DefKind, D::Error>
