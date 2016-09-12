@@ -23,13 +23,13 @@ extern crate serde;
 extern crate serde_json;
 extern crate syntax;
 extern crate toml;
+extern crate rls_analysis as analysis;
 
 use config::Config;
 use hyper::Server;
 use std::fs::File;
 use std::io::Read;
 
-pub mod analysis;
 mod build;
 pub mod config;
 mod reprocess;

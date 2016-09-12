@@ -12,6 +12,7 @@ serde = "0.8"
 serde_json = "0.8"
 serde_macros = "0.8"
 toml = "0.1"
+rls-analysis = { git = "https://github.com/nrc/rls-analysis" }
 
 [dependencies.hyper]
 version = "0.8"

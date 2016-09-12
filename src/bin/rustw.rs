@@ -9,8 +9,8 @@
 extern crate rustw;
 extern crate getopts;
 extern crate serde_json;
+extern crate rls_analysis as analysis;
 
-use rustw::analysis;
 use rustw::config::Config;
 
 use getopts::Options;
