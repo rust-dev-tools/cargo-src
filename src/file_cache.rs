@@ -70,8 +70,8 @@ impl Cache {
     pub fn new() -> Cache {
         Cache {
             files: FileCache::new(),
-            // TODO need the real project directory here
-            analysis: Analysis::new(""),
+            // TODO project directory
+            analysis: Analysis::new(),
         }
     }
 
