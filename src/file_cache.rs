@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::{Read, Write, BufWriter};
 use std::str;
 
-use analysis::{Analysis, Span, Target};
+use analysis::{AnalysisHost, Span, Target};
 use super::highlight;
 
 // TODO maximum size and evication policy
@@ -21,7 +21,7 @@ use super::highlight;
 
 pub struct Cache {
     files: FileCache,
-    analysis: Analysis,
+    analysis: AnalysisHost,
 }
 
 struct FileCache {
@@ -70,8 +70,7 @@ impl Cache {
     pub fn new() -> Cache {
         Cache {
             files: FileCache::new(),
-            // TODO project directory
-            analysis: Analysis::new(),
+            analysis: AnalysisHost::new(Target::Debug),
         }
     }
 
@@ -138,7 +137,7 @@ impl Cache {
 
         println!("Processing analysis...");
         // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
-        self.analysis = Analysis::read(".", Target::Debug);
+        self.analysis.reload(".").unwrap();
         println!("done");
     }
 
@@ -149,9 +148,9 @@ impl Cache {
     pub fn ident_search(&mut self, needle: &str) -> Result<SearchResult, String> {
         // First see if the needle corresponds to any definitions, if it does, get a list of the
         // ids, otherwise, return an empty search result.
-        let ids = match self.analysis.lookup_def_ids(needle) {
-            Some(ids) => ids.to_owned(),
-            None => {
+        let ids = match self.analysis.search_for_id(needle) {
+            Ok(ids) => ids.to_owned(),
+            Err(_) => {
                 return Ok(SearchResult {
                     defs: vec![],
                     refs: vec![],
@@ -166,7 +165,7 @@ impl Cache {
         // TODO do better than unwrap
 
         let new_bytes = new_text.as_bytes();
-        let mut spans = self.analysis.get_spans(id);
+        let mut spans = self.analysis.find_all_refs_by_id(id).unwrap_or(vec![]);
         spans.sort();
 
         let by_file = partition(&spans, |a, b| a.file_name == b.file_name);
@@ -236,16 +235,23 @@ impl Cache {
         let mut refs = HashMap::new();
 
         for id in ids {
-            let span = self.analysis.lookup_def_span(id);
-            let text = self.get_highlighted_line(&span.file_name, span.line_start)?;
-            let line = LineResult::new(&span, text);
-            defs.entry(span.file_name).or_insert_with(|| vec![]).push(line);
+            // If all_refs.len() > 0, the first entry will be the def.
+            let all_refs = self.analysis.find_all_refs_by_id(id);
+            let mut all_refs = match all_refs {
+                Err(_) => return Err("Error finding references".to_owned()),
+                Ok(ref all_refs) if all_refs.is_empty() => continue,
+                Ok(all_refs) => all_refs.into_iter(),
+            };
 
-            let rfs = self.analysis.lookup_refs(id).to_owned();
-            for rf in rfs.into_iter() {
-                let text = self.get_highlighted_line(&rf.file_name, rf.line_start)?;
-                let line = LineResult::new(&rf, text);
-                refs.entry(rf.file_name).or_insert_with(|| vec![]).push(line);
+            let def_span = all_refs.next().unwrap();
+            let def_text = self.get_highlighted_line(&def_span.file_name, def_span.line_start)?;
+            let def_line = LineResult::new(&def_span, def_text);
+            defs.entry(def_span.file_name).or_insert_with(|| vec![]).push(def_line);
+
+            for ref_span in all_refs {
+                let text = self.get_highlighted_line(&ref_span.file_name, ref_span.line_start)?;
+                let line = LineResult::new(&ref_span, text);
+                refs.entry(ref_span.file_name).or_insert_with(|| vec![]).push(line);
             }
         }
 

@@ -21,9 +21,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
-    opts.optopt("g", "goto", "goto def <span>", "");
-    opts.optopt("f", "find", "find ident <name>", "");
-    opts.optopt("t", "type", "show type <span>", "");
+    // opts.optopt("g", "goto", "goto def <span>", "");
+    // opts.optopt("f", "find", "find ident <name>", "");
+    // opts.optopt("t", "type", "show type <span>", "");
 
     // Look at matches to actually see command line options.
     let matches = match opts.parse(&args[1..]) {
@@ -40,49 +40,49 @@ fn main() {
         Config::print_docs();
 
         return;
-    } else if let Some(ref s) = matches.opt_str("g") {
-        let span: analysis::Span = match serde_json::from_str(s) {
-            Ok(s) => s,
-            Err(e) => {
-                println!("Error reading span: {}, `{}`", e, s);
-                return;
-            }
-        };
+    // } else if let Some(ref s) = matches.opt_str("g") {
+    //     let span: analysis::Span = match serde_json::from_str(s) {
+    //         Ok(s) => s,
+    //         Err(e) => {
+    //             println!("Error reading span: {}, `{}`", e, s);
+    //             return;
+    //         }
+    //     };
 
-        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
-        host.reload().unwrap();
-        if let Ok(s) = host.goto_def(&span) {
-            println!("Goto: {:?}", s);
-        } else {
-            println!("Error looking up span {:?}", span);
-        }
-        return;
-    } else if let Some(ref s) = matches.opt_str("t") {
-        let span: analysis::Span = match serde_json::from_str(s) {
-            Ok(s) => s,
-            Err(e) => {
-                println!("Error reading span: {}, `{}`", e, s);
-                return;
-            }
-        };
+    //     let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
+    //     host.reload().unwrap();
+    //     if let Ok(s) = host.goto_def(&span) {
+    //         println!("Goto: {:?}", s);
+    //     } else {
+    //         println!("Error looking up span {:?}", span);
+    //     }
+    //     return;
+    // } else if let Some(ref s) = matches.opt_str("t") {
+    //     let span: analysis::Span = match serde_json::from_str(s) {
+    //         Ok(s) => s,
+    //         Err(e) => {
+    //             println!("Error reading span: {}, `{}`", e, s);
+    //             return;
+    //         }
+    //     };
 
-        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
-        host.reload().unwrap();
-        if let Ok(t) = host.show_type(&span) {
-            println!("Type: {:?}", t);
-        } else {
-            println!("Error looking up span {:?}", span);
-        }
-        return;
-    } else if let Some(ref s) = matches.opt_str("f") {
-        let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
-        host.reload().unwrap();
-        if let Ok(results) = host.search(s) {
-            println!("Find {}: {:?}", s, results);
-        } else {
-            println!("Error finding ident {}", s);
-        }
-        return;
+    //     let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
+    //     host.reload().unwrap();
+    //     if let Ok(t) = host.show_type(&span) {
+    //         println!("Type: {:?}", t);
+    //     } else {
+    //         println!("Error looking up span {:?}", span);
+    //     }
+    //     return;
+    // } else if let Some(ref s) = matches.opt_str("f") {
+    //     let host = analysis::AnalysisHost::new(".", analysis::Target::Debug);
+    //     host.reload().unwrap();
+    //     if let Ok(results) = host.search(s) {
+    //         println!("Find {}: {:?}", s, results);
+    //     } else {
+    //         println!("Error finding ident {}", s);
+    //     }
+    //     return;
     }
 
     rustw::run_server();

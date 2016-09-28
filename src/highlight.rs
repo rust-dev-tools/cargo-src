@@ -17,9 +17,9 @@ use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::CodeMap;
 
-use analysis::Analysis;
+use analysis::{AnalysisHost, Span};
 
-pub fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> String {
+pub fn highlight(analysis: &AnalysisHost, file_name: String, file_text: String) -> String {
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap(file_name, None, file_text);
 
@@ -33,12 +33,12 @@ pub fn highlight(analysis: &Analysis, file_name: String, file_text: String) -> S
 
 struct Highlighter<'a> {
     buf: Vec<u8>,
-    analysis: &'a Analysis,
+    analysis: &'a AnalysisHost,
     codemap: &'a CodeMap,
 }
 
 impl<'a> Highlighter<'a> {
-    fn new(analysis: &'a Analysis, codemap: &'a CodeMap) -> Highlighter<'a> {
+    fn new(analysis: &'a AnalysisHost, codemap: &'a CodeMap) -> Highlighter<'a> {
         Highlighter {
             buf: vec![],
             analysis: analysis,
@@ -46,10 +46,21 @@ impl<'a> Highlighter<'a> {
         }
     }
 
+    fn get_link(&self, span: &Span) -> Option<String> {
+        self.analysis.goto_def(span).ok().map(|def_span| {
+            format!("{}:{}:{}:{}:{}",
+                    def_span.file_name,
+                    def_span.line_start,
+                    def_span.column_start,
+                    def_span.line_end,
+                    def_span.column_end)
+        })
+    }
+
     fn write_span(buf: &mut Vec<u8>,
                   klass: Class,
                   text: String,
-                  title: Option<&str>,
+                  title: Option<String>,
                   extra_class: Option<String>,
                   link: Option<String>,
                   extra: Option<String>)
@@ -110,12 +121,13 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let title = self.analysis.get_title(&lo, &hi);
-                        let link = self.analysis.get_link(&lo, &hi);
+                        let span = &Span::from_locs(&lo, &hi, ".");
+                        let title = self.analysis.show_type(span).ok();
+                        let link = self.get_link(span);
 
-                        let css_class = match self.analysis.get_class_id(&lo, &hi) {
-                            Some(i) => Some(format!(" class_id class_id_{}", i)),
-                            None => None,
+                        let css_class = match self.analysis.id(span) {
+                            Ok(i) => Some(format!(" class_id class_id_{}", i)),
+                            Err(_) => None,
                         };
 
                         (title, css_class, link)
@@ -130,7 +142,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let title = self.analysis.get_title(&lo, &hi);
+                        let span = &Span::from_locs(&lo, &hi, ".");
+                        let title = self.analysis.show_type(span).ok();
                         let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
                         let css_class = Some(" glob".to_owned());
 
