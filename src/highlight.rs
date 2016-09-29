@@ -122,7 +122,14 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
                         let span = &Span::from_locs(&lo, &hi, ".");
-                        let title = self.analysis.show_type(span).ok();
+                        let ty = self.analysis.show_type(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
+                        let docs = self.analysis.docs(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
+                        let title = match (ty, docs) {
+                            (Some(t), Some(d)) => Some(format!("{}\n\n{}", t, d)),
+                            (Some(t), _) => Some(t),
+                            (_, Some(d)) => Some(d),
+                            (None, None) => None,
+                        };
                         let link = self.get_link(span);
 
                         let css_class = match self.analysis.id(span) {
@@ -149,7 +156,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
                         Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, location)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None)
+                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None),
                 }
             }
             klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None),
