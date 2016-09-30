@@ -456,20 +456,22 @@ impl<'a> Handler<'a> {
                 res.headers_mut().set(ContentType::json());
 
                 loop {
-                    let pending_push_data = self.pending_push_data.lock().unwrap();
-                    match pending_push_data.get(&key) {
-                        Some(&Some(ref s)) => {
-                            // Data is ready, return it.
-                            res.send(s.as_bytes()).unwrap();
-                            return;
-                        }
-                        Some(&None) => {
-                            // Task is in progress, wait.
-                        }
-                        None => {
-                            // No push task, return nothing.
-                            res.send("{}".as_bytes()).unwrap();
-                            return;
+                    {
+                        let pending_push_data = self.pending_push_data.lock().unwrap();
+                        match pending_push_data.get(&key) {
+                            Some(&Some(ref s)) => {
+                                // Data is ready, return it.
+                                res.send(s.as_bytes()).unwrap();
+                                return;
+                            }
+                            Some(&None) => {
+                                // Task is in progress, wait.
+                            }
+                            None => {
+                                // No push task, return nothing.
+                                res.send("{}".as_bytes()).unwrap();
+                                return;
+                            }
                         }
                     }
                     sleep(time::Duration::from_millis(200));
