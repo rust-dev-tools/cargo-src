@@ -10,6 +10,7 @@
 
 use std::fmt::Display;
 use std::io::{self, Write};
+use std::path::Path;
 use std::str;
 
 use rustdoc::html::highlight::{self, Classifier, Class};
@@ -19,11 +20,11 @@ use syntax::codemap::CodeMap;
 
 use analysis::{AnalysisHost, Span};
 
-pub fn highlight(analysis: &AnalysisHost, file_name: String, file_text: String) -> String {
+pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap(file_name, None, file_text);
 
-    let mut out = Highlighter::new(analysis, sess.codemap());
+    let mut out = Highlighter::new(analysis, project_path, sess.codemap());
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
                                          sess.codemap());
     classifier.write_source(&mut out).unwrap();
@@ -35,21 +36,27 @@ struct Highlighter<'a> {
     buf: Vec<u8>,
     analysis: &'a AnalysisHost,
     codemap: &'a CodeMap,
+    project_path: &'a Path,
 }
 
 impl<'a> Highlighter<'a> {
-    fn new(analysis: &'a AnalysisHost, codemap: &'a CodeMap) -> Highlighter<'a> {
+    fn new(analysis: &'a AnalysisHost, project_path: &'a Path, codemap: &'a CodeMap) -> Highlighter<'a> {
         Highlighter {
             buf: vec![],
             analysis: analysis,
             codemap: codemap,
+            project_path: project_path,
         }
     }
 
     fn get_link(&self, span: &Span) -> Option<String> {
         self.analysis.goto_def(span).ok().map(|def_span| {
+            let file_name = Path::new(&def_span.file_name).strip_prefix(self.project_path)
+                                                          .ok()
+                                                          .and_then(|p| p.to_str().map(|s| s.to_owned()))
+                                                          .unwrap_or(def_span.file_name);
             format!("{}:{}:{}:{}:{}",
-                    def_span.file_name,
+                    file_name,
                     def_span.line_start + 1,
                     def_span.column_start + 1,
                     def_span.line_end + 1,

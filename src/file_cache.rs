@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Write, BufWriter};
@@ -22,6 +23,7 @@ use super::highlight;
 pub struct Cache {
     files: FileCache,
     analysis: AnalysisHost,
+    project_dir: PathBuf,
 }
 
 struct FileCache {
@@ -71,6 +73,7 @@ impl Cache {
         Cache {
             files: FileCache::new(),
             analysis: AnalysisHost::new(Target::Debug),
+            project_dir: env::current_dir().unwrap(),
         }
     }
 
@@ -112,7 +115,7 @@ impl Cache {
         let file_name = path.to_str().unwrap().to_owned();
         let file = self.files.get(path)?;
         if file.highlighted_lines.is_empty() {
-            let highlighted = highlight::highlight(&self.analysis, file_name, FileCache::get_string(file)?.to_owned());
+            let highlighted = highlight::highlight(&self.analysis, &self.project_dir, file_name, FileCache::get_string(file)?.to_owned());
 
             for line in highlighted.lines() {
                 file.highlighted_lines.push(line.replace("<br>", "\n"));
@@ -138,6 +141,7 @@ impl Cache {
         println!("Processing analysis...");
         // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
         self.analysis.reload(".").unwrap();
+        self.project_dir = env::current_dir().unwrap();
         println!("done");
     }
 
