@@ -50,10 +50,10 @@ impl<'a> Highlighter<'a> {
         self.analysis.goto_def(span).ok().map(|def_span| {
             format!("{}:{}:{}:{}:{}",
                     def_span.file_name,
-                    def_span.line_start,
-                    def_span.column_start,
-                    def_span.line_end,
-                    def_span.column_end)
+                    def_span.line_start + 1,
+                    def_span.column_start + 1,
+                    def_span.line_end + 1,
+                    def_span.column_end + 1)
         })
     }
 
