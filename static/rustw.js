@@ -230,7 +230,6 @@ function load_source(state) {
     add_line_number_menus();
     add_glob_menus();
 
-
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
@@ -271,7 +270,7 @@ function add_glob_menus() {
 function add_source_jump_links() {
     var linkables = $(".src_link");
     // TODO special case links to the same file
-    linkables.click(load_link);
+    linkables.click(load_doc_or_src_link);
 }
 
 function add_line_number_menus() {
@@ -696,6 +695,17 @@ function win_src_link() {
     load_link.call(this);
 }
 
+function load_doc_or_src_link() {
+    var element = $(this);
+    var doc_url = element.attr("doc_url")
+
+    if (!doc_url) {
+        return load_link.call(this);
+    }
+
+    window.open(doc_url, '_blank');
+}
+
 function load_link() {
     var element = $(this);
     var file_loc = element.attr("link").split(':');
@@ -791,13 +801,6 @@ function show_src_link_menu(event) {
     return false;
 }
 
-function hide_src_link_menu() {
-    $("#src_menu_edit").off("click");
-    $("#src_menu_quick_edit").off("click");
-    $("#src_menu_view").off("click");
-    $("#div_src_menu").hide();
-}
-
 function show_glob_menu(event) {
     var menu = $("#div_glob_menu");
     var data = show_menu(menu, event, hide_glob_menu);
@@ -807,9 +810,80 @@ function show_glob_menu(event) {
     return false;
 }
 
+function show_line_number_menu(event) {
+    var menu = $("#div_line_number_menu");
+    var data = show_menu(menu, event, hide_line_number_menu);
+
+    var line_number = line_number_for_span(data.target);
+    var file_name = history.state.file;
+    var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
+    $("#line_number_menu_edit").click(edit_data, edit);
+    $("#line_number_quick_edit").click(data, quick_edit_line_number);
+
+    if (CONFIG.vcs_link) {
+        let link = $("#line_number_vcs").children().first();
+        link.click(function() { hide_line_number_menu(); return true; });
+        link.attr("href", CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number))
+    } else {
+        $("#line_number_vcs").hide();
+    }
+
+    return false;
+}
+
+function show_ref_menu(event) {
+    var menu = $("#div_ref_menu");
+    var data = show_menu(menu, event, hide_ref_menu);
+    data.id = event.data;
+
+    var doc_url = data.target.attr("doc_url");
+    if (doc_url) {
+        var view_data = { 'link': doc_url, 'hide_fn': hide_ref_menu };
+        $("#ref_menu_view_docs").show();
+        $("#ref_menu_view_docs").click(view_data, open_tab);
+    } else {
+        $("#ref_menu_view_docs").hide();
+    }
+
+    var src_url = data.target.attr("src_url");
+    if (src_url) {
+        var view_data = { 'link': src_url, 'hide_fn': hide_ref_menu };
+        $("#ref_menu_view_source").show();
+        $("#ref_menu_view_source").click(view_data, open_tab);
+    } else {
+        $("#ref_menu_view_source").hide();
+    }
+
+    $("#ref_menu_find_uses").click(event.data, find_uses);
+    $("#ref_menu_rename").click(data, show_rename);
+
+    return false;
+}
+
+function hide_src_link_menu() {
+    hide_menu($("#div_src_menu"));
+}
+
 function hide_glob_menu() {
-    $("#glob_menu_deglob").off("click");
-    $("#div_glob_menu").hide();
+    hide_menu($("#div_glob_menu"));
+}
+
+function hide_line_number_menu() {
+    hide_menu($("#div_line_number_menu"));
+}
+
+function hide_ref_menu() {
+    hide_menu($("#div_ref_menu"));
+}
+
+function hide_menu(menu) {
+    menu.children("div").off("click");
+    menu.hide();
+}
+
+function open_tab(event) {
+    window.open(event.data.link, '_blank');
+    event.data.hide_fn();
 }
 
 function deglob(event) {
@@ -857,24 +931,6 @@ function deglob(event) {
     });
 
     hide_glob_menu();
-}
-
-function show_ref_menu(event) {
-    var menu = $("#div_ref_menu");
-    var data = show_menu(menu, event, hide_ref_menu);
-    data.id = event.data;
-    var target = $(event.target);
-
-    $("#ref_menu_find_uses").click(event.data, find_uses);
-    $("#ref_menu_rename").click(data, show_rename);
-
-    return false;
-}
-
-function hide_ref_menu() {
-    $("#ref_menu_find_uses").off("click");
-    $("#ref_menu_rename").off("click");
-    $("#div_ref_menu").hide();
 }
 
 function find_uses(event) {
@@ -966,33 +1022,6 @@ function save_rename(event) {
         console.log("error: " + errorThrown + "; status: " + status);
         $("#rename_message").text("error trying to save rename");
     });
-}
-
-function show_line_number_menu(event) {
-    var menu = $("#div_line_number_menu");
-    var data = show_menu(menu, event, hide_line_number_menu);
-
-    var line_number = line_number_for_span(data.target);
-    var file_name = history.state.file;
-    var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
-    $("#line_number_menu_edit").click(edit_data, edit);
-    $("#line_number_quick_edit").click(data, quick_edit_line_number);
-
-    if (CONFIG.vcs_link) {
-        let link = $("#line_number_vcs").children().first();
-        link.click(function() { hide_line_number_menu(); return true; });
-        link.attr("href", CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number))
-    } else {
-        $("#line_number_vcs").hide();
-    }
-
-    return false;
-}
-
-function hide_line_number_menu() {
-    $("#line_number_menu_edit").off("click");
-    $("#line_number_quick_edit").off("click");
-    $("#div_line_number_menu").hide();
 }
 
 function edit(event) {

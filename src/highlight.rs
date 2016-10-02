@@ -63,13 +63,15 @@ impl<'a> Highlighter<'a> {
                   title: Option<String>,
                   extra_class: Option<String>,
                   link: Option<String>,
+                  doc_link: Option<String>,
+                  src_link: Option<String>,
                   extra: Option<String>)
                   -> io::Result<()> {
         write!(buf, "<span class='{}", klass.rustdoc_class())?;
         if let Some(s) = extra_class {
             write!(buf, "{}", s)?;
         }
-        if let Some(_) = link {
+        if link.is_some() || doc_link.is_some() {
             write!(buf, " src_link")?;
         }
         write!(buf, "'")?;
@@ -79,6 +81,12 @@ impl<'a> Highlighter<'a> {
                 push_char(buf, c)?;
             }
             write!(buf, "'")?;
+        }
+        if let Some(s) = doc_link {
+            write!(buf, " doc_url='{}'", s)?;
+        }
+        if let Some(s) = src_link {
+            write!(buf, " src_url='{}'", s)?;
         }
         if let Some(s) = link {
             write!(buf, " link='{}'", s)?;
@@ -117,7 +125,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         match klass {
             Class::None => write!(self.buf, "{}", text),
             Class::Ident => {
-                let (title, css_class, link) = match tas {
+                match tas {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
@@ -131,18 +139,18 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                             (None, None) => None,
                         };
                         let link = self.get_link(span);
+                        let doc_link = self.analysis.doc_url(span).ok();
+                        let src_link = self.analysis.src_url(span).ok();
 
                         let css_class = match self.analysis.id(span) {
                             Ok(i) => Some(format!(" class_id class_id_{}", i)),
                             Err(_) => None,
                         };
 
-                        (title, css_class, link)
+                        Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, doc_link, src_link, None)
                     }
-                    None => (None, None, None),
-                };
-
-                Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, None)
+                    None => Highlighter::write_span(&mut self.buf, Class::Ident, text, None, None, None, None, None, None),
+                }
             }
             Class::Op if text == "*" => {
                 match tas {
@@ -154,12 +162,12 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
                         let css_class = Some(" glob".to_owned());
 
-                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, location)
+                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, None, None, location)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None),
+                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None, None, None),
                 }
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None),
+            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None, None, None),
         }
     }
 }
