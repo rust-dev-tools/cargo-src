@@ -254,6 +254,7 @@ impl<'a> Handler<'a> {
                                          mut req: Request<'b, 'k>,
                                          mut res: Response<'b, Fresh>) {
         assert!(!self.config.demo_mode, "Quick edit shouldn't happen in demo mode");
+        assert!(self.config.unstable_features, "Quick edit is unstable");
 
         res.headers_mut().set(ContentType::json());
 
@@ -272,6 +273,7 @@ impl<'a> Handler<'a> {
                                     mut req: Request<'b, 'k>,
                                     mut res: Response<'b, Fresh>) {
         assert!(!self.config.demo_mode, "Substitution shouldn't happen in demo mode");
+        assert!(self.config.unstable_features, "Substitution is unstable");
 
         res.headers_mut().set(ContentType::json());
 
@@ -292,6 +294,7 @@ impl<'a> Handler<'a> {
                                    mut res: Response<'b, Fresh>,
                                    query: Option<String>) {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
+        assert!(self.config.unstable_features, "Edit is unstable");
 
         match parse_query_value(&query, "file=") {
             Some(location) => {
@@ -426,6 +429,7 @@ impl<'a> Handler<'a> {
                                      _req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>,
                                      query: Option<String>) {
+        assert!(self.config.unstable_features, "Rename is unstable");
         match (parse_query_value(&query, "id="), parse_query_value(&query, "text=")) {
             (Some(id), Some(text)) => {
                 // TODO we could do some verification on text here.

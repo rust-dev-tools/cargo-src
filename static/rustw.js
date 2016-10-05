@@ -793,21 +793,28 @@ function show_src_link_menu(event) {
     var src_menu = $("#div_src_menu");
     var data = show_menu(src_menu, event, hide_src_link_menu);
 
-    var edit_data = { 'link': data.target.attr("link"), 'hide_fn': hide_src_link_menu };
-    $("#src_menu_edit").click(edit_data, edit);
-    $("#src_menu_quick_edit").click(data, quick_edit_link);
+    if (CONFIG.unstable_features) {
+        var edit_data = { 'link': data.target.attr("link"), 'hide_fn': hide_src_link_menu };
+        $("#src_menu_edit").click(edit_data, edit);
+        $("#src_menu_quick_edit").click(data, quick_edit_link);
+    } else {
+        $("#src_menu_edit").hide();
+        $("#src_menu_quick_edit").hide();        
+    }
     $("#src_menu_view").click(data.target, view_from_menu);
 
     return false;
 }
 
 function show_glob_menu(event) {
-    var menu = $("#div_glob_menu");
-    var data = show_menu(menu, event, hide_glob_menu);
+    if (CONFIG.unstable_features) {
+        var menu = $("#div_glob_menu");
+        var data = show_menu(menu, event, hide_glob_menu);
 
-    $("#glob_menu_deglob").click(event.target, deglob);
+        $("#glob_menu_deglob").click(event.target, deglob);
 
-    return false;
+        return false;
+    }
 }
 
 function show_line_number_menu(event) {
@@ -816,9 +823,14 @@ function show_line_number_menu(event) {
 
     var line_number = line_number_for_span(data.target);
     var file_name = history.state.file;
-    var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
-    $("#line_number_menu_edit").click(edit_data, edit);
-    $("#line_number_quick_edit").click(data, quick_edit_line_number);
+    if (CONFIG.unstable_features) {
+        var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
+        $("#line_number_menu_edit").click(edit_data, edit);
+        $("#line_number_quick_edit").click(data, quick_edit_line_number);
+    } else {
+        $("#line_number_menu_edit").hide();
+        $("#line_number_quick_edit").hide();
+    }
 
     if (CONFIG.vcs_link) {
         let link = $("#line_number_vcs").children().first();
@@ -855,7 +867,11 @@ function show_ref_menu(event) {
     }
 
     $("#ref_menu_find_uses").click(event.data, find_uses);
-    $("#ref_menu_rename").click(data, show_rename);
+    if (CONFIG.unstable_features) {
+        $("#ref_menu_rename").click(data, show_rename);
+    } else {
+        $("#ref_menu_rename").hide();
+    }
 
     return false;
 }

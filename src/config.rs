@@ -86,7 +86,7 @@ impl ConfigType for String {
 }
 
 macro_rules! create_config {
-    ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
+    ($($i:ident: $ty:ty, $def:expr, $unstable:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         #[derive(Serialize, RustcDecodable, Clone)]
         pub struct Config {
             $(pub $i: $ty),+
@@ -108,6 +108,7 @@ macro_rules! create_config {
             $(
                 if let Some(val) = parsed.$i {
                     self.$i = val;
+                    // TODO error out if unstable
                 }
             )+
                 self
@@ -129,6 +130,7 @@ macro_rules! create_config {
 
             pub fn print_docs() {
                 use std::cmp;
+
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
                 let mut space_str = String::with_capacity(max);
@@ -137,21 +139,23 @@ macro_rules! create_config {
                 }
                 println!("Configuration Options:");
                 $(
-                    let name_raw = stringify!($i);
-                    let mut name_out = String::with_capacity(max);
-                    for _ in name_raw.len()..max-1 {
-                        name_out.push(' ')
+                    if !$unstable {
+                        let name_raw = stringify!($i);
+                        let mut name_out = String::with_capacity(max);
+                        for _ in name_raw.len()..max-1 {
+                            name_out.push(' ')
+                        }
+                        name_out.push_str(name_raw);
+                        name_out.push(' ');
+                        println!("{}{} Default: {:?}",
+                                 name_out,
+                                 <$ty>::get_variant_names(),
+                                 $def);
+                        $(
+                            println!("{}{}", space_str, $dstring);
+                        )+
+                        println!("");
                     }
-                    name_out.push_str(name_raw);
-                    name_out.push(' ');
-                    println!("{}{} Default: {:?}",
-                             name_out,
-                             <$ty>::get_variant_names(),
-                             $def);
-                    $(
-                        println!("{}{}", space_str, $dstring);
-                    )+
-                    println!("");
                 )+
             }
         }
@@ -170,15 +174,16 @@ macro_rules! create_config {
 }
 
 create_config! {
-    build_command: String, "cargo build".to_owned(), "command to call to build";
-    edit_command: String, String::new(), "command to call to edit; can use $file, $line, and $col.";
-    port: usize, 7878, "port to run rustw on";
-    demo_mode: bool, false, "run in demo mode";
-    demo_mode_root_path: String, String::new(), "path to use in URLs in demo mode";
-    context_lines: usize, 2, "lines of context to show before and after code snippets";
-    build_on_load: bool, true, "build on page load and refresh";
-    source_directory: String, "src".to_owned(), "root of the source directory";
-    save_analysis: bool, true, "whether to run the save_analysis pass";
-    no_trans: bool, true, "whether to omit the trans pass";
-    vcs_link: String, String::new(), "link to use for VCS; should use $file and $line.";
+    build_command: String, "cargo build".to_owned(), false, "command to call to build";
+    edit_command: String, String::new(), false, "command to call to edit; can use $file, $line, and $col.";
+    unstable_features: bool, false, false, "Enable unstable features";
+    port: usize, 7878, false, "port to run rustw on";
+    demo_mode: bool, false, true, "run in demo mode";
+    demo_mode_root_path: String, String::new(), true, "path to use in URLs in demo mode";
+    context_lines: usize, 2, false, "lines of context to show before and after code snippets";
+    build_on_load: bool, true, false, "build on page load and refresh";
+    source_directory: String, "src".to_owned(), false, "root of the source directory";
+    save_analysis: bool, true, false, "whether to run the save_analysis pass";
+    no_trans: bool, true, false, "whether to omit the trans pass";
+    vcs_link: String, String::new(), false, "link to use for VCS; should use $file and $line.";
 }
