@@ -174,11 +174,12 @@ html {
     vertical-align: top;
 }
 .div_span {
-    display: inline-block;
+    display: block;
 }
 .div_spans {
     position: relative;
     top: 2px;
+    display: inline-block;
 }
 .div_span_label {
     display: inline-block;
