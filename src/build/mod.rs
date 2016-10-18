@@ -17,6 +17,7 @@ pub struct Builder {
     config: Arc<Config>,
 }
 
+#[derive(Clone, Debug)]
 pub struct BuildResult {
     pub status: Option<i32>,
     pub stdout: String,
@@ -54,7 +55,7 @@ impl Builder {
             flags.push_str(" -Zno-trans");
         }
         cmd.env("RUSTFLAGS", &flags);
-        cmd.env("CARGO_TARGET_DIR", "target/rustw");
+        cmd.env("CARGO_TARGET_DIR", "target/rls");
 
         // TODO execute async
         // TODO record compile time
@@ -75,6 +76,8 @@ impl Builder {
         };
 
         let result = BuildResult::from_process_output(output);
+
+        // println!("Build output: {:?}", result);
 
         Ok(result)
     }
