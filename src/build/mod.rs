@@ -54,6 +54,7 @@ impl Builder {
             flags.push_str(" -Zno-trans");
         }
         cmd.env("RUSTFLAGS", &flags);
+        cmd.env("CARGO_TARGET_DIR", "target/rustw");
 
         // TODO execute async
         // TODO record compile time
