@@ -8,7 +8,7 @@
 
 // Syntax highlighting.
 
-use std::env;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{self, Write};
 use std::path::Path;
@@ -38,6 +38,7 @@ struct Highlighter<'a> {
     analysis: &'a AnalysisHost,
     codemap: &'a CodeMap,
     project_path: &'a Path,
+    path_cache: HashMap<String, String>,
 }
 
 impl<'a> Highlighter<'a> {
@@ -47,6 +48,7 @@ impl<'a> Highlighter<'a> {
             analysis: analysis,
             codemap: codemap,
             project_path: project_path,
+            path_cache: HashMap::new(),
         }
     }
 
@@ -104,6 +106,19 @@ impl<'a> Highlighter<'a> {
         }
         write!(buf, ">{}</span>", text)
     }
+
+    fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
+        let file_path = self.path_cache.entry(lo.file.name.clone()).or_insert_with(|| {
+            Path::new(&lo.file.name).canonicalize().unwrap().display().to_string()
+        });
+        Span {
+            file_name: file_path.clone(),
+            line_start: lo.line as usize - 1,
+            column_start: lo.col.0 as usize,
+            line_end: hi.line as usize - 1,
+            column_end: hi.col.0 as usize,
+        }
+    }
 }
 
 fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
@@ -137,7 +152,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let span = &span_from_locs(&lo, &hi);
+                        let span = &self.span_from_locs(&lo, &hi);
                         let ty = self.analysis.show_type(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
                         let docs = self.analysis.docs(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
                         let title = match (ty, docs) {
@@ -165,7 +180,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let span = &span_from_locs(&lo, &hi);
+                        let span = &self.span_from_locs(&lo, &hi);
                         let title = self.analysis.show_type(span).ok();
                         let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
                         let css_class = Some(" glob".to_owned());
@@ -177,15 +192,5 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             }
             klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None, None, None),
         }
-    }
-}
-
-pub fn span_from_locs(lo: &Loc, hi: &Loc) -> Span {
-    Span {
-        file_name: format!("{}/{}", env::current_dir().unwrap().to_str().unwrap(), lo.file.name),
-        line_start: lo.line as usize - 1,
-        column_start: lo.col.0 as usize,
-        line_end: hi.line as usize - 1,
-        column_end: hi.col.0 as usize,
     }
 }
