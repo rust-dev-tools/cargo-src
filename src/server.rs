@@ -568,7 +568,7 @@ pub struct TextResult<'a> {
 
 #[derive(Serialize, Debug)]
 pub struct BuildResult {
-    pub messages: String,
+    pub messages: Vec<String>,
     pub errors: Vec<Diagnostic>,
     pub push_data_key: Option<String>,
     // build_command: String,
@@ -576,9 +576,10 @@ pub struct BuildResult {
 
 impl BuildResult {
     fn from_build(build: &build::BuildResult) -> BuildResult {
+        let (errors, messages) = errors::parse_errors(&build.stderr, &build.stdout);
         BuildResult {
-            messages: build.stdout.to_owned(),
-            errors: errors::parse_errors(&build.stderr),
+            messages: messages,
+            errors: errors,
             push_data_key: None,
         }
     }

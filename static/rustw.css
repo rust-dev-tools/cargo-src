@@ -137,9 +137,17 @@ html {
 #div_stdout {
     margin-bottom: 20px;
 }
+#div_errors {
+    margin-bottom: 20px;
+}
 #div_std_label {
     font-weight: 600;
     margin-left: 8px;
+}
+
+#div_messages pre {
+    margin-top: 4px;
+    margin-bottom: 4px;    
 }
 
 .div_diagnostic {

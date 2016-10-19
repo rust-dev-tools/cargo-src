@@ -12,25 +12,30 @@ use std::cmp::{Ordering, Ord, PartialOrd};
 
 mod rustc_errors;
 
-pub fn parse_errors(input: &str) -> Vec<Diagnostic> {
-    let mut result: Vec<rustc_errors::Diagnostic> = vec![];
-    for i in input.split('\n') {
-        if i.trim().is_empty() || !i.starts_with('{') {
+pub fn parse_errors(stderr: &str, stdout: &str) -> (Vec<Diagnostic>, Vec<String>) {
+    let mut errs: Vec<rustc_errors::Diagnostic> = vec![];
+    let mut msgs: Vec<String> = stdout.split('\n').map(|s| s.to_owned()).collect();
+    for i in stderr.split('\n') {
+        if i.trim().is_empty() {
+            continue;
+        }
+        if !i.starts_with('{') {
+            msgs.push(i.to_owned());
             continue;
         }
         match serde_json::from_str(i) {
             Ok(x) => {
-                result.push(x);
+                errs.push(x);
             }
             Err(e) => {
                 println!("ERROR parsing compiler output: {}", e);
-                println!("input: `{}`", input);
+                println!("input: `{}`", i);
             }
         }
     }
 
     let mut lowering_ctxt = rustc_errors::LoweringContext::new();
-    result.into_iter().map(|d| d.lower(&mut lowering_ctxt)).collect()
+    (errs.into_iter().map(|d| d.lower(&mut lowering_ctxt)).collect(), msgs)
 }
 
 #[derive(Serialize, Debug)]
