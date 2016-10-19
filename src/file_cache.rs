@@ -106,7 +106,7 @@ impl Cache {
 
         let line_start = file.new_lines[line_start];
         let line_end = file.new_lines[line_end] - 1;
-        let text = FileCache::get_string(file)?;
+        let text = FileCache::get_string(file);
         Ok(&text[line_start..line_end])
     }
 
@@ -115,7 +115,7 @@ impl Cache {
         let file_name = path.to_str().unwrap().to_owned();
         let file = self.files.get(path)?;
         if file.highlighted_lines.is_empty() {
-            let highlighted = highlight::highlight(&self.analysis, &self.project_dir, file_name, FileCache::get_string(file)?.to_owned());
+            let highlighted = highlight::highlight(&self.analysis, &self.project_dir, file_name, FileCache::get_string(file).to_owned());
 
             for line in highlighted.lines() {
                 file.highlighted_lines.push(line.replace("<br>", "\n"));
@@ -128,7 +128,7 @@ impl Cache {
     }
 
     // line is 0-indexed
-    pub fn get_highlighted_line(&mut self, file_name: &str, line: usize) -> Result<String, String> {
+    pub fn get_highlighted_line(&mut self, file_name: &Path, line: usize) -> Result<String, String> {
         let lines = self.get_highlighted(Path::new(file_name))?;
         Ok(lines[line].clone())
     }
@@ -248,14 +248,20 @@ impl Cache {
             };
 
             let def_span = all_refs.next().unwrap();
-            let def_text = self.get_highlighted_line(&def_span.file_name, def_span.line_start)?;
+            let project_dir = self.project_dir.clone();
+            let file_path = Path::new(&def_span.file_name);
+            let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
+            let def_text = self.get_highlighted_line(&file_path, def_span.line_start)?;
             let def_line = LineResult::new(&def_span, def_text);
-            defs.entry(def_span.file_name).or_insert_with(|| vec![]).push(def_line);
+            defs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(def_line);
 
             for ref_span in all_refs {
-                let text = self.get_highlighted_line(&ref_span.file_name, ref_span.line_start)?;
+                let project_dir = self.project_dir.clone();
+                let file_path = Path::new(&ref_span.file_name);
+                let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
+                let text = self.get_highlighted_line(&file_path, ref_span.line_start)?;
                 let line = LineResult::new(&ref_span, text);
-                refs.entry(ref_span.file_name).or_insert_with(|| vec![]).push(line);
+                refs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
             }
         }
 
@@ -268,10 +274,10 @@ impl Cache {
 
         fn make_file_results(bucket: HashMap<String, Vec<LineResult>>) -> Vec<FileResult> {
             let mut list = vec![];
-            for (file_name, mut lines) in bucket.into_iter() {
+            for (file_path, mut lines) in bucket.into_iter() {
                 lines.sort();
                 let per_file = FileResult {
-                    file_name: file_name.to_owned(),
+                    file_name: file_path,
                     lines: lines,
                 };
                 list.push(per_file);
@@ -296,13 +302,13 @@ impl FileCache {
     }
 
     fn reset_file(&mut self, path: &Path) {
-        if self.files.remove(path).is_some() {
+        if self.files.remove(&path.canonicalize().unwrap()).is_some() {
             self.size -= 1;
         }
     }
 
-    fn get_string(file: &mut CachedFile) -> Result<&str, String> {
-        Ok(str::from_utf8(&file.plain_text).unwrap())
+    fn get_string(file: &mut CachedFile) -> &str {
+        str::from_utf8(&file.plain_text).unwrap()
     }
 
     fn compute_new_lines(file: &mut CachedFile) {
@@ -321,7 +327,7 @@ impl FileCache {
 
     fn get(&mut self, path: &Path) -> Result<&mut CachedFile, String> {
         // Annoying that we have to clone here :-(
-        match self.files.entry(path.to_owned()) {
+        match self.files.entry(path.canonicalize().unwrap()) {
             Entry::Occupied(oe) => {
                 Ok(oe.into_mut())
             }
@@ -338,7 +344,7 @@ impl FileCache {
     }
 
     fn read_file(path: &Path) -> Result<Vec<u8>, String> {
-        match File::open(&path) {
+        match File::open(path) {
             Ok(mut file) => {
                 let mut buf = Vec::new();
                 file.read_to_end(&mut buf).unwrap();
