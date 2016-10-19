@@ -54,9 +54,9 @@ pub struct LineResult {
 impl LineResult {
     fn new(span: &Span, line: String) -> LineResult {
         LineResult {
-            line_start: span.line_start,
-            column_start: span.column_start,
-            column_end: span.column_end,
+            line_start: span.line_start + 1,
+            column_start: span.column_start + 1,
+            column_end: span.column_end + 1,
             line: line,
         }
     }
@@ -127,10 +127,10 @@ impl Cache {
         Ok(&file.highlighted_lines)
     }
 
-    // line is 1-indexed
+    // line is 0-indexed
     pub fn get_highlighted_line(&mut self, file_name: &str, line: usize) -> Result<String, String> {
         let lines = self.get_highlighted(Path::new(file_name))?;
-        Ok(lines[line - 1].clone())
+        Ok(lines[line].clone())
     }
 
     pub fn update_analysis(&mut self) {
