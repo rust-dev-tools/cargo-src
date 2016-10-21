@@ -52,6 +52,7 @@ function onLoad() {
         } else if (state.page == "error") {
             load_error();
         } else if (state.page == "build") {
+            pre_load_build();
             load_build(state);
         } else if (state.page == "err_code") {
             load_err_code(state);
@@ -108,19 +109,33 @@ function hide_options() {
     $("#div_options").hide();
 }
 
-function load_build(state) {
+function pre_load_build() {
+    $("#div_main").html("<div id=\"div_errors\">\
+                             <span id=\"expand_errors\" class=\"small_button\"></span> <span id=\"div_std_label\">errors:</span>\
+                         </div>\
+                         \
+                         <div id=\"div_stdout\">\
+                             <span id=\"expand_messages\" class=\"small_button\"></span> <span id=\"div_std_label\">info:</span>\
+                             <div id=\"div_messages\">\
+                             </div>\
+                         </div>");
+
     if (CONFIG.demo_mode) {
-        state.results.rustw_message =
-            "<h2>demo mode</h2>Click `+` and `-` to expand/hide info.<br>Click error codes or source links to see more stuff. Source links can be right-clicked for more options (note that edit functionality won't work in demo mode).";
+        $("#div_main").prepend("<div id=\"div_message\">\
+                                    <h2>demo mode</h2>\
+                                    Click '+' and '-' to expand/hide info.<br>\
+                                    Click error codes or source links to see more stuff. Source links can be right-clicked for more options (note that edit functionality won't work in demo mode).\
+                                </div>");
     }
 
-    $("#div_main").html(Handlebars.templates.build_results(state.results));
-    set_snippet_plain_text(state.results.errors.reduce(function(a, x) {
-        for (var c of x.children) {
-            a = a.concat(c.spans);
-        }
-        return a.concat(x.spans);
-    }, []));
+    SNIPPET_PLAIN_TEXT = {};
+    show_stdout();
+    show_stderr();
+}
+
+function load_build(state) {
+    // TODO need to append any errors in the state to the screen
+    // so that back works and if we missed any earlier
 
     var rebuild_label = "rebuild";
     if (CONFIG.build_on_load) {
@@ -189,14 +204,18 @@ function highlight_needle(results, tag) {
 function set_snippet_plain_text(spans) {
     SNIPPET_PLAIN_TEXT = {};
     for (var s of spans) {
-        var data = {
-            "plain_text": s.plain_text,
-            "file_name": s.file_name,
-            "line_start": s.line_start,
-            "line_end": s.line_end
-        };
-        SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
+        set_one_snippet_plain_text(s);
     }
+}
+
+function set_one_snippet_plain_text(s) {
+    var data = {
+        "plain_text": s.plain_text,
+        "file_name": s.file_name,
+        "line_start": s.line_start,
+        "line_end": s.line_end
+    };
+    SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
 }
 
 function load_error() {
@@ -383,10 +402,12 @@ function do_build_internal(build_str) {
     })
     .done(function (json) {
         stop_build_animation();
+        // TODO this isn't quite right because results doesn't include the incremental updates, OTOH, they should get over-written anyway
         MAIN_PAGE_STATE = { page: "build", results: json }
         load_build(MAIN_PAGE_STATE);
         pull_data(json.push_data_key);
 
+        // TODO should get moved below when state is right
         history.pushState(MAIN_PAGE_STATE, "", make_url("#build"));
     })
     .fail(function (xhr, status, errorThrown) {
@@ -404,6 +425,33 @@ function do_build_internal(build_str) {
     disable_button($("#link_build"), "building...");
     hide_options();
     start_build_animation();
+    pre_load_build();
+
+    let updateSource = new EventSource(make_url("build_updates"));
+    updateSource.addEventListener("error", function(event) {
+        let error = JSON.parse(event.data);
+
+        $("#div_errors").append(Handlebars.templates.build_error(error));
+
+        for (let s of error.spans) {
+            set_one_snippet_plain_text(s);
+        }
+        for (let c of error.children) {
+            for (let s of c.spans) {
+                set_one_snippet_plain_text(s);
+            }
+        }
+
+        // TODO should be doing init_build_results stuff on just one error at a time
+        init_build_results();
+    }, false);
+    updateSource.addEventListener("message", function(event) {
+        $("#div_messages").append("<pre>" + JSON.parse(event.data) + "</pre>")
+    }, false);
+    updateSource.addEventListener("close", function(event) {
+        console.log("Received close");
+        updateSource.close();
+    }, false);
 }
 
 function pull_data(key) {
@@ -486,9 +534,6 @@ function update_snippets(data) {
 }
 
 function init_build_results() {
-    hide_stdout();
-    show_stderr();
-
     var expand_spans = $(".expand_spans");
     expand_spans.each(hide_spans);
 
@@ -605,6 +650,7 @@ function show_back_link() {
     // Make the 'back' link visible and go back on click.
     $("#link_back").css("visibility", "visible");
     $("#link_back").click(function() {
+        pre_load_build();
         load_build(backup);
         history.pushState(backup, "", make_url("#build"));
     });

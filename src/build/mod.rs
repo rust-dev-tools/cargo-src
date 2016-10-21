@@ -9,12 +9,15 @@
 pub mod errors;
 
 use config::Config;
+use server::BuildUpdateHandler;
 
-use std::process::{Command, Output};
-use std::sync::Arc;
+use std::io::{Read, BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 pub struct Builder {
     config: Arc<Config>,
+    build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -28,9 +31,10 @@ pub struct BuildResult {
 // In file_cache, add our own stuff (deglob/type on hover)
 
 impl Builder {
-    pub fn from_config(config: Arc<Config>) -> Builder {
+    pub fn from_config(config: Arc<Config>, build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>) -> Builder {
         Builder {
             config: config,
+            build_update_handler: build_update_handler,
         }
     }
 
@@ -57,13 +61,49 @@ impl Builder {
         cmd.env("RUSTFLAGS", &flags);
         cmd.env("CARGO_TARGET_DIR", "target/rls");
 
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+
         // TODO execute async
         // TODO record compile time
 
         // TODO log, not println
         println!("building...");
 
-        let output = match cmd.output() {
+        let mut child = cmd.spawn().unwrap();
+        let mut stderr = BufReader::new(child.stderr.take().unwrap());
+
+        // Any output not sent to the update handler.
+        let mut err_buf = String::new();
+        loop {
+            let mut buf = String::new();
+            match stderr.read_line(&mut buf) {
+                Ok(0) | Err(_) => {
+                    let mut build_update_handler = self.build_update_handler.lock().unwrap();
+                    if let Some(ref mut build_update_handler) = *build_update_handler {
+                        build_update_handler.push_updates(&[], true);
+                    }
+                    break;
+                }
+                Ok(_) => {
+                    let mut build_update_handler = self.build_update_handler.lock().unwrap();
+                    match *build_update_handler {
+                        Some(ref mut build_update_handler) => {
+                            build_update_handler.push_updates(&[&buf], false);
+                        }
+                        None => {
+                            err_buf.push_str(&buf);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut buf = vec![];
+        stderr.read_to_end(&mut buf).unwrap();
+        err_buf.push_str(&String::from_utf8(buf).unwrap());
+
+        let output = match child.wait_with_output() {
             Ok(o) => {
                 println!("done");
                 o
@@ -75,7 +115,13 @@ impl Builder {
             }
         };
 
-        let result = BuildResult::from_process_output(output);
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+        let result = BuildResult {
+            status: output.status.code(),
+            stdout: String::new(),
+            stderr: err_buf,
+        };
 
         // println!("Build output: {:?}", result);
 
@@ -84,14 +130,6 @@ impl Builder {
 }
 
 impl BuildResult {
-    fn from_process_output(output: Output) -> BuildResult {
-        BuildResult {
-            status: output.status.code(),
-            stdout: String::from_utf8(output.stdout).unwrap(),
-            stderr: String::from_utf8(output.stderr).unwrap(),
-        }
-    }
-
     pub fn test_result() -> BuildResult {
         BuildResult {
             status: Some(0),

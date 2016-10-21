@@ -11,7 +11,6 @@
 use build::errors::{Diagnostic, DiagnosticSpan};
 use config::Config;
 use file_cache::Cache;
-use server::BuildResult;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -31,7 +30,8 @@ pub fn make_key() -> String {
 // a new, syntax highlighted snippet.
 // This function should be run in its own thread, the result is posted to
 // pending_push_data.
-pub fn reprocess_snippets(result: BuildResult,
+pub fn reprocess_snippets(key: String,
+                          errors: Vec<Diagnostic>,
                           pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
                           use_analysis: bool,
                           file_cache: Arc<Mutex<Cache>>,
@@ -41,8 +41,8 @@ pub fn reprocess_snippets(result: BuildResult,
         file_cache.update_analysis();
     }
 
-    let mut snippets = ReprocessedSnippets::new(result.push_data_key.unwrap());
-    for d in &result.errors {
+    let mut snippets = ReprocessedSnippets::new(key);
+    for d in &errors {
         // Lock the file_cache on every iteration because this thread should be
         // low priority, and we're happy to wait if someone else wants access to
         // the file_cache.

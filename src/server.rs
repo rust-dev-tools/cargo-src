@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::thread::{self, sleep};
+use std::thread::{self, sleep, Thread};
 use std::time;
 
 use hyper::header::ContentType;
@@ -38,17 +38,20 @@ pub struct Instance {
     pub config: Arc<Config>,
     file_cache: Arc<Mutex<Cache>>,
     pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
+    build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>,
 }
 
 impl Instance {
     pub fn new(config: Config) -> Instance {
         let config = Arc::new(config);
+        let build_update_handler = Arc::new(Mutex::new(None));
         Instance {
-            builder: build::Builder::from_config(config.clone()),
+            builder: build::Builder::from_config(config.clone(), build_update_handler.clone()),
             config: config,
             file_cache: Arc::new(Mutex::new(Cache::new())),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_push_data: Arc::new(Mutex::new(HashMap::new())),
+            build_update_handler: build_update_handler,
         }
     }
 }
@@ -62,6 +65,7 @@ impl ::hyper::server::Handler for Instance {
                 builder: &self.builder,
                 file_cache: &self.file_cache,
                 pending_push_data: &self.pending_push_data,
+                build_update_handler: &self.build_update_handler,
             };
             route(s, &mut handler, req, res);
         } else {
@@ -71,12 +75,43 @@ impl ::hyper::server::Handler for Instance {
     }
 }
 
+pub struct BuildUpdateHandler {
+    thread: Thread,
+    updates: Vec<String>,
+    seen: usize,
+    diagnostics: Vec<Diagnostic>,
+    complete: bool,
+}
+
+impl BuildUpdateHandler {
+    fn new(thread: Thread) -> BuildUpdateHandler {
+        BuildUpdateHandler {
+            thread: thread,
+            updates: vec![],
+            seen: 0,
+            diagnostics: vec![],
+            complete: false,
+        }
+    }
+
+    pub fn push_updates(&mut self, updates: &[&str], done: bool) {
+        for u in updates {
+            self.updates.push((*u).to_owned());
+        }
+        if done {
+            self.complete = true;
+        }
+        self.thread.unpark();
+    }
+}
+
 // Handles a single request.
 struct Handler<'a> {
     pub config: &'a Arc<Config>,
     builder: &'a build::Builder,
     file_cache: &'a Arc<Mutex<Cache>>,
     pending_push_data: &'a Arc<Mutex<HashMap<String, Option<String>>>>,
+    build_update_handler: &'a Arc<Mutex<Option<BuildUpdateHandler>>>,
 }
 
 impl<'a> Handler<'a> {
@@ -221,6 +256,7 @@ impl<'a> Handler<'a> {
         }
 
         let build_result = self.builder.build().unwrap();
+        assert!(build_result.stdout.is_empty());
         let result = self.make_build_result(&build_result);
         let text = serde_json::to_string(&result).unwrap();
 
@@ -228,6 +264,60 @@ impl<'a> Handler<'a> {
         res.send(text.as_bytes()).unwrap();
 
         self.process_push_data(result);
+
+        let mut build_update_handler = self.build_update_handler.lock().unwrap();
+        *build_update_handler = None;
+    }
+
+    fn handle_build_updates<'b: 'a, 'k: 'a>(&mut self,
+                                            _req: Request<'b, 'k>,
+                                            mut res: Response<'b, Fresh>) {
+        assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
+        res.headers_mut().set(ContentType("text/event-stream".parse().unwrap()));
+
+        {
+            let mut build_update_handler = self.build_update_handler.lock().unwrap();
+            if build_update_handler.is_some() {
+                println!("build_update_handler already present, returning");
+                res.send(b"event: close\ndata: {}\n\n").unwrap();
+                return;
+            }
+
+            *build_update_handler = Some(BuildUpdateHandler::new(thread::current()));
+        }
+        let mut res = res.start().unwrap();
+
+        let mut lowering_ctxt = errors::LoweringContext::new();
+        loop {
+            thread::park();
+
+            let mut build_update_handler = self.build_update_handler.lock().unwrap();
+            let build_update_handler = build_update_handler.as_mut().expect("No build_update_handler");
+            let msgs = &build_update_handler.updates[build_update_handler.seen..];
+            build_update_handler.seen = build_update_handler.updates.len();
+            for msg in msgs {
+                let parsed = errors::parse_error(&msg, &mut lowering_ctxt);
+                match parsed {
+                    errors::ParsedError::Diagnostic(d) => {
+                        let text = serde_json::to_string(&d).unwrap();
+                        res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes()).unwrap();
+                        res.flush().unwrap();
+                        build_update_handler.diagnostics.push(d);
+                    }
+                    errors::ParsedError::Message(s) => {
+                        let text = serde_json::to_string(&s).unwrap();
+                        res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes()).unwrap();
+                        res.flush().unwrap();
+                    }
+                    errors::ParsedError::Error => {}
+                }
+            }
+            if build_update_handler.complete {
+                res.write_all(b"event: close\ndata: {}\n\n").unwrap();
+                res.end().unwrap();
+                return;
+            }
+        }
     }
 
     fn make_build_result(&mut self, build_result: &build::BuildResult) -> BuildResult {
@@ -240,13 +330,22 @@ impl<'a> Handler<'a> {
         result
     }
 
-    fn process_push_data(&self, result: BuildResult) {
-        if result.push_data_key.is_some() {
+    fn process_push_data(&self, mut result: BuildResult) {
+        if let Some(key) = result.push_data_key {
+            let mut errors: Vec<Diagnostic> = vec![];
+
+            let mut build_update_handler = self.build_update_handler.lock().unwrap();
+            if let Some(ref mut build_update_handler) = *build_update_handler {
+                errors = build_update_handler.diagnostics.drain(..).collect();
+            }
+
+            errors.extend(result.errors.drain(..));
+
             let pending_push_data = self.pending_push_data.clone();
             let file_cache = self.file_cache.clone();
             let config = self.config.clone();
             let use_analysis = self.config.save_analysis;
-            thread::spawn(move || reprocess::reprocess_snippets(result, pending_push_data, use_analysis, file_cache, config));
+            thread::spawn(move || reprocess::reprocess_snippets(key, errors, pending_push_data, use_analysis, file_cache, config));
         }
     }
 
@@ -673,6 +772,7 @@ const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
 const SUBST_REQUEST: &'static str = "subst";
 const RENAME_REQUEST: &'static str = "rename";
 const SEARCH_REQUEST: &'static str = "search";
+const BUILD_UPDATE_REQUEST: &'static str = "build_updates";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
                              handler: &'a mut Handler<'a>,
@@ -724,6 +824,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
     if handler.config.demo_mode == false {
         if path[0] == BUILD_REQUEST {
             handler.handle_build(req, res);
+            return;
+        }
+
+        if path[0] == BUILD_UPDATE_REQUEST {
+            handler.handle_build_updates(req, res);
             return;
         }
 

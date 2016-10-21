@@ -10,32 +10,49 @@ use serde_json;
 
 use std::cmp::{Ordering, Ord, PartialOrd};
 
+pub use self::rustc_errors::LoweringContext;
+
 mod rustc_errors;
 
+pub enum ParsedError {
+    Diagnostic(Diagnostic),
+    Message(String),
+    Error,
+}
+
 pub fn parse_errors(stderr: &str, stdout: &str) -> (Vec<Diagnostic>, Vec<String>) {
-    let mut errs: Vec<rustc_errors::Diagnostic> = vec![];
+    let mut lowering_ctxt = LoweringContext::new();
+    let mut errs: Vec<Diagnostic> = vec![];
     let mut msgs: Vec<String> = stdout.split('\n').map(|s| s.to_owned()).collect();
     for i in stderr.split('\n') {
         if i.trim().is_empty() {
             continue;
         }
-        if !i.starts_with('{') {
-            msgs.push(i.to_owned());
-            continue;
-        }
-        match serde_json::from_str(i) {
-            Ok(x) => {
-                errs.push(x);
-            }
-            Err(e) => {
-                println!("ERROR parsing compiler output: {}", e);
-                println!("input: `{}`", i);
-            }
+        match parse_error(i, &mut lowering_ctxt) {
+            ParsedError::Diagnostic(d) => errs.push(d),
+            ParsedError::Message(s) => msgs.push(s),
+            ParsedError::Error => {}
         }
     }
 
-    let mut lowering_ctxt = rustc_errors::LoweringContext::new();
-    (errs.into_iter().map(|d| d.lower(&mut lowering_ctxt)).collect(), msgs)
+    (errs, msgs)
+}
+
+pub fn parse_error(error: &str, lowering_ctxt: &mut LoweringContext) -> ParsedError {
+    if !error.starts_with('{') {
+        return ParsedError::Message(error.to_owned());
+    }
+    match serde_json::from_str(error) {
+        Ok(x) => {
+            ParsedError::Diagnostic((x: rustc_errors::Diagnostic).lower(lowering_ctxt))
+        }
+        Err(e) => {
+            println!("ERROR parsing compiler output: {}", e);
+            println!("input: `{}`", error);
+            ParsedError::Error
+        }
+    }
+
 }
 
 #[derive(Serialize, Debug)]
