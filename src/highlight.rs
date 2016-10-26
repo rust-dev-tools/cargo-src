@@ -53,17 +53,21 @@ impl<'a> Highlighter<'a> {
     }
 
     fn get_link(&self, span: &Span) -> Option<String> {
-        self.analysis.goto_def(span).ok().map(|def_span| {
-            let file_name = Path::new(&def_span.file_name).strip_prefix(self.project_path)
-                                                          .ok()
-                                                          .and_then(|p| p.to_str().map(|s| s.to_owned()))
-                                                          .unwrap_or(def_span.file_name);
-            format!("{}:{}:{}:{}:{}",
-                    file_name,
-                    def_span.line_start + 1,
-                    def_span.column_start + 1,
-                    def_span.line_end + 1,
-                    def_span.column_end + 1)
+        self.analysis.goto_def(span).ok().and_then(|def_span| {
+            if span == &def_span {
+                None
+            } else {
+                let file_name = Path::new(&def_span.file_name).strip_prefix(self.project_path)
+                                                              .ok()
+                                                              .and_then(|p| p.to_str().map(|s| s.to_owned()))
+                                                              .unwrap_or(def_span.file_name);
+                Some(format!("{}:{}:{}:{}:{}",
+                             file_name,
+                             def_span.line_start + 1,
+                             def_span.column_start + 1,
+                             def_span.line_end + 1,
+                             def_span.column_end + 1))
+            }
         })
     }
 
@@ -161,14 +165,21 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                             (_, Some(d)) => Some(d),
                             (None, None) => None,
                         };
-                        let link = self.get_link(span);
+                        let mut link = self.get_link(span);
                         let doc_link = self.analysis.doc_url(span).ok();
                         let src_link = self.analysis.src_url(span).ok();
 
                         let css_class = match self.analysis.id(span) {
-                            Ok(i) => Some(format!(" class_id class_id_{}", i)),
+                            Ok(id) => {
+                                if link.is_none() {
+                                    link = Some(format!("search:{}", id));
+                                }
+
+                                Some(format!(" class_id class_id_{}", id))
+                            }
                             Err(_) => None,
                         };
+
 
                         Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, doc_link, src_link, None)
                     }

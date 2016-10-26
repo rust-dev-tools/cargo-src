@@ -288,7 +288,6 @@ function add_glob_menus() {
 
 function add_source_jump_links() {
     var linkables = $(".src_link");
-    // TODO special case links to the same file
     linkables.click(load_doc_or_src_link);
 }
 
@@ -742,6 +741,7 @@ function win_src_link() {
 }
 
 function load_doc_or_src_link() {
+    // TODO special case links to the same file
     var element = $(this);
     var doc_url = element.attr("doc_url")
 
@@ -756,6 +756,12 @@ function load_link() {
     var element = $(this);
     var file_loc = element.attr("link").split(':');
     var file = file_loc[0];
+
+    if (file == "search") {
+        find_uses(file_loc[1]);
+        return;
+    }
+
     var line_start = parseInt(file_loc[1], 10);
     var column_start = parseInt(file_loc[2], 10);
     var line_end = parseInt(file_loc[3], 10);
@@ -912,7 +918,7 @@ function show_ref_menu(event) {
         $("#ref_menu_view_source").hide();
     }
 
-    $("#ref_menu_find_uses").click(event.data, find_uses);
+    $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
     if (CONFIG.unstable_features) {
         $("#ref_menu_rename").click(data, show_rename);
     } else {
@@ -995,9 +1001,9 @@ function deglob(event) {
     hide_glob_menu();
 }
 
-function find_uses(event) {
+function find_uses(needle) {
     $.ajax({
-        url: make_url('search?id=' + event.data),
+        url: make_url('search?id=' + needle),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1006,17 +1012,17 @@ function find_uses(event) {
         var state = {
             "page": "search",
             "data": json,
-            "id": event.data,
+            "id": needle,
         };
         load_search(state);
-        history.pushState(state, "", make_url("#search=" + event.data));
+        history.pushState(state, "", make_url("#search=" + needle));
     })
     .fail(function (xhr, status, errorThrown) {
-        console.log("Error with search request for " + event.data);
+        console.log("Error with search request for " + needle);
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#search=" + event.data));
+        history.pushState({}, "", make_url("#search=" + needle));
     });
 
     hide_ref_menu();
