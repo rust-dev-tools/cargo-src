@@ -131,6 +131,7 @@ function pre_load_build() {
     SNIPPET_PLAIN_TEXT = {};
     show_stdout();
     show_stderr();
+    window.scroll(0, 0);
 }
 
 function load_build(state) {
@@ -187,6 +188,7 @@ function load_search(state) {
     $(".span_src").click(load_link);
     highlight_needle(state.data.defs, "def");
     highlight_needle(state.data.refs, "ref");
+    window.scroll(0, 0);
 }
 
 function highlight_needle(results, tag) {
@@ -723,6 +725,7 @@ function load_dir(state) {
     $("#div_main").html(Handlebars.templates.dir_view(state.data));
     $(".div_entry_name").click(state.file, handle_dir_link);
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+    window.scroll(0, 0);
 }
 
 function handle_dir_link(event) {
