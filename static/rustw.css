@@ -124,6 +124,7 @@ html {
   }
 }
 #div_main {
+    box-sizing: border-box;
     padding-top: 70px;
     padding-left: 20px;
     padding-bottom: 10px;
