@@ -12,7 +12,7 @@
 #![feature(rustdoc)]
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
-#![plugin(serde_macros)]
+#![feature(proc_macro)]
 
 extern crate url;
 extern crate rustc_serialize;
@@ -20,6 +20,8 @@ extern crate hyper;
 extern crate rustdoc;
 extern crate serde;
 extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 extern crate syntax;
 extern crate toml;
 extern crate rls_analysis as analysis;

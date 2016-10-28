@@ -11,7 +11,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str;
 
 use rustdoc::html::highlight::{self, Classifier, Class};
@@ -38,7 +38,7 @@ struct Highlighter<'a> {
     analysis: &'a AnalysisHost,
     codemap: &'a CodeMap,
     project_path: &'a Path,
-    path_cache: HashMap<String, String>,
+    path_cache: HashMap<String, PathBuf>,
 }
 
 impl<'a> Highlighter<'a> {
@@ -59,8 +59,9 @@ impl<'a> Highlighter<'a> {
             } else {
                 let file_name = Path::new(&def_span.file_name).strip_prefix(self.project_path)
                                                               .ok()
-                                                              .and_then(|p| p.to_str().map(|s| s.to_owned()))
-                                                              .unwrap_or(def_span.file_name);
+                                                              .unwrap_or(&def_span.file_name)
+                                                              .to_str()
+                                                              .unwrap();
                 Some(format!("{}:{}:{}:{}:{}",
                              file_name,
                              def_span.line_start + 1,
@@ -113,7 +114,7 @@ impl<'a> Highlighter<'a> {
 
     fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
         let file_path = self.path_cache.entry(lo.file.name.clone()).or_insert_with(|| {
-            Path::new(&lo.file.name).canonicalize().unwrap().display().to_string()
+            Path::new(&lo.file.name).canonicalize().unwrap()
         });
         Span {
             file_name: file_path.clone(),

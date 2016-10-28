@@ -10,7 +10,7 @@ getopts = "0.2"
 rustc-serialize = "0.3"
 serde = "0.8"
 serde_json = "0.8"
-serde_macros = "0.8"
+serde_derive = "0.8"
 toml = "0.1"
 rls-analysis = { path = "../rls-analysis" }
 
