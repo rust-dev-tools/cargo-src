@@ -114,6 +114,7 @@ impl Builder {
             }
         };
 
+        //println!("stdout: `{}`", String::from_utf8(output.stdout).unwrap());
         assert!(output.stdout.is_empty());
         assert!(output.stderr.is_empty());
         let result = BuildResult {

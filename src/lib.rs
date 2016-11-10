@@ -41,8 +41,7 @@ mod listings;
 mod highlight;
 mod server;
 
-/// Returns the port the server was started on.
-pub fn run_server() -> usize {
+pub fn run_server() {
     let config_file = File::open("rustw.toml");
     let mut toml = String::new();
     if let Ok(mut f) = config_file {
@@ -53,6 +52,6 @@ pub fn run_server() -> usize {
 
     let server = server::Instance::new(config);
 
+    println!("server running on http://127.0.0.1:{}", port);
     Server::http(&*format!("127.0.0.1:{}", port)).unwrap().handle(server).unwrap();
-    port
 }

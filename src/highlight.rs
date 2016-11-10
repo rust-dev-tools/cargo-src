@@ -35,7 +35,7 @@ pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_na
     classifier.write_source(&mut out).unwrap();
 
     let time = t_start.elapsed();
-    info!("Highlighting {} in {}s", file_name, time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0);
+    info!("Highlighting {} in {:.3}s", file_name, time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0);
 
     String::from_utf8_lossy(&out.buf).into_owned()
 }

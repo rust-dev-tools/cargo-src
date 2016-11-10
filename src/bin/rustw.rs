@@ -90,6 +90,5 @@ fn main() {
     //     return;
     }
 
-    let port = rustw::run_server();
-    println!("server running on http://127.0.0.1:{}", port);
+    rustw::run_server();
 }
