@@ -13,6 +13,7 @@ use std::fmt::Display;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::str;
+use std::time::Instant;
 
 use rustdoc::html::highlight::{self, Classifier, Class};
 use syntax::parse;
@@ -23,12 +24,18 @@ use analysis::{AnalysisHost, Span};
 
 pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
     let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap(file_name, None, file_text);
+    let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
 
     let mut out = Highlighter::new(analysis, project_path, sess.codemap());
+
+    let t_start = Instant::now();
+
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
                                          sess.codemap());
     classifier.write_source(&mut out).unwrap();
+
+    let time = t_start.elapsed();
+    info!("Highlighting {} in {}s", file_name, time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0);
 
     String::from_utf8_lossy(&out.buf).into_owned()
 }
