@@ -14,6 +14,8 @@
 #![feature(rustc_private)]
 #![feature(proc_macro)]
 
+#[macro_use]
+extern crate log;
 extern crate url;
 extern crate rustc_serialize;
 extern crate hyper;
@@ -39,8 +41,8 @@ mod listings;
 mod highlight;
 mod server;
 
-
-pub fn run_server() {
+/// Returns the port the server was started on.
+pub fn run_server() -> usize {
     let config_file = File::open("rustw.toml");
     let mut toml = String::new();
     if let Ok(mut f) = config_file {
@@ -51,6 +53,6 @@ pub fn run_server() {
 
     let server = server::Instance::new(config);
 
-    println!("server running on http://127.0.0.1:{}", port);
     Server::http(&*format!("127.0.0.1:{}", port)).unwrap().handle(server).unwrap();
+    port
 }

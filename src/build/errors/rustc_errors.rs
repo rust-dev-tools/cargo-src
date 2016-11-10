@@ -352,7 +352,6 @@ mod test {
     fn test_codify_message_escape() {
         let input = "&<a>'b\"".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "&amp;&lt;a&gt;&#39;b&quot;");
     }
 
@@ -360,12 +359,10 @@ mod test {
     fn test_codify_message_backtick() {
         let input = "foo `bar` baz `qux`".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo `<code class=\"code\">bar</code>` baz `<code class=\"code\">qux</code>`");
 
         let input = "foo `bar baz".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo `bar baz");
     }
 
@@ -373,22 +370,18 @@ mod test {
     fn test_codify_message_attr() {
         let input = "foo #[foo] `qux` #[bar] baz".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo <code class=\"attr\">#[foo]</code> `<code class=\"code\">qux</code>` <code class=\"attr\">#[bar]</code> baz");
 
         let input = "foo #[foo]".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo <code class=\"attr\">#[foo]</code>");
 
         let input = "foo #[bar".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo #[bar");
 
         let input = "foo #[".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo #[");
     }
 
@@ -396,7 +389,6 @@ mod test {
     fn test_codify_message_issue_ref() {
         let input = "foo #123 bar".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo <a class=\"issue_link\" href=\"https://github.com/rust-lang/rust/issues/123\" target=\"_blank\">#123</a> bar");
     }
 
@@ -404,17 +396,14 @@ mod test {
     fn test_codify_message_url() {
         let input = "foo <http://bar.com> baz".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo &lt;<a class=\"link\" href=\"http://bar.com\" target=\"_blank\">http://bar.com</a>&gt; baz");
 
         let input = "foo <http://bar.c".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo &lt;http://bar.c");
 
         let input = "foo <bar".to_owned();
         let result = codify_message(&input);
-        println!("{}", result);
         assert!(result == "foo &lt;bar");
     }
 }

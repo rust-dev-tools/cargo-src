@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 extern crate rustw;
 extern crate getopts;
 extern crate serde_json;
@@ -18,6 +21,8 @@ use getopts::Options;
 use std::env;
 
 fn main() {
+    env_logger::init().unwrap();
+
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
@@ -85,5 +90,6 @@ fn main() {
     //     return;
     }
 
-    rustw::run_server();
+    let port = rustw::run_server();
+    println!("server running on http://127.0.0.1:{}", port);
 }

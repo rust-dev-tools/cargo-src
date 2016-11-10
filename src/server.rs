@@ -120,8 +120,7 @@ impl<'a> Handler<'a> {
                                     mut res: Response<'b, Fresh>,
                                     status: StatusCode,
                                     msg: String) {
-        // TODO log it
-        //println!("ERROR: {} ({})", msg, status);
+        debug!("ERROR: {} ({})", msg, status);
 
         *res.status_mut() = status;
         res.send(msg.as_bytes()).unwrap();
@@ -154,7 +153,7 @@ impl<'a> Handler<'a> {
         for p in path {
             path_buf.push(p);
         }
-        //println!("requesting `{}`", path_buf.to_str().unwrap());
+        trace!("handle_static: requesting `{}`", path_buf.to_str().unwrap());
 
         let content_type = match path_buf.extension() {
             Some(s) if s.to_str().unwrap() == "html" => ContentType::html(),
@@ -165,7 +164,7 @@ impl<'a> Handler<'a> {
 
         let mut file_cache = self.file_cache.lock().unwrap();
         if let Ok(s) = file_cache.get_text(&path_buf) {
-            //println!("serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
+            trace!("handle_static: serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
             res.headers_mut().set(content_type);
             res.send(s).unwrap();
             return;
@@ -278,7 +277,7 @@ impl<'a> Handler<'a> {
         {
             let mut build_update_handler = self.build_update_handler.lock().unwrap();
             if build_update_handler.is_some() {
-                println!("build_update_handler already present, returning");
+                debug!("build_update_handler already present, returning");
                 res.send(b"event: close\ndata: {}\n\n").unwrap();
                 return;
             }
@@ -413,10 +412,9 @@ impl<'a> Handler<'a> {
                         cmd.arg(arg);
                     }
 
-                    // TODO log, don't print
                     match cmd.spawn() {
-                        Ok(_) => println!("edit, launched successfully"),
-                        Err(e) => println!("edit, launch failed: `{:?}`, command: `{}`", e, cmd_line),
+                        Ok(_) => debug!("edit, launched successfully"),
+                        Err(e) => debug!("edit, launch failed: `{:?}`, command: `{}`", e, cmd_line),
                     }
                 }
 
@@ -780,7 +778,7 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
                              res: Response<'b, Fresh>) {
     let (path, query, _) = parse_path(uri_path).unwrap();
 
-    //println!("path: {:?}, query: {:?}", path, query);
+    trace!("route: path: {:?}, query: {:?}", path, query);
     if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
         handler.handle_index(req, res);
         return;

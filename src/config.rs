@@ -119,9 +119,9 @@ macro_rules! create_config {
                 let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
-                        println!("Decoding config file failed. Config:\n{}", toml);
+                        debug!("Decoding config file failed. Config:\n{}", toml);
                         let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
-                        println!("\n\nParsed:\n{:?}", parsed);
+                        debug!("\n\nParsed:\n{:?}", parsed);
                         panic!();
                     }
                 };

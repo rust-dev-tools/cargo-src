@@ -43,7 +43,7 @@ impl Builder {
         let mut cmd = if let Some(cmd) = build_split.next() {
             Command::new(cmd)
         } else {
-            println!("build error - no build command");
+            debug!("build error - no build command");
             return Err(());
         };
 
@@ -67,8 +67,7 @@ impl Builder {
         // TODO execute async
         // TODO record compile time
 
-        // TODO log, not println
-        println!("building...");
+        info!("building...");
 
         let mut child = cmd.spawn().unwrap();
         let mut stderr = BufReader::new(child.stderr.take().unwrap());
@@ -105,12 +104,12 @@ impl Builder {
 
         let output = match child.wait_with_output() {
             Ok(o) => {
-                println!("done");
+                info!("done");
                 o
             }
             Err(e) => {
                 // TODO could handle this error more nicely.
-                println!("error: `{}`; command: `{}`", e, self.config.build_command);
+                debug!("build error: `{}`; command: `{}`", e, self.config.build_command);
                 return Err(());
             }
         };
@@ -123,7 +122,7 @@ impl Builder {
             stderr: err_buf,
         };
 
-        // println!("Build output: {:?}", result);
+        trace!("Build output: {:?}", result);
 
         Ok(result)
     }

@@ -47,8 +47,8 @@ pub fn parse_error(error: &str, lowering_ctxt: &mut LoweringContext) -> ParsedEr
             ParsedError::Diagnostic((x: rustc_errors::Diagnostic).lower(lowering_ctxt))
         }
         Err(e) => {
-            println!("ERROR parsing compiler output: {}", e);
-            println!("input: `{}`", error);
+            debug!("ERROR parsing compiler output: {}", e);
+            debug!("input: `{}`", error);
             ParsedError::Error
         }
     }
