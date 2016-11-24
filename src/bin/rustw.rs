@@ -26,6 +26,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
+    opts.optopt("i", "ip", "set the ip address for the server", "");
     // opts.optopt("g", "goto", "goto def <span>", "");
     // opts.optopt("f", "find", "find ident <name>", "");
     // opts.optopt("t", "type", "show type <span>", "");
@@ -90,5 +91,10 @@ fn main() {
     //     return;
     }
 
-    rustw::run_server();
+    let mut ip = None;
+    if let Some(ref s) = matches.opt_str("i") {
+        ip = Some(s.to_owned());
+    }
+
+    rustw::run_server(ip);
 }

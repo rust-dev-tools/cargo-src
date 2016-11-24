@@ -141,7 +141,7 @@ impl Cache {
         info!("Processing analysis...");
         // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
         self.project_dir = env::current_dir().unwrap();
-        self.analysis.reload(&self.project_dir).unwrap();
+        self.analysis.reload(&self.project_dir, true).unwrap();
         info!("done");
     }
 

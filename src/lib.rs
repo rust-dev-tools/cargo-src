@@ -41,7 +41,7 @@ mod listings;
 mod highlight;
 mod server;
 
-pub fn run_server() {
+pub fn run_server(ip: Option<String>) {
     let config_file = File::open("rustw.toml");
     let mut toml = String::new();
     if let Ok(mut f) = config_file {
@@ -52,6 +52,7 @@ pub fn run_server() {
 
     let server = server::Instance::new(config);
 
-    println!("server running on http://127.0.0.1:{}", port);
-    Server::http(&*format!("127.0.0.1:{}", port)).unwrap().handle(server).unwrap();
+    let ip = ip.unwrap_or("127.0.0.1".to_owned());
+    println!("server running on http://{}:{}", ip, port);
+    Server::http(&*format!("{}:{}", ip, port)).unwrap().handle(server).unwrap();
 }
