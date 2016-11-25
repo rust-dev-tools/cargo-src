@@ -21,6 +21,12 @@ Handlebars.registerHelper("def", function(a, b, options)
     return a != undefined;
 });
 
+Handlebars.registerHelper("isDir", function(a, options)
+{
+    console.log(a);
+    return a == "Directory";
+});
+
 Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
 Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet_inner);
 Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
@@ -722,6 +728,7 @@ function get_source(file_name) {
 }
 
 function load_dir(state) {
+    console.log(state);
     $("#div_main").html(Handlebars.templates.dir_view(state.data));
     $(".div_entry_name").click(state.file, handle_dir_link);
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
