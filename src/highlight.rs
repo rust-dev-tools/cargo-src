@@ -94,44 +94,30 @@ impl<'a> Highlighter<'a> {
 
     fn write_span(buf: &mut Vec<u8>,
                   klass: Class,
-                  text: String,
-                  title: Option<String>,
                   extra_class: Option<String>,
-                  id: Option<String>,
-                  link: Option<String>,
-                  doc_link: Option<String>,
-                  src_link: Option<String>,
-                  extra: Option<String>)
+                  text: String,
+                  src_link: bool,
+                  extra: HashMap<String, String>)
                   -> io::Result<()> {
         write!(buf, "<span class='{}", klass.rustdoc_class())?;
         if let Some(s) = extra_class {
             write!(buf, "{}", s)?;
         }
-        if link.is_some() || doc_link.is_some() {
+        if src_link {
             write!(buf, " src_link")?;
         }
         write!(buf, "'")?;
-        if let Some(s) = id {
-            write!(buf, " id='{}'", s)?;
-        }
-        if let Some(s) = title {
-            write!(buf, " title='")?;
-            for c in s.chars() {
-                push_char(buf, c)?;
+        for (k, v) in &extra {
+            // Some values need escaping.
+            if k == "title" {
+                write!(buf, " {}='", k)?;
+                for c in v.chars() {
+                    push_char(buf, c)?;
+                }
+                write!(buf, "'")?;
+            } else {
+                write!(buf, " {}='{}'", k, v)?;
             }
-            write!(buf, "'")?;
-        }
-        if let Some(s) = doc_link {
-            write!(buf, " doc_url='{}'", s)?;
-        }
-        if let Some(s) = src_link {
-            write!(buf, " src_url='{}'", s)?;
-        }
-        if let Some(s) = link {
-            write!(buf, " link='{}'", s)?;
-        }
-        if let Some(s) = extra {
-            write!(buf, " {}", s)?;
         }
         write!(buf, ">{}</span>", text)
     }
@@ -159,6 +145,14 @@ fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
         '"' => write!(buf, "&quot;"),
         '\n' => write!(buf, "<br>"),
         _ => write!(buf, "{}", c),
+    }
+}
+
+macro_rules! maybe_insert {
+    ($h: expr, $k: expr, $v: expr) => {
+        if let Some(v) = $v {
+            $h.insert($k.to_owned(), v);
+        }
     }
 }
 
@@ -205,10 +199,22 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                             Err(_) => None,
                         };
 
+                        let has_link = doc_link.is_some() || link.is_some();
 
-                        Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, None, link, doc_link, src_link, None)
+                        let mut extra = HashMap::new();
+                        maybe_insert!(extra, "title", title);
+                        maybe_insert!(extra, "link", link);
+                        maybe_insert!(extra, "doc_link", doc_link);
+                        maybe_insert!(extra, "src_link", src_link);
+
+                        Highlighter::write_span(&mut self.buf,
+                                                Class::Ident,
+                                                css_class,
+                                                text,
+                                                has_link,
+                                                extra)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Ident, text, None, None, None, None, None, None, None),
+                    None => Highlighter::write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
                 }
             }
             Class::Op if text == "*" => {
@@ -217,16 +223,17 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
                         let span = &self.span_from_locs(&lo, &hi);
-                        let title = self.analysis.show_type(span).ok();
-                        let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
+                        let mut extra = HashMap::new();
+                        extra.insert("location".to_owned(), format!("{}:{}", lo.line, lo.col.0 + 1));
+                        maybe_insert!(extra, "title", self.analysis.show_type(span).ok());
                         let css_class = Some(" glob".to_owned());
 
-                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, None, None, None, location)
+                        Highlighter::write_span(&mut self.buf, Class::Op, css_class, text, false, extra)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None, None, None, None),
+                    None => Highlighter::write_span(&mut self.buf, Class::Op, None, text, false, HashMap::new()),
                 }
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None, None, None, None),
+            klass => Highlighter::write_span(&mut self.buf, klass, None, text, false, HashMap::new()),
         }
     }
 }
@@ -298,6 +305,8 @@ impl highlight::Writer for BasicHighlighter {
             }
         }
 
-        Highlighter::write_span(&mut self.buf, klass, text, None, extra_class, id, None, None, None, None)
+        let mut extra = HashMap::new();
+        maybe_insert!(extra, "id", id);
+        Highlighter::write_span(&mut self.buf, klass, extra_class, text, false, extra)
     }
 }
