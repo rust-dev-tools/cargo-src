@@ -23,6 +23,7 @@ use syntax::codemap::{CodeMap, Loc};
 use analysis::{AnalysisHost, Span};
 
 pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
+    debug!("highlight `{}` in `{}`", file_text, file_name);
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
 
@@ -38,6 +39,18 @@ pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_na
     info!("Highlighting {} in {:.3}s", file_name, time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0);
 
     String::from_utf8_lossy(&out.buf).into_owned()
+}
+
+pub fn custom_highlight<H: highlight::Writer + GetBuf>(file_name: String, file_text: String, highlighter: &mut H) -> String {
+    debug!("custom_highlight `{}` in `{}`", file_text, file_name);
+    let sess = parse::ParseSess::new();
+    let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
+
+    let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
+                                         sess.codemap());
+    classifier.write_source(highlighter).unwrap();
+
+    String::from_utf8_lossy(highlighter.get_buf()).into_owned()
 }
 
 struct Highlighter<'a> {
@@ -84,6 +97,7 @@ impl<'a> Highlighter<'a> {
                   text: String,
                   title: Option<String>,
                   extra_class: Option<String>,
+                  id: Option<String>,
                   link: Option<String>,
                   doc_link: Option<String>,
                   src_link: Option<String>,
@@ -97,6 +111,9 @@ impl<'a> Highlighter<'a> {
             write!(buf, " src_link")?;
         }
         write!(buf, "'")?;
+        if let Some(s) = id {
+            write!(buf, " id='{}'", s)?;
+        }
         if let Some(s) = title {
             write!(buf, " title='")?;
             for c in s.chars() {
@@ -189,9 +206,9 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         };
 
 
-                        Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, link, doc_link, src_link, None)
+                        Highlighter::write_span(&mut self.buf, Class::Ident, text, title, css_class, None, link, doc_link, src_link, None)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Ident, text, None, None, None, None, None, None),
+                    None => Highlighter::write_span(&mut self.buf, Class::Ident, text, None, None, None, None, None, None, None),
                 }
             }
             Class::Op if text == "*" => {
@@ -204,12 +221,83 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let location = Some(format!("location='{}:{}''", lo.line, lo.col.0 + 1));
                         let css_class = Some(" glob".to_owned());
 
-                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, None, None, location)
+                        Highlighter::write_span(&mut self.buf, Class::Op, text, title, css_class, None, None, None, None, location)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None, None, None),
+                    None => Highlighter::write_span(&mut self.buf, Class::Op, text, None, None, None, None, None, None, None),
                 }
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None, None, None),
+            klass => Highlighter::write_span(&mut self.buf, klass, text, None, None, None, None, None, None, None),
         }
+    }
+}
+
+// Just does syntax highlighting, no fancy stuff.
+pub struct BasicHighlighter {
+    buf: Vec<u8>,
+    spans: Vec<SpanSpan>,
+}
+
+struct SpanSpan {
+    start_byte: u32,
+    end_byte: u32,
+    klass: String,
+    id: String,
+}
+
+pub trait GetBuf {
+    fn get_buf(&self) -> &[u8];
+}
+
+impl GetBuf for BasicHighlighter {
+    fn get_buf(&self) -> &[u8] {
+        &self.buf
+    }    
+}
+
+impl BasicHighlighter {
+    pub fn new() -> BasicHighlighter {
+        BasicHighlighter {
+            buf: vec![],
+            spans: vec![],
+        }
+    }
+
+    pub fn span(&mut self, start: u32, end: u32, klass: String, id: String) {
+        self.spans.push(SpanSpan {
+            start_byte: start,
+            end_byte: end,
+            klass: klass,
+            id: id,
+        });
+    }
+}
+
+impl highlight::Writer for BasicHighlighter {
+    fn enter_span(&mut self, klass: Class) -> io::Result<()> {
+        write!(self.buf, "<span class='{}'>", klass.rustdoc_class())
+    }
+
+    fn exit_span(&mut self) -> io::Result<()> {
+        write!(self.buf, "</span>")
+    }
+
+    fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
+        // TODO use spans
+        let text = text.to_string();
+
+        let mut extra_class = None;
+        let mut id = None;
+        if let Some(tas) = tas {
+            let lo = tas.sp.lo.0;
+            let hi = tas.sp.hi.0;
+            for s in &self.spans {
+                if s.start_byte == lo && s.end_byte == hi {
+                    extra_class = Some(s.klass.clone());
+                    id = Some(s.id.clone());
+                }
+            }
+        }
+
+        Highlighter::write_span(&mut self.buf, klass, text, None, extra_class, id, None, None, None, None)
     }
 }

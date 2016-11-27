@@ -469,6 +469,62 @@ span#measure {
     cursor: pointer;
 }
 
+#div_mod_path {
+    padding-bottom: 1em;
+}
+.summary_sig_main {
+    font-size: 1.4em;
+    display: inline;
+    white-space: pre;
+    padding-left: 1em;
+    position: relative;
+    z-index: 1;
+    width: -moz-max-content;
+    vertical-align: middle;
+}
+.summary_sig_sub {
+    font-size: 1.2em;
+    display: inline;
+    white-space: pre;
+    padding-left: 1em;
+    position: relative;
+    z-index: 1;
+    width: -moz-max-content;
+    vertical-align: middle;
+}
+.div_summary_children {
+    padding-top: 0.3em;
+    padding-left: 2em;
+}
+.div_summary_doc {
+    padding-top: 0.5em;
+    padding-left: 2em;
+}
+#div_summary_doc_summary {
+    display: inline-block;
+    padding-left: 1em;
+    margin: 0.2em;
+}
+#div_summary_doc_more {
+    margin-bottom: 0.2em;
+}
+#div_summary_doc_summary p {
+    margin-top: 0;
+    margin-bottom: 0.2em;
+}
+#div_summary_doc_more p {
+    margin-top: 0;
+    margin-bottom: 0.2em;
+}
+.div_summary_sub {
+    margin: 0.2em;
+}
+.div_summary_doc_sub {
+    display: block;
+    padding-left: 1em;
+    margin: 0.2em;    
+}
+
 .hand_cursor {
     cursor: pointer;
 }

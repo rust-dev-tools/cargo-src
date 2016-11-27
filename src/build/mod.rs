@@ -27,9 +27,6 @@ pub struct BuildResult {
     pub stderr: String,
 }
 
-// TODO
-// In file_cache, add our own stuff (deglob/type on hover)
-
 impl Builder {
     pub fn from_config(config: Arc<Config>, build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>) -> Builder {
         Builder {
@@ -60,6 +57,7 @@ impl Builder {
         }
         cmd.env("RUSTFLAGS", &flags);
         cmd.env("CARGO_TARGET_DIR", "target/rls");
+        cmd.env("RUST_LOG", "");
 
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -114,8 +112,11 @@ impl Builder {
             }
         };
 
-        //println!("stdout: `{}`", String::from_utf8(output.stdout).unwrap());
-        assert!(output.stdout.is_empty());
+        if !output.stdout.is_empty() {
+            println!("ERROR expected empty stdout");
+            println!("stdout: `{}`", String::from_utf8(output.stdout).unwrap());
+        }
+
         assert!(output.stderr.is_empty());
         let result = BuildResult {
             status: output.status.code(),

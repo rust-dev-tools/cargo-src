@@ -15,6 +15,8 @@ use std::io::{Read, Write, BufWriter};
 use std::str;
 
 use analysis::{AnalysisHost, Span, Target};
+use rustdoc::html::markdown;
+
 use super::highlight;
 
 // TODO maximum size and evication policy
@@ -22,13 +24,13 @@ use super::highlight;
 
 pub struct Cache {
     files: FileCache,
+    summaries: HashMap<u32, DefSummary>,
     analysis: AnalysisHost,
     project_dir: PathBuf,
 }
 
 struct FileCache {
     files: HashMap<PathBuf, CachedFile>,
-    size: usize,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -62,6 +64,38 @@ impl LineResult {
     }
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct DefSummary {
+    id: u32,
+    bread_crumbs: Vec<BreadCrumb>,
+    signature: String,
+    doc_summary: String,
+    doc_rest: String,
+    children: Vec<DefChild>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BreadCrumb {
+    id: u32,
+    name: String,
+}
+
+impl From<(u32, String)> for BreadCrumb {
+    fn from((id, name): (u32, String)) -> BreadCrumb {
+        BreadCrumb {
+            id: id,
+            name: name,
+        }
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct DefChild {
+    id: u32,
+    signature: String,
+    doc_summary: String,
+}
+
 struct CachedFile {
     plain_text: Vec<u8>,
     highlighted_lines: Vec<String>,
@@ -72,6 +106,7 @@ impl Cache {
     pub fn new() -> Cache {
         Cache {
             files: FileCache::new(),
+            summaries: HashMap::new(),
             analysis: AnalysisHost::new(Target::Debug),
             project_dir: env::current_dir().unwrap(),
         }
@@ -79,6 +114,7 @@ impl Cache {
 
     pub fn reset(&mut self) {
         self.files.reset();
+        self.summaries = HashMap::new();
     }
 
     pub fn reset_file(&mut self, path: &Path) {
@@ -108,6 +144,15 @@ impl Cache {
         let line_end = file.new_lines[line_end] - 1;
         let text = FileCache::get_string(file);
         Ok(&text[line_start..line_end])
+    }
+
+    pub fn summary(&mut self, id: u32) -> Result<&DefSummary, String> {
+        if !self.summaries.contains_key(&id) {
+            // TODO catch this error and make a "no summary available" page
+            let summary = self.make_summary(id)?;
+            self.summaries.insert(id, summary);
+        }
+        Ok(&self.summaries[&id])
     }
 
     // TODO handle non-rs files by returning plain text lines
@@ -286,25 +331,76 @@ impl Cache {
             list
         }
     }
+
+    fn make_summary(&self, id: u32) -> Result<DefSummary, String> {
+        fn render_markdown(input: &str) -> String {
+            format!("{}", markdown::Markdown(input))
+        }
+
+        // TODO (also see rustw.js)
+        // signature for fields - refs
+        // ident (frontend)/defs/refs for sigs
+        // signatures for everything else
+
+        let def = self.analysis.get_def(id).map_err(|_| format!("No def for {}", id))?;
+
+        let docs = def.docs;
+        let (doc_summary, doc_rest) = match docs.find("\n\n") {
+            Some(index) => (docs[..index].to_owned(), docs[index + 2..].to_owned()),
+            _ => (docs, String::new()),
+        };
+
+        let sig = match def.sig {
+            Some(sig) => {
+                let mut h = highlight::BasicHighlighter::new();
+                h.span(sig.ident_start, sig.ident_end, "summary_def".to_owned(), format!("def_{}", id));
+                highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), sig.text, &mut h)
+            }
+            None => def.name,
+        };
+
+        let children = self.analysis.for_each_child_def(id, |id, def| {
+            let docs = def.docs.to_owned();
+            let sig = def.sig.as_ref().map(|s| {
+                let mut h = highlight::BasicHighlighter::new();
+                highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), s.text.clone(), &mut h)
+            }).expect("No signature for def");
+            let docs = render_markdown(&match docs.find("\n\n") {
+                Some(index) => docs[..index].to_owned(),
+                _ => docs,
+            });
+            DefChild {
+                id: id,
+                signature: sig,
+                doc_summary: docs,
+            }
+        }).map_err(|_| format!("No children for {}", id))?;
+
+        Ok(DefSummary {
+            id: id,
+            // FIXME needs crate bread-crumb - needs a change to save-analysis to emit a top-level module: https://github.com/rust-lang/rust/issues/37818
+            bread_crumbs: self.analysis.def_parents(id).unwrap_or(vec![]).into_iter().map(BreadCrumb::from).collect(),
+            signature: sig,
+            doc_summary: render_markdown(&doc_summary),
+            doc_rest: render_markdown(&doc_rest),
+            children: children,
+        })
+    }
 }
 
 impl FileCache {
     fn new() -> FileCache {
         FileCache {
             files: HashMap::new(),
-            size: 0,
         }
     }
 
     fn reset(&mut self) {
         self.files = HashMap::new();
-        self.size = 0;
     }
 
     fn reset_file(&mut self, path: &Path) {
-        if self.files.remove(&path.canonicalize().unwrap()).is_some() {
-            self.size -= 1;
-        }
+        self.files.remove(&path.canonicalize().unwrap());
     }
 
     fn get_string(file: &mut CachedFile) -> &str {
@@ -327,7 +423,7 @@ impl FileCache {
 
     fn get(&mut self, path: &Path) -> Result<&mut CachedFile, String> {
         // Annoying that we have to clone here :-(
-        match self.files.entry(path.canonicalize().unwrap()) {
+        match self.files.entry(path.canonicalize().expect(&format!("Bad path?: {}", path.display()))) {
             Entry::Occupied(oe) => {
                 Ok(oe.into_mut())
             }
@@ -336,7 +432,6 @@ impl FileCache {
                 if text.is_empty() {
                     Err(format!("Empty file {}", path.display()))
                 } else {
-                    self.size += text.len();
                     Ok(ve.insert(CachedFile::new(text)))
                 }
             }

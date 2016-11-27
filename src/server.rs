@@ -180,7 +180,7 @@ impl<'a> Handler<'a> {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
-            // hey).
+            // hey, FIXME).
             if p.contains("..") {
                 self.handle_error(_req, res, StatusCode::InternalServerError,
                                   "Bad path, found `..`".to_owned());
@@ -467,6 +467,36 @@ impl<'a> Handler<'a> {
             }
             _ => {
                 self.handle_error(_req, res, StatusCode::InternalServerError, "Bad search string".to_owned());
+            }
+        }
+    }
+
+    fn handle_summary<'b: 'a, 'k: 'a>(&mut self,
+                                      _req: Request<'b, 'k>,
+                                      mut res: Response<'b, Fresh>,
+                                      query: Option<String>) {
+        match parse_query_value(&query, "id=") {
+            Some(id) => {
+                let id = match u32::from_str(&id) {
+                    Ok(l) => l,
+                    Err(_) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
+                        return;
+                    }
+                };
+                let mut file_cache = self.file_cache.lock().unwrap();
+                match file_cache.summary(id) {
+                    Ok(data) => {
+                        res.headers_mut().set(ContentType::json());
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                    }
+                    Err(s) => {
+                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                    }
+                }
+            }
+            None => {
+                self.handle_error(_req, res, StatusCode::InternalServerError, "No id for summary".to_owned());
             }
         }
     }
@@ -770,6 +800,7 @@ const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
 const SUBST_REQUEST: &'static str = "subst";
 const RENAME_REQUEST: &'static str = "rename";
 const SEARCH_REQUEST: &'static str = "search";
+const SUMMARY_REQUEST: &'static str = "summary";
 const BUILD_UPDATE_REQUEST: &'static str = "build_updates";
 
 fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
@@ -811,6 +842,11 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
     if path[0] == SEARCH_REQUEST {
         handler.handle_search(req, res, query);
+        return;
+    }
+
+    if path[0] == SUMMARY_REQUEST {
+        handler.handle_summary(req, res, query);
         return;
     }
 

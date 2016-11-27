@@ -66,8 +66,10 @@ function onLoad() {
             load_source(state);
         } else if (state.page == "source_dir") {
             load_dir(state);
-          } else if (state.page == "search") {
+        } else if (state.page == "search") {
               load_search(state);
+        } else if (state.page == "summary") {
+              load_summary(state);
         } else {
             console.log("ERROR: Unknown page state: ");
             console.log(state);
@@ -156,6 +158,21 @@ function load_build(state) {
     init_build_results();
 
     update_snippets(MAIN_PAGE_STATE.snippets);
+}
+
+function load_summary(state) {
+    show_back_link();
+    // console.log(state.data);
+    $("#div_main").html(Handlebars.templates.summary(state.data));
+
+    // TODO - set template props
+    // breadcrumb links, menus
+    // +/- buttons should be up/right icons
+    // doc +/- button, hide extra doc to start
+    // signature links/menus
+    // style - markdown should have smaller margins
+
+    window.scroll(0, 0);
 }
 
 function win_search(needle) {
@@ -928,6 +945,7 @@ function show_ref_menu(event) {
         $("#ref_menu_view_source").hide();
     }
 
+    $("#ref_menu_view_summary").click(event.data, (ev) => summary(ev.data));
     $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
     if (CONFIG.unstable_features) {
         $("#ref_menu_rename").click(data, show_rename);
@@ -1009,6 +1027,34 @@ function deglob(event) {
     });
 
     hide_glob_menu();
+}
+
+function summary(id) {
+    $.ajax({
+        url: make_url('summary?id=' + id),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "summary",
+            "data": json,
+            "id": id,
+        };
+        load_summary(state);
+        history.pushState(state, "", make_url("#summary=" + id));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with summary request for " + id);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#summary=" + id));
+    });
+
+    hide_ref_menu();
+    $("#div_main").text("Loading...");
 }
 
 function find_uses(needle) {
