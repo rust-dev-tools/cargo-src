@@ -77,49 +77,9 @@ impl<'a> Highlighter<'a> {
             if span == &def_span {
                 None
             } else {
-                let file_name = Path::new(&def_span.file_name).strip_prefix(self.project_path)
-                                                              .ok()
-                                                              .unwrap_or(&def_span.file_name)
-                                                              .to_str()
-                                                              .unwrap();
-                Some(format!("{}:{}:{}:{}:{}",
-                             file_name,
-                             def_span.line_start + 1,
-                             def_span.column_start + 1,
-                             def_span.line_end + 1,
-                             def_span.column_end + 1))
+                Some(loc_for_span(&def_span, self.project_path))
             }
         })
-    }
-
-    fn write_span(buf: &mut Vec<u8>,
-                  klass: Class,
-                  extra_class: Option<String>,
-                  text: String,
-                  src_link: bool,
-                  extra: HashMap<String, String>)
-                  -> io::Result<()> {
-        write!(buf, "<span class='{}", klass.rustdoc_class())?;
-        if let Some(s) = extra_class {
-            write!(buf, "{}", s)?;
-        }
-        if src_link {
-            write!(buf, " src_link")?;
-        }
-        write!(buf, "'")?;
-        for (k, v) in &extra {
-            // Some values need escaping.
-            if k == "title" {
-                write!(buf, " {}='", k)?;
-                for c in v.chars() {
-                    push_char(buf, c)?;
-                }
-                write!(buf, "'")?;
-            } else {
-                write!(buf, " {}='{}'", k, v)?;
-            }
-        }
-        write!(buf, ">{}</span>", text)
     }
 
     fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
@@ -136,6 +96,36 @@ impl<'a> Highlighter<'a> {
     }
 }
 
+pub fn write_span(buf: &mut Vec<u8>,
+                  klass: Class,
+                  extra_class: Option<String>,
+                  text: String,
+                  src_link: bool,
+                  extra: HashMap<String, String>)
+                  -> io::Result<()> {
+    write!(buf, "<span class='{}", klass.rustdoc_class())?;
+    if let Some(s) = extra_class {
+        write!(buf, " {}", s)?;
+    }
+    if src_link {
+        write!(buf, " src_link")?;
+    }
+    write!(buf, "'")?;
+    for (k, v) in &extra {
+        // Some values need escaping.
+        if k == "title" {
+            write!(buf, " {}='", k)?;
+            for c in v.chars() {
+                push_char(buf, c)?;
+            }
+            write!(buf, "'")?;
+        } else {
+            write!(buf, " {}='{}'", k, v)?;
+        }
+    }
+    write!(buf, ">{}</span>", text)
+}
+
 fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
     match c {
         '>' => write!(buf, "&gt;"),
@@ -147,6 +137,21 @@ fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
         _ => write!(buf, "{}", c),
     }
 }
+
+fn loc_for_span(span: &Span, project_path: &Path) -> String {
+    let file_name = Path::new(&span.file_name).strip_prefix(project_path)
+                                              .ok()
+                                              .unwrap_or(&span.file_name)
+                                              .to_str()
+                                              .unwrap();
+    format!("{}:{}:{}:{}:{}",
+            file_name,
+            span.line_start + 1,
+            span.column_start + 1,
+            span.line_end + 1,
+            span.column_end + 1)
+}
+
 
 macro_rules! maybe_insert {
     ($h: expr, $k: expr, $v: expr) => {
@@ -207,14 +212,14 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         maybe_insert!(extra, "doc_link", doc_link);
                         maybe_insert!(extra, "src_link", src_link);
 
-                        Highlighter::write_span(&mut self.buf,
+                        write_span(&mut self.buf,
                                                 Class::Ident,
                                                 css_class,
                                                 text,
                                                 has_link,
                                                 extra)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
+                    None => write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
                 }
             }
             Class::Op if text == "*" => {
@@ -228,12 +233,12 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         maybe_insert!(extra, "title", self.analysis.show_type(span).ok());
                         let css_class = Some(" glob".to_owned());
 
-                        Highlighter::write_span(&mut self.buf, Class::Op, css_class, text, false, extra)
+                        write_span(&mut self.buf, Class::Op, css_class, text, false, extra)
                     }
-                    None => Highlighter::write_span(&mut self.buf, Class::Op, None, text, false, HashMap::new()),
+                    None => write_span(&mut self.buf, Class::Op, None, text, false, HashMap::new()),
                 }
             }
-            klass => Highlighter::write_span(&mut self.buf, klass, None, text, false, HashMap::new()),
+            klass => write_span(&mut self.buf, klass, None, text, false, HashMap::new()),
         }
     }
 }
@@ -249,6 +254,7 @@ struct SpanSpan {
     end_byte: u32,
     klass: String,
     id: String,
+    def_span: Option<Span>,
 }
 
 pub trait GetBuf {
@@ -269,12 +275,13 @@ impl BasicHighlighter {
         }
     }
 
-    pub fn span(&mut self, start: u32, end: u32, klass: String, id: String) {
+    pub fn span(&mut self, start: u32, end: u32, klass: String, id: String, def_span: Option<Span>) {
         self.spans.push(SpanSpan {
             start_byte: start,
             end_byte: end,
             klass: klass,
             id: id,
+            def_span: def_span,
         });
     }
 }
@@ -294,6 +301,7 @@ impl highlight::Writer for BasicHighlighter {
 
         let mut extra_class = None;
         let mut id = None;
+        let mut link = None;
         if let Some(tas) = tas {
             let lo = tas.sp.lo.0;
             let hi = tas.sp.hi.0;
@@ -301,12 +309,15 @@ impl highlight::Writer for BasicHighlighter {
                 if s.start_byte == lo && s.end_byte == hi {
                     extra_class = Some(s.klass.clone());
                     id = Some(s.id.clone());
+                    link = s.def_span.as_ref().map(|sp| loc_for_span(sp, &Path::new("")));
                 }
             }
         }
 
+        let has_link = link.is_some();
         let mut extra = HashMap::new();
         maybe_insert!(extra, "id", id);
-        Highlighter::write_span(&mut self.buf, klass, extra_class, text, false, extra)
+        maybe_insert!(extra, "link", link);
+        write_span(&mut self.buf, klass, extra_class, text, has_link, extra)
     }
 }

@@ -67,26 +67,12 @@ impl LineResult {
 #[derive(Serialize, Debug, Clone)]
 pub struct DefSummary {
     id: u32,
-    bread_crumbs: Vec<BreadCrumb>,
+    bread_crumbs: Vec<String>,
     signature: String,
     doc_summary: String,
     doc_rest: String,
+    parent: u32,
     children: Vec<DefChild>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct BreadCrumb {
-    id: u32,
-    name: String,
-}
-
-impl From<(u32, String)> for BreadCrumb {
-    fn from((id, name): (u32, String)) -> BreadCrumb {
-        BreadCrumb {
-            id: id,
-            name: name,
-        }
-    }
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -337,10 +323,22 @@ impl Cache {
             format!("{}", markdown::Markdown(input))
         }
 
-        // TODO (also see rustw.js)
-        // signature for fields - refs
-        // ident (frontend)/defs/refs for sigs
-        // signatures for everything else
+        // FIXME needs crate bread-crumb - needs a change to save-analysis to emit a top-level module: https://github.com/rust-lang/rust/issues/37818
+        let bread_crumbs = self.analysis.def_parents(id).unwrap_or(vec![]).into_iter().map(|(id, name)| {
+            use rustdoc::html::highlight::Class;
+
+            let mut buf = vec![];
+            let mut extra = HashMap::new();
+            extra.insert("link".to_owned(), format!("summary:{}", id));
+            extra.insert("id".to_owned(), format!("breadcrumb_{}", id));
+            highlight::write_span(&mut buf,
+                                  Class::None,
+                                  Some("link_breadcrumb".to_owned()),
+                                  name,
+                                  true,
+                                  extra).unwrap();
+            String::from_utf8(buf).unwrap()
+        }).collect();
 
         let def = self.analysis.get_def(id).map_err(|_| format!("No def for {}", id))?;
 
@@ -353,7 +351,7 @@ impl Cache {
         let sig = match def.sig {
             Some(sig) => {
                 let mut h = highlight::BasicHighlighter::new();
-                h.span(sig.ident_start, sig.ident_end, "summary_def".to_owned(), format!("def_{}", id));
+                h.span(sig.ident_start, sig.ident_end, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
                 highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), sig.text, &mut h)
             }
             None => def.name,
@@ -363,6 +361,7 @@ impl Cache {
             let docs = def.docs.to_owned();
             let sig = def.sig.as_ref().map(|s| {
                 let mut h = highlight::BasicHighlighter::new();
+                h.span(s.ident_start, s.ident_end, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
                 highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), s.text.clone(), &mut h)
             }).expect("No signature for def");
             let docs = render_markdown(&match docs.find("\n\n") {
@@ -378,11 +377,11 @@ impl Cache {
 
         Ok(DefSummary {
             id: id,
-            // FIXME needs crate bread-crumb - needs a change to save-analysis to emit a top-level module: https://github.com/rust-lang/rust/issues/37818
-            bread_crumbs: self.analysis.def_parents(id).unwrap_or(vec![]).into_iter().map(BreadCrumb::from).collect(),
+            bread_crumbs: bread_crumbs,
             signature: sig,
             doc_summary: render_markdown(&doc_summary),
             doc_rest: render_markdown(&doc_rest),
+            parent: def.parent.unwrap_or(0),
             children: children,
         })
     }

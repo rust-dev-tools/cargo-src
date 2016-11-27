@@ -165,14 +165,45 @@ function load_summary(state) {
     // console.log(state.data);
     $("#div_main").html(Handlebars.templates.summary(state.data));
 
-    // TODO - set template props
-    // breadcrumb links, menus
-    // +/- buttons should be up/right icons
-    // doc +/- button, hide extra doc to start
-    // signature links/menus
-    // style - markdown should have smaller margins
+    // Make link and menus for idents on the page.
+    let idents = $(".summary_ident");
+    idents.click(load_link);
+    idents.on("contextmenu", (ev) => {
+        let target = ev.target;
+        ev.data = ev.target.id.substring("def_".length);
+        return show_ref_menu(ev);
+    });
+
+    // Add links and menus for breadcrumbs.
+    let breadcrumbs = $(".link_breadcrumb");
+    breadcrumbs.click(load_link);
+    breadcrumbs.on("contextmenu", (ev) => {
+        let target = ev.target;
+        ev.data = ev.target.id.substring("breadcrumb_".length);
+        return show_ref_menu(ev);
+    });
+
+    // Hide extra docs.
+    hide_summary_doc();
+
+    // Up link to jump up a level.
+    $("#jump_up").click(load_link);
+    // Down links to jump to children.
+    $(".jump_children").click(load_link);
 
     window.scroll(0, 0);
+}
+
+function show_summary_doc() {
+    var element = $("#expand_docs");
+    show_hide(element, "-", hide_summary_doc);
+    $("#div_summary_doc_more").show();
+}
+
+function hide_summary_doc() {
+    var element = $("#expand_docs");
+    show_hide(element, "+", show_summary_doc);
+    $("#div_summary_doc_more").hide();
 }
 
 function win_search(needle) {
@@ -786,6 +817,11 @@ function load_link() {
 
     if (file == "search") {
         find_uses(file_loc[1]);
+        return;
+    }
+
+    if (file == "summary") {
+        summary(file_loc[1]);
         return;
     }
 

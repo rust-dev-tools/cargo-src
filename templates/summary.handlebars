@@ -1,21 +1,22 @@
 <div id="div_summary">
     <div id="div_mod_path">
-        {{#each bread_crumbs}}
-            <span class="link_breadcrumb" id="breadcrumb_{{id}}">{{name}}</span>::
-        {{/each}}
+        {{#each bread_crumbs}}{{{this}}} :: {{/each}}
     </div>
     <div id="div_summary_main">
         <div id="div_summary_title">
-            <span class="expand_children small_button">&#x2191;</span> <span class="summary_sig_main div_all_span_src">{{{signature}}}</span>
+            {{#if parent}}
+            <span class="small_button" id="jump_up" link="summary:{{parent}}">&#x2191;</span>
+            {{/if}}
+            <span class="summary_sig_main div_all_span_src">{{{signature}}}</span>
         </div>
         <div class="div_summary_doc">
-            <span class="expand_children small_button">-</span><span id="div_summary_doc_summary">{{{doc_summary}}}</span>
+            <span class="small_button" id="expand_docs">+</span><span id="div_summary_doc_summary">{{{doc_summary}}}</span>
             <div id="div_summary_doc_more">{{{doc_rest}}}</div>
         </div>
         <div class="div_summary_children">
             {{#each children}}
                 <div class="div_summary_sub" id="div_summary_sub_{{id}}">
-                    <span class="expand_children small_button">&#x2192;</span> <span class="summary_sig_sub div_all_span_src">{{{signature}}}</span>
+                    <span class="jump_children small_button" link="summary:{{id}}">&#x2192;</span> <span class="summary_sig_sub div_all_span_src">{{{signature}}}</span>
                     <p class="div_summary_doc_sub">{{{doc_summary}}}</p>
                 </div>
             {{/each}}
