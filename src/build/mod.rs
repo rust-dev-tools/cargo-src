@@ -47,7 +47,7 @@ impl Builder {
             return Err(());
         };
 
-        for arg in build_split.next() {
+        for arg in build_split {
             cmd.arg(arg);
         }
 
