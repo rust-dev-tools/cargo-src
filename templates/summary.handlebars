@@ -10,7 +10,7 @@
             <span class="summary_sig_main div_all_span_src">{{{signature}}}</span>
         </div>
         <div class="div_summary_doc">
-            <span class="small_button" id="expand_docs">+</span><span id="div_summary_doc_summary">{{{doc_summary}}}</span>
+            {{#if doc_rest}}<span class="small_button" id="expand_docs">+</span>{{/if}}<span id="div_summary_doc_summary">{{{doc_summary}}}</span>
             <div id="div_summary_doc_more">{{{doc_rest}}}</div>
         </div>
         <div class="div_summary_children">
