@@ -297,58 +297,61 @@ function load_err_code(state) {
 }
 
 function load_source(state) {
-    $("#div_main").html(Handlebars.templates.src_view(state.data));
-    $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+    let page = $(Handlebars.templates.src_view(state.data));
+    page.find(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+    $("#div_main").empty().append(page);
+
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
-    add_ref_functionality();
-    add_source_jump_links();
-    add_line_number_menus();
-    add_glob_menus();
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
+
+    // This is kind of slow and shouldn't cause reflow, so we'll do it after
+    // we display the page.
+    add_source_jump_links(page);
+    add_line_number_menus(page);
+    add_glob_menus(page);
+    add_ref_functionality(page);
 }
 
 // Menus, highlighting on mouseover.
-function add_ref_functionality() {
-    var all_idents = $(".class_id");
-    all_idents.each(function(index, ident) {
-        var classes = this.className.split(' ');
-        for (var c of classes) {
+function add_ref_functionality(page) {
+    for (let el of page.find(".class_id")) {
+        let element = $(el);
+        var classes = el.className.split(' ');
+        for (let c of classes) {
             if (c.startsWith('class_id_')) {
-                $(this).hover(function() {
-                    var similar = $("." + c);
-                    similar.css("background-color", "#d5f3b5");
+                element.hover(function() {
+                    $("." + c).css("background-color", "#d5f3b5");
                 }, function() {
-                    var similar = $("." + c);
-                    similar.css("background-color", "");
+                    $("." + c).css("background-color", "");
                 });
 
                 var id = c.slice('class_id_'.length);
-                $(ident).on("contextmenu", null, id, show_ref_menu);
-                $(ident).addClass("hand_cursor");
+                element.on("contextmenu", null, id, show_ref_menu);
+                element.addClass("hand_cursor");
 
                 break;
             }
         }
-    });
+    }
 }
 
-function add_glob_menus() {
-    var globs = $(".glob");
+function add_glob_menus(page) {
+    var globs = page.find(".glob");
     globs.on("contextmenu", show_glob_menu);
     globs.addClass("hand_cursor");
 }
 
-function add_source_jump_links() {
-    var linkables = $(".src_link");
+function add_source_jump_links(page) {
+    var linkables = page.find(".src_link");
     linkables.click(load_doc_or_src_link);
 }
 
-function add_line_number_menus() {
-    var line_nums = $(".div_src_line_number");
+function add_line_number_menus(page) {
+    var line_nums = page.find(".div_src_line_number");
     line_nums.on("contextmenu", show_line_number_menu);
     line_nums.addClass("hand_cursor");
 }
