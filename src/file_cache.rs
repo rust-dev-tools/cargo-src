@@ -351,7 +351,7 @@ impl Cache {
         let sig = match def.sig {
             Some(sig) => {
                 let mut h = highlight::BasicHighlighter::new();
-                h.span(sig.ident_start, sig.ident_end, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
+                h.span(sig.ident_start as u32, sig.ident_end as u32, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
                 highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), sig.text, &mut h)
             }
             None => def.name,
@@ -361,7 +361,7 @@ impl Cache {
             let docs = def.docs.to_owned();
             let sig = def.sig.as_ref().map(|s| {
                 let mut h = highlight::BasicHighlighter::new();
-                h.span(s.ident_start, s.ident_end, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
+                h.span(s.ident_start as u32, s.ident_end as u32, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
                 highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), s.text.clone(), &mut h)
             }).expect("No signature for def");
             let docs = render_markdown(&match docs.find("\n\n") {
