@@ -14,8 +14,9 @@ use std::fs::File;
 use std::io::{Read, Write, BufWriter};
 use std::str;
 
-use analysis::{AnalysisHost, Span, Target};
+use analysis::{AnalysisHost, Target};
 use rustdoc::html::markdown;
+use span;
 
 use super::highlight;
 
@@ -33,6 +34,8 @@ struct FileCache {
     files: HashMap<PathBuf, CachedFile>,
 }
 
+type Span = span::Span<span::ZeroIndexed>;
+
 #[derive(Serialize, Debug, Clone)]
 pub struct SearchResult {
     pub defs: Vec<FileResult>,
@@ -47,18 +50,18 @@ pub struct FileResult {
 
 #[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LineResult {
-    pub line_start: usize,
-    pub column_start: usize,
-    pub column_end: usize,
+    pub line_start: u32,
+    pub column_start: u32,
+    pub column_end: u32,
     pub line: String,
 }
 
 impl LineResult {
     fn new(span: &Span, line: String) -> LineResult {
         LineResult {
-            line_start: span.line_start + 1,
-            column_start: span.column_start + 1,
-            column_end: span.column_end + 1,
+            line_start: span.range.row_start.one_indexed().0,
+            column_start: span.range.col_start.one_indexed().0,
+            column_end: span.range.col_end.one_indexed().0,
             line: line,
         }
     }
@@ -159,9 +162,9 @@ impl Cache {
     }
 
     // line is 0-indexed
-    pub fn get_highlighted_line(&mut self, file_name: &Path, line: usize) -> Result<String, String> {
+    pub fn get_highlighted_line(&mut self, file_name: &Path, line: span::Row<span::ZeroIndexed>) -> Result<String, String> {
         let lines = self.get_highlighted(Path::new(file_name))?;
-        Ok(lines[line].clone())
+        Ok(lines[line.0 as usize].clone())
     }
 
     pub fn update_analysis(&mut self) {
@@ -203,9 +206,9 @@ impl Cache {
         let mut spans = self.analysis.find_all_refs_by_id(id).unwrap_or(vec![]);
         spans.sort();
 
-        let by_file = partition(&spans, |a, b| a.file_name == b.file_name);
+        let by_file = partition(&spans, |a, b| a.file == b.file);
         for file_bucket in by_file {
-            let file_name = &file_bucket[0].file_name;
+            let file_name = &file_bucket[0].file;
             let file_path = &Path::new(file_name);
             {
                 let file = self.files.get(file_path)?;
@@ -221,7 +224,7 @@ impl Cache {
                 let mut last = 0;
                 let mut next_index = 0;
                 // TODO off by one error for line number
-                let mut next_line = file_bucket[next_index].line_start;
+                let mut next_line = file_bucket[next_index].range.row_start.0 as usize;
                 for (i, &line_end) in file.new_lines.iter().enumerate().skip(1) {
                     // For convenience elsewhere (ha!), new_lines has an extra entry at the end beyond
                     // the end of the file, we have to catch that and run away crying.
@@ -234,18 +237,18 @@ impl Cache {
                         // Need to replace one or more spans on the line.
                         let mut last_char = 0;
                         while next_line == i {
-                            assert!(file_bucket[next_index].line_end == file_bucket[next_index].line_start, "Can't handle multi-line idents for replacement");
+                            assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
                             // TODO WRONG using char offsets for byte offsets
-                            writer.write(line_str[last_char..(file_bucket[next_index].column_start - 1)].as_bytes()).unwrap();
+                            writer.write(line_str[last_char..(file_bucket[next_index].range.col_start.0 as usize - 1)].as_bytes()).unwrap();
                             writer.write(new_bytes).unwrap();
 
-                            last_char = file_bucket[next_index].column_end - 1;
+                            last_char = file_bucket[next_index].range.col_end.0 as usize - 1;
                             next_index += 1;
                             if next_index >= file_bucket.len() {
                                 next_line = 0;
                                 break;
                             }
-                            next_line = file_bucket[next_index].line_start;
+                            next_line = file_bucket[next_index].range.row_start.0 as usize;
                         }
                         writer.write(line_str[last_char..].as_bytes()).unwrap();
                     } else {
@@ -280,17 +283,17 @@ impl Cache {
 
             let def_span = all_refs.next().unwrap();
             let project_dir = self.project_dir.clone();
-            let file_path = Path::new(&def_span.file_name);
+            let file_path = &def_span.file;
             let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
-            let def_text = self.get_highlighted_line(&file_path, def_span.line_start)?;
+            let def_text = self.get_highlighted_line(&file_path, def_span.range.row_start)?;
             let def_line = LineResult::new(&def_span, def_text);
             defs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(def_line);
 
             for ref_span in all_refs {
                 let project_dir = self.project_dir.clone();
-                let file_path = Path::new(&ref_span.file_name);
+                let file_path = Path::new(&ref_span.file);
                 let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
-                let text = self.get_highlighted_line(&file_path, ref_span.line_start)?;
+                let text = self.get_highlighted_line(&file_path, ref_span.range.row_start)?;
                 let line = LineResult::new(&ref_span, text);
                 refs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
             }
@@ -352,7 +355,7 @@ impl Cache {
             Some(sig) => {
                 let mut h = highlight::BasicHighlighter::new();
                 h.span(sig.ident_start as u32, sig.ident_end as u32, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
-                highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), sig.text, &mut h)
+                highlight::custom_highlight(def.span.file.to_str().unwrap().to_owned(), sig.text, &mut h)
             }
             None => def.name,
         };
@@ -362,7 +365,7 @@ impl Cache {
             let sig = def.sig.as_ref().map(|s| {
                 let mut h = highlight::BasicHighlighter::new();
                 h.span(s.ident_start as u32, s.ident_end as u32, "summary_ident".to_owned(), format!("def_{}", id), Some(def.span.clone()));
-                highlight::custom_highlight(def.span.file_name.to_str().unwrap().to_owned(), s.text.clone(), &mut h)
+                highlight::custom_highlight(def.span.file.to_str().unwrap().to_owned(), s.text.clone(), &mut h)
             }).expect("No signature for def");
             let docs = render_markdown(&match docs.find("\n\n") {
                 Some(index) => docs[..index].to_owned(),

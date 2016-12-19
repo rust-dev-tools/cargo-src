@@ -14,19 +14,20 @@
 #![feature(rustc_private)]
 #![feature(proc_macro)]
 
+extern crate hyper;
 #[macro_use]
 extern crate log;
-extern crate url;
 extern crate rustc_serialize;
-extern crate hyper;
+extern crate rls_analysis as analysis;
+extern crate rls_span as span;
 extern crate rustdoc;
 extern crate serde;
-extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate syntax;
 extern crate toml;
-extern crate rls_analysis as analysis;
+extern crate url;
 
 use config::Config;
 use hyper::Server;

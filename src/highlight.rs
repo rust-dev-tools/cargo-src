@@ -16,11 +16,14 @@ use std::str;
 use std::time::Instant;
 
 use rustdoc::html::highlight::{self, Classifier, Class};
+use span;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::{CodeMap, Loc};
 
-use analysis::{AnalysisHost, Span};
+use analysis::AnalysisHost;
+
+type Span = span::Span<span::ZeroIndexed>;
 
 pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
@@ -86,13 +89,11 @@ impl<'a> Highlighter<'a> {
         let file_path = self.path_cache.entry(lo.file.name.clone()).or_insert_with(|| {
             Path::new(&lo.file.name).canonicalize().unwrap()
         });
-        Span {
-            file_name: file_path.clone(),
-            line_start: lo.line as usize - 1,
-            column_start: lo.col.0 as usize,
-            line_end: hi.line as usize - 1,
-            column_end: hi.col.0 as usize,
-        }
+        Span::new(span::Row::new(lo.line as u32).zero_indexed(),
+                  span::Row::new(hi.line as u32).zero_indexed(),
+                  span::Column::new(lo.col.0 as u32),
+                  span::Column::new(hi.col.0 as u32),
+                  file_path.clone())
     }
 }
 
@@ -139,17 +140,17 @@ fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
 }
 
 fn loc_for_span(span: &Span, project_path: &Path) -> String {
-    let file_name = Path::new(&span.file_name).strip_prefix(project_path)
-                                              .ok()
-                                              .unwrap_or(&span.file_name)
-                                              .to_str()
-                                              .unwrap();
+    let file_name = Path::new(&span.file).strip_prefix(project_path)
+                                         .ok()
+                                         .unwrap_or(&span.file)
+                                         .to_str()
+                                         .unwrap();
     format!("{}:{}:{}:{}:{}",
             file_name,
-            span.line_start + 1,
-            span.column_start + 1,
-            span.line_end + 1,
-            span.column_end + 1)
+            span.range.row_start.one_indexed().0,
+            span.range.col_start.one_indexed().0,
+            span.range.row_end.one_indexed().0,
+            span.range.col_end.one_indexed().0)
 }
 
 
