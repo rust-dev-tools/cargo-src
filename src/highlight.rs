@@ -89,10 +89,10 @@ impl<'a> Highlighter<'a> {
         let file_path = self.path_cache.entry(lo.file.name.clone()).or_insert_with(|| {
             Path::new(&lo.file.name).canonicalize().unwrap()
         });
-        Span::new(span::Row::new(lo.line as u32).zero_indexed(),
-                  span::Row::new(hi.line as u32).zero_indexed(),
-                  span::Column::new(lo.col.0 as u32),
-                  span::Column::new(hi.col.0 as u32),
+        Span::new(span::Row::new_one_indexed(lo.line as u32).zero_indexed(),
+                  span::Row::new_one_indexed(hi.line as u32).zero_indexed(),
+                  span::Column::new_zero_indexed(lo.col.0 as u32),
+                  span::Column::new_zero_indexed(hi.col.0 as u32),
                   file_path.clone())
     }
 }
