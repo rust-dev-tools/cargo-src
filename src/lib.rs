@@ -20,6 +20,7 @@ extern crate log;
 extern crate rustc_serialize;
 extern crate rls_analysis as analysis;
 extern crate rls_span as span;
+extern crate rls_vfs as vfs;
 extern crate rustdoc;
 extern crate serde;
 #[macro_use]

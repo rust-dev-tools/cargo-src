@@ -60,7 +60,7 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                         result: &mut ReprocessedSnippets,
                         config: &Config) {
     {
-        let mut file_cache = file_cache.lock().unwrap();
+        let file_cache = file_cache.lock().unwrap();
         let mut spans = diagnostic.spans.clone();
         spans.sort();
         let span_groups = partition(&spans, config.context_lines);
@@ -209,7 +209,7 @@ impl<'a> ReprocessedSnippets {
 impl Snippet {
     fn new(ids: Vec<u32>,
            text: Vec<String>,
-           plain_text: &str,
+           plain_text: String,
            file_name: String,
            line_start: usize,
            line_end: usize,
@@ -223,7 +223,7 @@ impl Snippet {
             line_start: line_start,
             line_end: line_end,
             highlights: highlights,
-            plain_text: plain_text.to_owned(),
+            plain_text: plain_text,
             primary_span: primary_span,
         }
     }

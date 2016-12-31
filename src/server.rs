@@ -132,11 +132,11 @@ impl<'a> Handler<'a> {
         let mut path_buf = static_path();
         path_buf.push("index.html");
 
-        let mut file_cache = self.file_cache.lock().unwrap();
+        let file_cache = self.file_cache.lock().unwrap();
         let msg = match file_cache.get_text(&path_buf) {
             Ok(data) => {
                 res.headers_mut().set(ContentType::html());
-                res.send(data).unwrap();
+                res.send(data.as_bytes()).unwrap();
                 return;
             }
             Err(s) => s,
@@ -162,11 +162,11 @@ impl<'a> Handler<'a> {
             _ => ContentType("application/octet-stream".parse().unwrap()),
         };
 
-        let mut file_cache = self.file_cache.lock().unwrap();
+        let file_cache = self.file_cache.lock().unwrap();
         if let Ok(s) = file_cache.get_text(&path_buf) {
             trace!("handle_static: serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
             res.headers_mut().set(content_type);
-            res.send(s).unwrap();
+            res.send(s.as_bytes()).unwrap();
             return;
         }
 
@@ -207,7 +207,7 @@ impl<'a> Handler<'a> {
                 Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
             }
         } else {
-            let mut file_cache = self.file_cache.lock().unwrap();
+            let file_cache = self.file_cache.lock().unwrap();
             match file_cache.get_highlighted(&path_buf) {
                 Ok(ref lines) => {
                     res.headers_mut().set(ContentType::json());
@@ -514,7 +514,7 @@ impl<'a> Handler<'a> {
                         return;
                     }
                 };
-                let mut file_cache = self.file_cache.lock().unwrap();
+                let file_cache = self.file_cache.lock().unwrap();
 
                 // Hard-coded 2 lines of context before and after target line.
                 let line_start = line.saturating_sub(3);
@@ -624,7 +624,7 @@ impl<'a> Handler<'a> {
         let lines = read_lines(&data.file_name)?;
 
         {
-            let mut file_cache = self.file_cache.lock().unwrap();
+            let file_cache = self.file_cache.lock().unwrap();
             file_cache.reset_file(&Path::new(&data.file_name));
         }
 
@@ -651,7 +651,7 @@ impl<'a> Handler<'a> {
         let lines = read_lines(&data.file_name)?;
 
         {
-            let mut file_cache = self.file_cache.lock().unwrap();
+            let file_cache = self.file_cache.lock().unwrap();
             file_cache.reset_file(&Path::new(&data.file_name));
         }
 

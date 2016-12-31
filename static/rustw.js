@@ -23,7 +23,6 @@ Handlebars.registerHelper("def", function(a, b, options)
 
 Handlebars.registerHelper("isDir", function(a, options)
 {
-    console.log(a);
     return a == "Directory";
 });
 

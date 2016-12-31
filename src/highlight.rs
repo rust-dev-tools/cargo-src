@@ -297,7 +297,6 @@ impl highlight::Writer for BasicHighlighter {
     }
 
     fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
-        // TODO use spans
         let text = text.to_string();
 
         let mut extra_class = None;
