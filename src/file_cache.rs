@@ -7,11 +7,10 @@
 // except according to those terms.
 
 use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::{Read, Write, BufWriter};
+use std::io::{Write, BufWriter};
 use std::str;
 
 use analysis::{AnalysisHost, Target};
@@ -123,7 +122,7 @@ impl Cache {
     }
 
     pub fn reset_file(&self, path: &Path) {
-        self.files.flush_file(&path.canonicalize().unwrap());
+        self.files.flush_file(&path.canonicalize().unwrap()).unwrap();
     }
 
     pub fn get_text(&self, path: &Path) -> Result<String, String> {
@@ -232,68 +231,63 @@ impl Cache {
     pub fn replace_str_for_id(&mut self, id: u32, new_text: &str) -> Result<(), String> {
         // TODO do better than unwrap
 
-        // TODO
+        let new_bytes = new_text.as_bytes();
+        let mut spans = self.analysis.find_all_refs_by_id(id).unwrap_or(vec![]);
+        spans.sort();
 
-        // let new_bytes = new_text.as_bytes();
-        // let mut spans = self.analysis.find_all_refs_by_id(id).unwrap_or(vec![]);
-        // spans.sort();
+        let by_file = partition(&spans, |a, b| a.file == b.file);
+        for file_bucket in by_file {
+            let file_name = &file_bucket[0].file;
+            let file_path = &Path::new(file_name);
 
-        // let by_file = partition(&spans, |a, b| a.file == b.file);
-        // for file_bucket in by_file {
-        //     let file_name = &file_bucket[0].file;
-        //     let file_path = &Path::new(file_name);
-        //     {
-        //         let file = self.files.get(file_path)?;
-        //         if file.new_lines.is_empty() {
-        //             compute_new_lines(file);
-        //         }
-        //         let file_str = str::from_utf8(&file.plain_text).unwrap();
+            self.ensure_new_lines_then(file_path, |file_str, user_data| {
+                // TODO should do a two-step file write here.
+                let out_file = File::create(&file_name).unwrap();
+                let mut writer = BufWriter::new(out_file);
 
-        //         // TODO should do a two-step file write here.
-        //         let out_file = File::create(&file_name).unwrap();
-        //         let mut writer = BufWriter::new(out_file);
+                let mut last = 0;
+                let mut next_index = 0;
+                // TODO off by one error for line number
+                let mut next_line = file_bucket[next_index].range.row_start.0 as usize;
 
-        //         let mut last = 0;
-        //         let mut next_index = 0;
-        //         // TODO off by one error for line number
-        //         let mut next_line = file_bucket[next_index].range.row_start.0 as usize;
-        //         for (i, &line_end) in file.new_lines.iter().enumerate().skip(1) {
-        //             // For convenience elsewhere (ha!), new_lines has an extra entry at the end beyond
-        //             // the end of the file, we have to catch that and run away crying.
-        //             if line_end > file_str.len() {
-        //                 break;
-        //             }
-        //             let line_str = &file_str[last..line_end];
+                for (i, &line_end) in user_data.new_lines.iter().enumerate().skip(1) {
+                    // For convenience elsewhere (ha!), new_lines has an extra entry at the end beyond
+                    // the end of the file, we have to catch that and run away crying.
+                    if line_end > file_str.len() {
+                        break;
+                    }
+                    let line_str = &file_str[last..line_end];
 
-        //             if i == next_line {
-        //                 // Need to replace one or more spans on the line.
-        //                 let mut last_char = 0;
-        //                 while next_line == i {
-        //                     assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
-        //                     // TODO WRONG using char offsets for byte offsets
-        //                     writer.write(line_str[last_char..(file_bucket[next_index].range.col_start.0 as usize - 1)].as_bytes()).unwrap();
-        //                     writer.write(new_bytes).unwrap();
+                    if i == next_line {
+                        // Need to replace one or more spans on the line.
+                        let mut last_char = 0;
+                        while next_line == i {
+                            assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
+                            // TODO WRONG using char offsets for byte offsets
+                            writer.write(line_str[last_char..(file_bucket[next_index].range.col_start.0 as usize - 1)].as_bytes()).unwrap();
+                            writer.write(new_bytes).unwrap();
 
-        //                     last_char = file_bucket[next_index].range.col_end.0 as usize - 1;
-        //                     next_index += 1;
-        //                     if next_index >= file_bucket.len() {
-        //                         next_line = 0;
-        //                         break;
-        //                     }
-        //                     next_line = file_bucket[next_index].range.row_start.0 as usize;
-        //                 }
-        //                 writer.write(line_str[last_char..].as_bytes()).unwrap();
-        //             } else {
-        //                 // Nothing to replace.
-        //                 writer.write(line_str.as_bytes()).unwrap();
-        //             }
+                            last_char = file_bucket[next_index].range.col_end.0 as usize - 1;
+                            next_index += 1;
+                            if next_index >= file_bucket.len() {
+                                next_line = 0;
+                                break;
+                            }
+                            next_line = file_bucket[next_index].range.row_start.0 as usize;
+                        }
+                        writer.write(line_str[last_char..].as_bytes()).unwrap();
+                    } else {
+                        // Nothing to replace.
+                        writer.write(line_str.as_bytes()).unwrap();
+                    }
 
-        //             last = line_end;
-        //         }
-        //     }
+                    last = line_end;
+                }
+                Ok(())
+            })?;
 
-        //     self.reset_file(file_path);
-        // }
+            self.reset_file(file_path);
+        }
 
         Ok(())
     }
@@ -437,39 +431,6 @@ fn compute_new_lines(plain_text: &str) -> Vec<usize> {
     new_lines.push(bytes.len() + 1);
     new_lines
 }
-
-fn read_file(path: &Path) -> Result<Vec<u8>, String> {
-    match File::open(path) {
-        Ok(mut file) => {
-            let mut buf = Vec::new();
-            file.read_to_end(&mut buf).unwrap();
-            Ok(buf)
-        }
-        Err(msg) => {
-            Err(format!("Error opening file: `{}`; {}", path.to_str().unwrap(), msg))
-        }
-    }
-}
-
-// TODO remove
-// impl FileCache {
-//     fn get(&mut self, path: &Path) -> Result<&mut CachedFile, String> {
-//         // Annoying that we have to clone here :-(
-//         match self.files.entry(path.canonicalize().expect(&format!("Bad path?: {}", path.display()))) {
-//             Entry::Occupied(oe) => {
-//                 Ok(oe.into_mut())
-//             }
-//             Entry::Vacant(ve) => {
-//                 let text = read_file(path)?;
-//                 if text.is_empty() {
-//                     Err(format!("Empty file {}", path.display()))
-//                 } else {
-//                     Ok(ve.insert(CachedFile::new(text)))
-//                 }
-//             }
-//         }
-//     }
-// }
 
 fn partition<T, F>(input: &[T], f: F) -> Vec<&[T]>
     where F: Fn(&T, &T) -> bool
