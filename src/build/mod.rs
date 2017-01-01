@@ -74,6 +74,7 @@ impl Builder {
         let mut err_buf = String::new();
         loop {
             let mut buf = String::new();
+            // TODO seems to be blocking here for a long time
             match stderr.read_line(&mut buf) {
                 Ok(0) | Err(_) => {
                     let mut build_update_handler = self.build_update_handler.lock().unwrap();

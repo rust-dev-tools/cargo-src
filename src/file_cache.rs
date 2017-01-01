@@ -106,6 +106,15 @@ impl VfsUserData {
     }
 }
 
+macro_rules! vfs_err {
+    ($e: expr) => {
+        {
+            let r: Result<_, String> = $e.map_err(|e| e.into());
+            r
+        }
+    }
+}
+
 impl Cache {
     pub fn new() -> Cache {
         Cache {
@@ -144,16 +153,16 @@ impl Cache {
     fn ensure_new_lines_then<F, T>(&self, path: &Path, f: F) -> Result<T, String>
         where F: FnOnce(&str, &VfsUserData) -> Result<T, ::vfs::Error>
     {
-        let r: Result<(), String> = self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())).map_err(|e| e.into());
-        r?;
-        self.files.with_user_data(path, |u| {
+        vfs_err!(self.files.load_file(path))?;
+        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
+        vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
             if u.new_lines.is_empty() {
                 u.new_lines = compute_new_lines(text)
             }
 
             f(text, u)
-        }).map_err(|e| e.into())
+        }))
     }
 
     pub fn summary(&mut self, id: u32) -> Result<&DefSummary, String> {
@@ -167,9 +176,9 @@ impl Cache {
 
     // TODO handle non-rs files by returning plain text lines
     pub fn get_highlighted(&self, path: &Path) -> Result<Vec<String>, String> {
-        let r: Result<(), String> = self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())).map_err(|e| e.into());
-        r?;
-        self.files.with_user_data(path, |u| {
+        vfs_err!(self.files.load_file(path))?;
+        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
+        vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
             if u.highlighted_lines.is_empty() {
                 let highlighted = highlight::highlight(&self.analysis,
@@ -188,7 +197,7 @@ impl Cache {
             }
 
             Ok(u.highlighted_lines.clone())
-        }).map_err(|e| e.into())
+        }))
     }
 
     pub fn get_highlighted_line(&self, file_name: &Path, line: span::Row<span::ZeroIndexed>) -> Result<String, String> {
@@ -229,6 +238,7 @@ impl Cache {
     }
 
     pub fn replace_str_for_id(&mut self, id: u32, new_text: &str) -> Result<(), String> {
+        // FIXME(#118) move any file stuff into VFS.
         // TODO do better than unwrap
 
         let new_bytes = new_text.as_bytes();
