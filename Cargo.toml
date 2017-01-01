@@ -14,7 +14,7 @@ serde_derive = "0.8"
 toml = "0.1"
 rls-analysis = { git = "https://github.com/nrc/rls-analysis" }
 rls-span = { git = "https://github.com/nrc/rls-span" }
-rls-vfs = { path = "../rls-vfs" }
+rls-vfs = { git = "https://github.com/nrc/rls-vfs" }
 log = "0.3"
 env_logger = "0.3"
 
