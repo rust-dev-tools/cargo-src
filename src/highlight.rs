@@ -34,8 +34,7 @@ pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_na
 
     let t_start = Instant::now();
 
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
-                                         sess.codemap());
+    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
     classifier.write_source(&mut out).unwrap();
 
     let time = t_start.elapsed();
@@ -49,8 +48,7 @@ pub fn custom_highlight<H: highlight::Writer + GetBuf>(file_name: String, file_t
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
 
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
-                                         sess.codemap());
+    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
     classifier.write_source(highlighter).unwrap();
 
     String::from_utf8_lossy(highlighter.get_buf()).into_owned()

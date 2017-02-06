@@ -127,14 +127,3 @@ impl Ord for DiagnosticSpan {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::parse_errors;
-
-    #[test]
-    fn test_parse() {
-        let input = r#"{"message":"unused variable: `matches`, #[warn(unused_variables)] on by default","code":null,"level":"warning","spans":[{"file_name":"src/main.rs","byte_start":771,"byte_end":778,"line_start":49,"line_end":49,"column_start":9,"column_end":16}],"children":[]}"#;
-        let _result = parse_errors(input);
-    }
-}
