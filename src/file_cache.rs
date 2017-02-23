@@ -64,6 +64,11 @@ impl LineResult {
 }
 
 #[derive(Serialize, Debug, Clone)]
+pub struct FindResult {
+    pub results: Vec<FileResult>,
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub struct DefSummary {
     id: u32,
     bread_crumbs: Vec<String>,
@@ -80,16 +85,6 @@ pub struct DefChild {
     signature: String,
     doc_summary: String,
 }
-
-// struct FileCache {
-//     files: HashMap<PathBuf, CachedFile>,
-// }
-
-// struct CachedFile {
-//     plain_text: Vec<u8>,
-//     highlighted_lines: Vec<String>,
-//     new_lines: Vec<usize>,
-// }
 
 // Our data which we attach to files in the VFS.
 struct VfsUserData {
@@ -237,6 +232,14 @@ impl Cache {
         self.ids_search(ids)
     }
 
+    // TODO bucket by files
+    pub fn find_impls(&mut self, id: u32) -> Result<FindResult, String> {
+        let impls = self.analysis.find_impls(id).map_err(|_| "No impls found".to_owned())?;
+        Ok(FindResult {
+            results: self.make_search_results(impls)?,
+        })
+    }
+
     pub fn replace_str_for_id(&mut self, id: u32, new_text: &str) -> Result<(), String> {
         // FIXME(#118) move any file stuff into VFS.
         // TODO do better than unwrap
@@ -303,10 +306,8 @@ impl Cache {
     }
 
     fn ids_search(&mut self, ids: Vec<u32>) -> Result<SearchResult, String> {
-        // For each of the ids, push a search result to the appropriate list - one def and
-        // potentially many refs. We store these in buckets per file name.
-        let mut defs = HashMap::new();
-        let mut refs = HashMap::new();
+        let mut defs = Vec::new();
+        let mut refs = Vec::new();
 
         for id in ids {
             // If all_refs.len() > 0, the first entry will be the def.
@@ -317,44 +318,44 @@ impl Cache {
                 Ok(all_refs) => all_refs.into_iter(),
             };
 
-            let def_span = all_refs.next().unwrap();
-            let project_dir = self.project_dir.clone();
-            let file_path = &def_span.file;
-            let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
-            let def_text = self.get_highlighted_line(&file_path, def_span.range.row_start)?;
-            let def_line = LineResult::new(&def_span, def_text);
-            defs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(def_line);
-
+            defs.push(all_refs.next().unwrap());
+            // TODO iterator it up
             for ref_span in all_refs {
-                let project_dir = self.project_dir.clone();
-                let file_path = Path::new(&ref_span.file);
-                let file_path = file_path.strip_prefix(&project_dir).unwrap_or(file_path);
-                let text = self.get_highlighted_line(&file_path, ref_span.range.row_start)?;
-                let line = LineResult::new(&ref_span, text);
-                refs.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
+                refs.push(ref_span);
             }
         }
 
         // TODO need to save the span for highlighting
         // We then save each bucket of defs/refs as a vec, and put it together to return.
         return Ok(SearchResult {
-            defs: make_file_results(defs),
-            refs: make_file_results(refs),
+            defs: self.make_search_results(defs)?,
+            refs: self.make_search_results(refs)?,
         });
 
-        fn make_file_results(bucket: HashMap<String, Vec<LineResult>>) -> Vec<FileResult> {
-            let mut list = vec![];
-            for (file_path, mut lines) in bucket.into_iter() {
-                lines.sort();
-                let per_file = FileResult {
-                    file_name: file_path,
-                    lines: lines,
-                };
-                list.push(per_file);
-            }
-            list.sort();
-            list
+    }
+
+    fn make_search_results(&self, raw: Vec<Span>) -> Result<Vec<FileResult>, String> {
+        let mut file_buckets = HashMap::new();
+
+        for span in &raw {
+            let file_path = Path::new(&span.file);
+            let file_path = file_path.strip_prefix(&self.project_dir).unwrap_or(file_path);
+            let text = self.get_highlighted_line(&file_path, span.range.row_start)?;
+            let line = LineResult::new(&span, text);
+            file_buckets.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
         }
+
+        let mut result = vec![];
+        for (file_path, mut lines) in file_buckets.into_iter() {
+            lines.sort();
+            let per_file = FileResult {
+                file_name: file_path,
+                lines: lines,
+            };
+            result.push(per_file);
+        }
+        result.sort();
+        Ok(result)
     }
 
     fn make_summary(&self, id: u32) -> Result<DefSummary, String> {

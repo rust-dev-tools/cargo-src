@@ -22,6 +22,7 @@ use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::{CodeMap, Loc};
 
 use analysis::AnalysisHost;
+use analysis::raw::DefKind;
 
 type Span = span::Span<span::ZeroIndexed>;
 
@@ -179,6 +180,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                        // FIXME should be able to get all this info with a single query of analysis.
                         let span = &self.span_from_locs(&lo, &hi);
                         let ty = self.analysis.show_type(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
                         let docs = self.analysis.docs(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
@@ -192,15 +194,26 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let doc_link = self.analysis.doc_url(span).ok();
                         let src_link = self.analysis.src_url(span).ok();
 
-                        let css_class = match self.analysis.id(span) {
+                        let (css_class, impls) = match self.analysis.id(span) {
                             Ok(id) => {
                                 if link.is_none() {
                                     link = Some(format!("search:{}", id));
                                 }
+                                let css_class = format!(" class_id class_id_{}", id);
 
-                                Some(format!(" class_id class_id_{}", id))
+                                let impls = match self.analysis.get_def(id) {
+                                    Ok(def) => match def.kind {
+                                        DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::Trait => {
+                                            self.analysis.find_impls(id).map(|v| v.len()).unwrap_or(0)
+                                        }
+                                        _ => 0,
+                                    },
+                                    Err(_) => 0,
+                                };
+
+                                (Some(css_class), impls)
                             }
-                            Err(_) => None,
+                            Err(_) => (None, 0),
                         };
 
                         let has_link = doc_link.is_some() || link.is_some();
@@ -210,6 +223,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         maybe_insert!(extra, "link", link);
                         maybe_insert!(extra, "doc_link", doc_link);
                         maybe_insert!(extra, "src_link", src_link);
+                        extra.insert("impls".to_owned(), impls.to_string());
 
                         write_span(&mut self.buf,
                                                 Class::Ident,

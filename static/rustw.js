@@ -67,6 +67,8 @@ function onLoad() {
             load_dir(state);
         } else if (state.page == "search") {
               load_search(state);
+        } else if (state.page == "find") {
+              load_find(state);
         } else if (state.page == "summary") {
               load_summary(state);
         } else {
@@ -232,6 +234,7 @@ function win_search(needle) {
     $("#div_main").text("Loading...");
 }
 
+// Identifer search - shows defs and refs
 function load_search(state) {
     show_back_link();
     $("#div_main").html(Handlebars.templates.search_results(state.data));
@@ -241,6 +244,18 @@ function load_search(state) {
     $(".span_src").click(load_link);
     highlight_needle(state.data.defs, "def");
     highlight_needle(state.data.refs, "ref");
+    window.scroll(0, 0);
+}
+
+// Find = basic search, just a list of uses, e.g., find impls or text search
+function load_find(state) {
+    show_back_link();
+    $("#div_main").html(Handlebars.templates.find_results(state.data));
+    $(".src_link").removeClass("src_link");
+    $(".div_search_file_link").click(load_link);
+    $(".div_span_src_number").click(load_link);
+    $(".span_src").click(load_link);
+    highlight_needle(state.data.results, "result");
     window.scroll(0, 0);
 }
 
@@ -985,6 +1000,15 @@ function show_ref_menu(event) {
 
     $("#ref_menu_view_summary").click(event.data, (ev) => summary(ev.data));
     $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
+
+    let impls = data.target.attr("impls");
+    // FIXME we could display the impl count in the menu
+    if (impls && impls != "0") {
+        $("#ref_menu_find_impls").click(event.data, (ev) => find_impls(ev.data));
+    } else {
+        $("#ref_menu_find_impls").hide();
+    }
+
     if (CONFIG.unstable_features) {
         $("#ref_menu_rename").click(data, show_rename);
     } else {
@@ -1117,6 +1141,35 @@ function find_uses(needle) {
 
         load_error();
         history.pushState({}, "", make_url("#search=" + needle));
+    });
+
+    hide_ref_menu();
+    $("#div_main").text("Loading...");
+}
+
+function find_impls(needle) {
+    $.ajax({
+        url: make_url('find?impls=' + needle),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "find",
+            "data": json,
+            "kind": "impls",
+            "id": needle,
+        };
+        load_find(state);
+        history.pushState(state, "", make_url("#impls=" + needle));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with find (impls) request for " + needle);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        load_error();
+        history.pushState({}, "", make_url("#impls=" + needle));
     });
 
     hide_ref_menu();

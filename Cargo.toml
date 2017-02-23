@@ -8,9 +8,9 @@ build = "build.rs"
 url = "0.5"
 getopts = "0.2"
 rustc-serialize = "0.3"
-serde = "0.8"
-serde_json = "0.8"
-serde_derive = "0.8"
+serde = "0.9"
+serde_json = "0.9"
+serde_derive = "0.9"
 toml = "0.1"
 rls-analysis = { git = "https://github.com/nrc/rls-analysis" }
 rls-span = { git = "https://github.com/nrc/rls-span" }
