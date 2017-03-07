@@ -52,9 +52,6 @@ impl Builder {
         if self.config.save_analysis {
             flags.push_str(" -Zsave-analysis");
         }
-        if self.config.no_trans {
-            flags.push_str(" -Zno-trans");
-        }
         cmd.env("RUSTFLAGS", &flags);
         cmd.env("CARGO_TARGET_DIR", "target/rls");
         cmd.env("RUST_LOG", "");

@@ -174,7 +174,7 @@ macro_rules! create_config {
 }
 
 create_config! {
-    build_command: String, "cargo build".to_owned(), false, "command to call to build";
+    build_command: String, "cargo check".to_owned(), false, "command to call to build";
     edit_command: String, String::new(), false, "command to call to edit; can use $file, $line, and $col.";
     unstable_features: bool, false, false, "Enable unstable features";
     port: usize, 7878, false, "port to run rustw on";
@@ -184,6 +184,5 @@ create_config! {
     build_on_load: bool, true, false, "build on page load and refresh";
     source_directory: String, "src".to_owned(), false, "root of the source directory";
     save_analysis: bool, true, false, "whether to run the save_analysis pass";
-    no_trans: bool, true, false, "whether to omit the trans pass";
     vcs_link: String, String::new(), false, "link to use for VCS; should use $file and $line.";
 }
