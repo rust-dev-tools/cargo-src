@@ -181,7 +181,7 @@ impl<'a> Handler<'a> {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
             // hey, FIXME).
-            if p.contains("..") {
+            if p.contains("..") || p == "/" {
                 self.handle_error(_req, res, StatusCode::InternalServerError,
                                   "Bad path, found `..`".to_owned());
                 return
@@ -863,7 +863,14 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
     }
 
     if path[0] == SOURCE_REQUEST {
-        handler.handle_src(req, res, &path[1..]);
+        let path = &path[1..];
+        // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
+        // We try to correct for that here.
+        if path.len() == 1 && path[0] == "" {
+            handler.handle_src(req, res, &[".".to_owned()]);
+        } else {
+            handler.handle_src(req, res, path);
+        }
         return;
     }
 
