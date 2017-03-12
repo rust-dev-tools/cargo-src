@@ -33,17 +33,22 @@ Motivation:
 
 ## Building
 
-You must perform the first step, the second is optional. They must be
-performed in order. Requires a nightly version of Rust to build. If you
-are seeing errors building dependencies try nightly-2016-05-12
-(4ec5ce5e4).
+You must perform the first three steps, the forth is optional. Requires a nightly
+version of Rust to build.
 
 * `cargo build --release` to build the Rust parts.
-
+* setup the React/webpack environment (requires npm):
+```
+npm install --save react react-dom
+npm install --save-dev babel-loader babel-core
+npm install --save-dev babel-preset-react
+npm install --save-dev babel-preset-es2015
+npm install --save-dev webpack
+```
+* build the JS components: `./node_modules/.bin/webpack`
 * `./build_templates.sh` to rebuild the handlebars templates. The compiled targets
   are part of the repo, so you shouldn't need to do this unless you edit the
-  templates. You will need handlebars
-  [installed](http://handlebarsjs.com/) to do this.
+  templates. You will need handlebars [installed](http://handlebarsjs.com/) to do this.
 
 ## Running
 

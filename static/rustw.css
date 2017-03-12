@@ -223,6 +223,7 @@ a.issue_link:active, a.link  { color: black }
     font-family: monospace;
     text-decoration: underline;
     cursor: pointer;
+    vertical-align: top;
 }
 .div_all_span_src {
     font-family: monospace;

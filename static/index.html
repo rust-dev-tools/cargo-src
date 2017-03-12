@@ -17,14 +17,11 @@ except according to those terms.
   <link rel="icon" href="/static/favicon.ico">
   <script src="/static/libs/handlebars.runtime.min.js"></script>
   <script src="/static/libs/jquery-2.2.2.min.js"></script>
-  <script src="/static/templates/src_snippet.js"></script>
-  <script src="/static/templates/src_snippet_inner.js"></script>
   <script src="/static/templates/search_results.js"></script>
   <script src="/static/templates/find_results.js"></script>
   <script src="/static/templates/bread_crumbs.js"></script>
-  <script src="/static/rustw.js"></script>
+  <script src="/static/rustw.out.js"></script>
   <script src="/static/libs/marked.min.js"></script>
-  <script src="/static/templates/build_error.js"></script>
   <script src="/static/templates/err_code.js"></script>
   <script src="/static/templates/src_view.js"></script>
   <script src="/static/templates/summary.js"></script>
@@ -108,6 +105,6 @@ var CHAR_WIDTH = $("#measure").innerWidth() / 10;
 var MAIN_PAGE_STATE = null;
 var CONFIG;
 var SNIPPET_PLAIN_TEXT = {};
-onLoad();
+Rustw.onLoad();
 </script>
 </html>

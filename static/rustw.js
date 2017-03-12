@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+let errors = require("./errors.js");
+let snippet = require("./snippet.js");
+
 Handlebars.registerHelper("inc", function(value, options)
 {
     return parseInt(value) + 1;
@@ -26,60 +29,60 @@ Handlebars.registerHelper("isDir", function(a, options)
     return a == "Directory";
 });
 
-Handlebars.registerPartial("src_snippet", Handlebars.templates.src_snippet);
-Handlebars.registerPartial("src_snippet_inner", Handlebars.templates.src_snippet_inner);
 Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
-function onLoad() {
-    $.getJSON("/config", function(data) {
-        CONFIG = data;
-        if (CONFIG.build_on_load) {
-            do_build();
-        }
-    });
+module.exports = {
+    onLoad: function () {
+        $.getJSON("/config", function(data) {
+            CONFIG = data;
+            if (CONFIG.build_on_load) {
+                do_build();
+            }
+        });
 
-    load_start();
-    $(document).on("keypress", "#search_box", function(e) {
-         if (e.which == 13) {
-             win_search(this.value);
-         }
-    });
-    MAIN_PAGE_STATE = { page: "start" };
-    history.replaceState(MAIN_PAGE_STATE, "");
+        load_start();
+        $(document).on("keypress", "#search_box", function(e) {
+             if (e.which == 13) {
+                 win_search(this.value);
+             }
+        });
+        MAIN_PAGE_STATE = { page: "start" };
+        history.replaceState(MAIN_PAGE_STATE, "");
 
-    window.onpopstate = function(event) {
-        var state = event.state;
-        if (!state) {
-            console.log("ERROR: null state: ");
-            load_start();
-        } else if (state.page == "start") {
-            load_start();
-        } else if (state.page == "error") {
-            load_error();
-        } else if (state.page == "build") {
-            pre_load_build();
-            load_build(state);
-        } else if (state.page == "err_code") {
-            load_err_code(state);
-        } else if (state.page == "source") {
-            load_source(state);
-        } else if (state.page == "source_dir") {
-            load_dir(state);
-        } else if (state.page == "search") {
-              load_search(state);
-        } else if (state.page == "find") {
-              load_find(state);
-        } else if (state.page == "summary") {
-              load_summary(state);
-        } else {
-            console.log("ERROR: Unknown page state: ");
-            console.log(state);
-            load_start();
-        }
+        window.onpopstate = function(event) {
+            var state = event.state;
+            if (!state) {
+                console.log("ERROR: null state: ");
+                load_start();
+            } else if (state.page == "start") {
+                load_start();
+            } else if (state.page == "error") {
+                load_error();
+            } else if (state.page == "build") {
+                pre_load_build();
+                load_build(state);
+            } else if (state.page == "err_code") {
+                load_err_code(state);
+            } else if (state.page == "source") {
+                load_source(state);
+            } else if (state.page == "source_dir") {
+                load_dir(state);
+            } else if (state.page == "search") {
+                  load_search(state);
+            } else if (state.page == "find") {
+                  load_find(state);
+            } else if (state.page == "summary") {
+                  load_summary(state);
+            } else {
+                console.log("ERROR: Unknown page state: ");
+                console.log(state);
+                load_start();
+            }
 
-        hide_options();
-    };
-}
+            hide_options();
+        };    
+    }
+};
 
 function load_start() {
     enable_button($("#link_build"), "build");
@@ -503,7 +506,9 @@ function do_build_internal(build_str) {
     updateSource.addEventListener("error", function(event) {
         let error = JSON.parse(event.data);
 
-        $("#div_errors").append(Handlebars.templates.build_error(error));
+        let container = $("<div />");
+        errors.renderError(error, container.get(0));
+        $("#div_errors").append(container);
 
         for (let s of error.spans) {
             set_one_snippet_plain_text(s);
@@ -521,7 +526,6 @@ function do_build_internal(build_str) {
         $("#div_messages").append("<pre>" + JSON.parse(event.data) + "</pre>")
     }, false);
     updateSource.addEventListener("close", function(event) {
-        console.log("Received close");
         updateSource.close();
     }, false);
 }
@@ -559,7 +563,7 @@ function update_snippets(data) {
 
         var loc = $("#span_loc_" + s.id);
         var p = s.primary_span;
-        loc.attr("link", s.file_name + ":" + p.line_start + ":" + p.column_start + ":" + p.line_end + ":" + p.column_end);
+        loc.attr("data-link", s.file_name + ":" + p.line_start + ":" + p.column_start + ":" + p.line_end + ":" + p.column_end);
         loc.text(s.file_name + ":" + p.line_start + ":" + p.column_start + ": " + p.line_end + ":" + p.column_end);
 
         $("#div_span_label_" + s.id).text("");
@@ -569,8 +573,8 @@ function update_snippets(data) {
         // TODO if the spans are shown before we call this, then we won't call
         // show_spans and we won't call update_span.
         target[0].update_span = function() {
-            let html = Handlebars.templates.src_snippet_inner(snip);
-            target.html(html);
+            // TODO should use state for this rather than updating directly
+            snippet.renderSnippetSpan(snip, target.get(0));
 
             for (let h of snip.highlights) {
                 var css_class = "selected_secondary";
@@ -612,7 +616,7 @@ function init_build_results() {
     var expand_children = $(".expand_children");
     expand_children.each(show_children);
 
-    var err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("explain"); });
+    var err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("data-explain"); });
     err_codes.click(win_err_code);
     err_codes.addClass("err_code_link");
 
@@ -730,7 +734,7 @@ function show_back_link() {
 
 function win_err_code() {
     var element = $(this);
-    var explain = element.attr("explain");
+    var explain = element.attr("data-explain");
     if (!explain) {
         return;
     }
@@ -739,11 +743,11 @@ function win_err_code() {
 
     // Prepare the data for the error code window.
     var error_html = element.parent().html();
-    var data = { "code": element.attr("code"), "explain": marked(explain), "error": error_html };
+    var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": error_html };
 
     var state = { page: "err_code", data: data };
     load_err_code(state);
-    history.pushState(state, "", make_url("#" + element.attr("code")));
+    history.pushState(state, "", make_url("#" + element.attr("data-code")));
 }
 
 function do_browse() {
@@ -829,7 +833,7 @@ function load_doc_or_src_link() {
 
 function load_link() {
     var element = $(this);
-    var file_loc = element.attr("link").split(':');
+    var file_loc = element.attr("data-link").split(':');
     var file = file_loc[0];
 
     if (file == "search") {
@@ -926,7 +930,7 @@ function show_src_link_menu(event) {
     var data = show_menu(src_menu, event, hide_src_link_menu);
 
     if (CONFIG.unstable_features) {
-        var edit_data = { 'link': data.target.attr("link"), 'hide_fn': hide_src_link_menu };
+        var edit_data = { 'link': data.target.attr("data-link"), 'hide_fn': hide_src_link_menu };
         $("#src_menu_edit").click(edit_data, edit);
         $("#src_menu_quick_edit").click(data, quick_edit_link);
     } else {
