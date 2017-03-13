@@ -38,14 +38,14 @@ version of Rust to build.
 
 * `cargo build --release` to build the Rust parts.
 * setup the React/webpack environment (requires npm):
+```sh
+npm install
+
+# if you have yarn installed
+
+yarn
 ```
-npm install --save react react-dom
-npm install --save-dev babel-loader babel-core
-npm install --save-dev babel-preset-react
-npm install --save-dev babel-preset-es2015
-npm install --save-dev webpack
-```
-* build the JS components: `./node_modules/.bin/webpack`
+* build the JS components: `npm run build` or `yarn build`
 * `./build_templates.sh` to rebuild the handlebars templates. The compiled targets
   are part of the repo, so you shouldn't need to do this unless you edit the
   templates. You will need handlebars [installed](http://handlebarsjs.com/) to do this.
