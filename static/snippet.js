@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 
 class Snippet extends React.Component {
     render() {
-        const { sans } = this.props;
+        const { spans } = this.props;
         if (!spans || spans.length == 0) {
             return null;
         }
