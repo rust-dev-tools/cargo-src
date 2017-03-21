@@ -7,13 +7,13 @@ const { Snippet } = require('./snippet');
 
 class Error extends React.Component {
     render() {
-        const { children: _children, code: _code, level, spans } = this.props;
+        const { childErrors, code: _code, level, spans } = this.props;
 
         let children = null;
-        if (_children && _children.length > 0) {
+        if (childErrors && childErrors.length > 0) {
             const childList = [];
-            for (let i in _children) {
-                let c = _children[i];
+            for (let i in childErrors) {
+                let c = childErrors[i];
                 childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={i} />)
             }
             children =
@@ -60,7 +60,7 @@ class ChildError extends React.Component {
 module.exports = {
     renderError: function (data, container) {
         ReactDOM.render(
-            <Error code={data.code} level={data.level} message={data.message} spans={data.spans} children={data.children} />,
+            <Error code={data.code} level={data.level} message={data.message} spans={data.spans} childErrors={data.children} />,
             container
         );
     },
