@@ -1,7 +1,26 @@
+// Copyright 2017 The Rustw Project Developers.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+const { HideButton } = require('./hideButton');
+
 class Snippet extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { showSpans: false };
+    }
+
+    showSpans(e) {
+        this.setState((prevState) => ({ showSpans: !prevState.showSpans }));
+    }
+
     render() {
         const { spans } = this.props;
         if (!spans || spans.length == 0) {
@@ -10,9 +29,9 @@ class Snippet extends React.Component {
 
         return (
             <span className="div_snippet">
-                <br /><span className="expand_spans small_button" />
+                <br /><HideButton hidden={!this.state.showSpans} onClick={this.showSpans.bind(this)}/>
                 <span className="div_spans">
-                    {spans.map((sp) => <SnippetSpan {...sp} key={sp.id}/>)}
+                    {spans.map((sp) => <SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans}/>)}
                 </span>
             </span>
         );
@@ -29,13 +48,18 @@ class SnippetSpan extends React.Component {
             label = <span className="div_span_label" id={'div_span_label_' + id}>{_label}</span>;
         }
 
+        let block = null;
+        if (this.props.showBlock) {
+            block = <div className="div_all_span_src" id={'src_span_' + id}>
+                    <SnippetBlock id={id} line_start={line_start} text={text}/>
+                </div>;
+        }
+
         return (
             <span className="div_span" id={'div_span_' + id}>
                 <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id}>{file_name}:{line_start}:{column_start}: {line_end}:{column_end}</span>
                 {label}
-                <div className="div_all_span_src" id={'src_span_' + id}>
-                    <SnippetBlock id={id} line_start={line_start} text={text}/>
-                </div>
+                {block}
             </span>
         );
     }
@@ -43,10 +67,10 @@ class SnippetSpan extends React.Component {
 
 class SnippetBlock extends React.Component {
     render() {
-        const { line_start: line_number, text: lines, id } = this.props;
+        let { line_start: line_number, text, id } = this.props;
         const numbers = [];
         const lines = [];
-        for (let line of lines) {
+        for (let line of text) {
             numbers.push(<div className="span_src_number" id={'snippet_line_number_' + id + '_' + line_number} key={'number_' + line_number}>{line_number}</div>);
             let text = "&nbsp;";
             if (line) {

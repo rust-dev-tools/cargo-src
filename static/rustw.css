@@ -176,10 +176,10 @@ html {
 .group_children>.small_button {
     display: block;
     position: relative;
-    top: 5px;
+    top: 7px;
 }
 
-.expand_spans.small_button {
+.div_snippet>.small_button {
     vertical-align: top;
 }
 .div_span {

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rustw Project Developers.
+// Copyright 2016-2017 The Rustw Project Developers.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -570,8 +570,6 @@ function update_snippets(data) {
 
         let target = $("#src_span_" + s.id);
         let snip = s;
-        // TODO if the spans are shown before we call this, then we won't call
-        // show_spans and we won't call update_span.
         target[0].update_span = function() {
             // TODO should use state for this rather than updating directly
             snippet.renderSnippetSpan(snip, target.get(0));
@@ -610,12 +608,6 @@ function update_snippets(data) {
 }
 
 function init_build_results() {
-    var expand_spans = $(".expand_spans");
-    expand_spans.each(hide_spans);
-
-    var expand_children = $(".expand_children");
-    expand_children.each(show_children);
-
     var err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("data-explain"); });
     err_codes.click(win_err_code);
     err_codes.addClass("err_code_link");
@@ -684,39 +676,6 @@ function hide_stdout() {
     var expand = $("#expand_messages");
     show_hide(expand, "+", show_stdout);
     $("#div_messages").hide();
-}
-
-function show_spans() {
-    var element = $(this);
-    show_hide(element, "-", hide_spans);
-    var spans = element.next().find(".div_all_span_src");
-    spans.show();
-
-    for (let s of spans) {
-        if (s.update_span) {
-            s.update_span();
-        }
-    }
-}
-
-function hide_spans() {
-    var element = $(this);
-    show_hide(element, "+", show_spans);
-    element.next().find(".div_all_span_src").hide();
-}
-
-function show_children() {
-    var element = $(this);
-    show_hide(element, "-", hide_children);
-    element.next().hide();
-    element.next().next().show();
-}
-
-function hide_children() {
-    var element = $(this);
-    show_hide(element, "+", show_children);
-    element.next().show();
-    element.next().next().hide();
 }
 
 function show_back_link() {

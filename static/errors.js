@@ -1,28 +1,52 @@
+// Copyright 2017 The Rustw Project Developers.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 
 const { Snippet } = require('./snippet');
+const { HideButton } = require('./hideButton');
 
-// TODO state (in particular, update spans)
+// TODO state
+// - update spans - call update_span on spans
+// - current page
+// - menus?
 
 class Error extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { showChildren: true };
+    }
+
+    showChildren(e) {
+        this.setState((prevState) => ({ showChildren: !prevState.showChildren }));
+    }
+
     render() {
-        const { childErrors, code: _code, level, spans } = this.props;
+        const { childErrors, code: _code, level, spans, message } = this.props;
 
         let children = null;
         if (childErrors && childErrors.length > 0) {
-            const childList = [];
-            for (let i in childErrors) {
-                let c = childErrors[i];
-                childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={i} />)
+            let childrenSub;
+            if (this.state.showChildren) {
+                const childList = [];
+                for (let i in childErrors) {
+                    let c = childErrors[i];
+                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={i} />)
+                }
+                childrenSub = <span className="div_children">{childList}</span>;
+            } else {
+                childrenSub = <span className="div_children_dots">...</span>;
             }
             children =
                 <div className="group_children">
-                    <span className="expand_children small_button" />
-                    <span className="div_children_dots">...</span>
-                    <span className="div_children">
-                        {childList}
-                    </span>
+                    <HideButton hidden={!this.state.showChildren} onClick={this.showChildren.bind(this)}/>
+                    {childrenSub}
                 </div>;
         }
 
