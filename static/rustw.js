@@ -6,8 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-let errors = require("./errors.js");
-let snippet = require("./snippet.js");
+const errors = require("./errors");
+const snippet = require("./snippet");
+const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
 {
@@ -81,6 +82,46 @@ module.exports = {
 
             hide_options();
         };    
+    },
+
+    win_src_link: function () {
+        show_back_link();
+        load_link.call(this);
+    },
+
+    show_src_link_menu: function (event) {
+        var src_menu = $("#div_src_menu");
+        var data = show_menu(src_menu, event, hide_src_link_menu);
+
+        if (CONFIG.unstable_features) {
+            var edit_data = { 'link': data.target.attr("data-link"), 'hide_fn': hide_src_link_menu };
+            $("#src_menu_edit").click(edit_data, edit);
+            $("#src_menu_quick_edit").click(data, quick_edit_link);
+        } else {
+            $("#src_menu_edit").hide();
+            $("#src_menu_quick_edit").hide();        
+        }
+        $("#src_menu_view").click(data.target, view_from_menu);
+
+        return false;
+    },
+
+    win_err_code: function () {
+        var element = $(this);
+        var explain = element.attr("data-explain");
+        if (!explain) {
+            return;
+        }
+
+        show_back_link();
+
+        // Prepare the data for the error code window.
+        var error_html = element.parent().html();
+        var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": error_html };
+
+        var state = { page: "err_code", data: data };
+        load_err_code(state);
+        history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
     }
 };
 
@@ -122,27 +163,7 @@ function hide_options() {
 }
 
 function pre_load_build() {
-    $("#div_main").html("<div id=\"div_errors\">\
-                             <span id=\"expand_errors\" class=\"small_button\"></span> <span id=\"div_std_label\">errors:</span>\
-                         </div>\
-                         \
-                         <div id=\"div_stdout\">\
-                             <span id=\"expand_messages\" class=\"small_button\"></span> <span id=\"div_std_label\">info:</span>\
-                             <div id=\"div_messages\">\
-                             </div>\
-                         </div>");
-
-    if (CONFIG.demo_mode) {
-        $("#div_main").prepend("<div id=\"div_message\">\
-                                    <h2>demo mode</h2>\
-                                    Click '+' and '-' to expand/hide info.<br>\
-                                    Click error codes or source links to see more stuff. Source links can be right-clicked for more options (note that edit functionality won't work in demo mode).\
-                                </div>");
-    }
-
     SNIPPET_PLAIN_TEXT = {};
-    show_stdout();
-    show_stderr();
     window.scroll(0, 0);
 }
 
@@ -159,7 +180,6 @@ function load_build(state) {
 
     $("#link_back").css("visibility", "hidden");
     $("#link_browse").css("visibility", "visible");
-    init_build_results();
 
     update_snippets(MAIN_PAGE_STATE.snippets);
 }
@@ -212,7 +232,7 @@ function hide_summary_doc() {
 
 function win_search(needle) {
     $.ajax({
-        url: make_url('search?needle=' + needle),
+        url: utils.make_url('search?needle=' + needle),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -224,14 +244,14 @@ function win_search(needle) {
             "needle": needle,
         };
         load_search(state);
-        history.pushState(state, "", make_url("#search=" + needle));
+        history.pushState(state, "", utils.make_url("#search=" + needle));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with search request for " + needle);
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#search=" + needle));
+        history.pushState({}, "", utils.make_url("#search=" + needle));
     });
 
     $("#div_main").text("Loading...");
@@ -464,13 +484,9 @@ function do_build() {
     }
 }
 
-function make_url(suffix) {
-    return '/' + CONFIG.demo_mode_root_path + suffix;
-}
-
 function do_build_internal(build_str) {
     $.ajax({
-        url: make_url(build_str),
+        url: utils.make_url(build_str),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -483,7 +499,7 @@ function do_build_internal(build_str) {
         pull_data(json.push_data_key);
 
         // TODO should get moved below when state is right
-        history.pushState(MAIN_PAGE_STATE, "", make_url("#build"));
+        history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with build request");
@@ -491,7 +507,7 @@ function do_build_internal(build_str) {
         load_error();
 
         MAIN_PAGE_STATE = { page: "error" };
-        history.pushState(MAIN_PAGE_STATE, "", make_url("#build"));
+        history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
         stop_build_animation();
     });
 
@@ -500,34 +516,8 @@ function do_build_internal(build_str) {
     disable_button($("#link_build"), "building...");
     hide_options();
     start_build_animation();
-    pre_load_build();
-
-    let updateSource = new EventSource(make_url("build_updates"));
-    updateSource.addEventListener("error", function(event) {
-        let error = JSON.parse(event.data);
-
-        let container = $("<div />");
-        errors.renderError(error, container.get(0));
-        $("#div_errors").append(container);
-
-        for (let s of error.spans) {
-            set_one_snippet_plain_text(s);
-        }
-        for (let c of error.children) {
-            for (let s of c.spans) {
-                set_one_snippet_plain_text(s);
-            }
-        }
-
-        // TODO should be doing init_build_results stuff on just one error at a time
-        init_build_results();
-    }, false);
-    updateSource.addEventListener("message", function(event) {
-        $("#div_messages").append("<pre>" + JSON.parse(event.data) + "</pre>")
-    }, false);
-    updateSource.addEventListener("close", function(event) {
-        updateSource.close();
-    }, false);
+    window.scroll(0, 0);
+    errors.renderResults($("#div_main").get(0));
 }
 
 function pull_data(key) {
@@ -536,7 +526,7 @@ function pull_data(key) {
     }
 
     $.ajax({
-        url: make_url('pull?key=' + key),
+        url: utils.make_url('pull?key=' + key),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -607,16 +597,6 @@ function update_snippets(data) {
     set_snippet_plain_text(data.snippets);
 }
 
-function init_build_results() {
-    var err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("data-explain"); });
-    err_codes.click(win_err_code);
-    err_codes.addClass("err_code_link");
-
-    var src_links = $(".span_loc");
-    src_links.click(win_src_link);
-    src_links.on("contextmenu", show_src_link_menu);
-}
-
 // Doesn't actually add an action to the button, just makes it look active.
 function enable_button(button, text) {
     button.css("color", "black");
@@ -654,30 +634,6 @@ function show_hide(element, text, fn) {
     element.click(fn);
 }
 
-function show_stdout() {
-    var expand = $("#expand_messages");
-    show_hide(expand, "-", hide_stdout);
-    $("#div_messages").show();
-}
-
-function hide_stderr() {
-    var expand = $("#expand_errors");
-    show_hide(expand, "+", show_stderr);
-    $(".div_diagnostic").hide();
-}
-
-function show_stderr() {
-    var expand = $("#expand_errors");
-    show_hide(expand, "-", hide_stderr);
-    $(".div_diagnostic").show();
-}
-
-function hide_stdout() {
-    var expand = $("#expand_messages");
-    show_hide(expand, "+", show_stdout);
-    $("#div_messages").hide();
-}
-
 function show_back_link() {
     // Save the current window.
     var backup = history.state;
@@ -687,7 +643,7 @@ function show_back_link() {
     $("#link_back").click(function() {
         pre_load_build();
         load_build(backup);
-        history.pushState(backup, "", make_url("#build"));
+        history.pushState(backup, "", utils.make_url("#build"));
     });
 }
 
@@ -706,7 +662,7 @@ function win_err_code() {
 
     var state = { page: "err_code", data: data };
     load_err_code(state);
-    history.pushState(state, "", make_url("#" + element.attr("data-code")));
+    history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
 }
 
 function do_browse() {
@@ -717,7 +673,7 @@ function get_source(file_name) {
     show_back_link();
 
     $.ajax({
-        url: 'src' + make_url(file_name),
+        url: 'src' + utils.make_url(file_name),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -730,7 +686,7 @@ function get_source(file_name) {
                 "file": file_name,
             };
             load_dir(state);
-            history.pushState(state, "", make_url("#src=" + file_name));
+            history.pushState(state, "", utils.make_url("#src=" + file_name));
         } else if (json.Source) {
             var state = {
                 "page": "source",
@@ -738,7 +694,7 @@ function get_source(file_name) {
                 "file": file_name,
             };
             load_source(state);
-            history.pushState(state, "", make_url("#src=" + file_name));
+            history.pushState(state, "", utils.make_url("#src=" + file_name));
         } else {
             console.log("Unexpected source data.")
             console.log(json);
@@ -749,7 +705,7 @@ function get_source(file_name) {
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#src=" + file_name));
+        history.pushState({}, "", utils.make_url("#src=" + file_name));
     });
 
     $("#div_main").text("Loading...");
@@ -771,11 +727,6 @@ function handle_bread_crumb_link(event) {
     var crumbs = event.data.split('/');
     var slice = crumbs.slice(0, parseInt(event.target.id.substring("breadcrumb_".length), 10) + 1);
     get_source(slice.join('/'));
-}
-
-function win_src_link() {
-    show_back_link();
-    load_link.call(this);
 }
 
 function load_doc_or_src_link() {
@@ -844,7 +795,7 @@ function load_link() {
 
 function load_source_view(data) {
     $.ajax({
-        url: make_url('src/' + data.file),
+        url: utils.make_url('src/' + data.file),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -854,14 +805,14 @@ function load_source_view(data) {
         data.data = json.Source;
         load_source(data);
 
-        history.pushState(data, "", make_url("#src=" + data.file + data.display));
+        history.pushState(data, "", utils.make_url("#src=" + data.file + data.display));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with source request");
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({ page: "error"}, "", make_url("#src=" + data.file + data.display));
+        history.pushState({ page: "error"}, "", utils.make_url("#src=" + data.file + data.display));
     });
 
     $("#div_main").text("Loading...");
@@ -882,23 +833,6 @@ function show_menu(menu, event, hide_fn) {
     $("#div_header").click(hide_fn);
 
     return data;
-}
-
-function show_src_link_menu(event) {
-    var src_menu = $("#div_src_menu");
-    var data = show_menu(src_menu, event, hide_src_link_menu);
-
-    if (CONFIG.unstable_features) {
-        var edit_data = { 'link': data.target.attr("data-link"), 'hide_fn': hide_src_link_menu };
-        $("#src_menu_edit").click(edit_data, edit);
-        $("#src_menu_quick_edit").click(data, quick_edit_link);
-    } else {
-        $("#src_menu_edit").hide();
-        $("#src_menu_quick_edit").hide();        
-    }
-    $("#src_menu_view").click(data.target, view_from_menu);
-
-    return false;
 }
 
 function show_glob_menu(event) {
@@ -1025,7 +959,7 @@ function deglob(event) {
     };
 
     $.ajax({
-        url: make_url('subst'),
+        url: utils.make_url('subst'),
         type: 'POST',
         dataType: 'JSON',
         cache: false,
@@ -1048,7 +982,7 @@ function deglob(event) {
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#subst"));
+        history.pushState({}, "", utils.make_url("#subst"));
     });
 
     hide_glob_menu();
@@ -1056,7 +990,7 @@ function deglob(event) {
 
 function summary(id) {
     $.ajax({
-        url: make_url('summary?id=' + id),
+        url: utils.make_url('summary?id=' + id),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1068,14 +1002,14 @@ function summary(id) {
             "id": id,
         };
         load_summary(state);
-        history.pushState(state, "", make_url("#summary=" + id));
+        history.pushState(state, "", utils.make_url("#summary=" + id));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with summary request for " + id);
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#summary=" + id));
+        history.pushState({}, "", utils.make_url("#summary=" + id));
     });
 
     hide_ref_menu();
@@ -1084,7 +1018,7 @@ function summary(id) {
 
 function find_uses(needle) {
     $.ajax({
-        url: make_url('search?id=' + needle),
+        url: utils.make_url('search?id=' + needle),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1096,14 +1030,14 @@ function find_uses(needle) {
             "id": needle,
         };
         load_search(state);
-        history.pushState(state, "", make_url("#search=" + needle));
+        history.pushState(state, "", utils.make_url("#search=" + needle));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with search request for " + needle);
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#search=" + needle));
+        history.pushState({}, "", utils.make_url("#search=" + needle));
     });
 
     hide_ref_menu();
@@ -1112,7 +1046,7 @@ function find_uses(needle) {
 
 function find_impls(needle) {
     $.ajax({
-        url: make_url('find?impls=' + needle),
+        url: utils.make_url('find?impls=' + needle),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1125,14 +1059,14 @@ function find_impls(needle) {
             "id": needle,
         };
         load_find(state);
-        history.pushState(state, "", make_url("#impls=" + needle));
+        history.pushState(state, "", utils.make_url("#impls=" + needle));
     })
     .fail(function (xhr, status, errorThrown) {
         console.log("Error with find (impls) request for " + needle);
         console.log("error: " + errorThrown + "; status: " + status);
 
         load_error();
-        history.pushState({}, "", make_url("#impls=" + needle));
+        history.pushState({}, "", utils.make_url("#impls=" + needle));
     });
 
     hide_ref_menu();
@@ -1181,7 +1115,7 @@ function save_rename(event) {
     $("#rename_text").prop("disabled", true);
 
     $.ajax({
-        url: make_url('rename?id=' + event.data.id + "&text=" + $("#rename_text").val()),
+        url: utils.make_url('rename?id=' + event.data.id + "&text=" + $("#rename_text").val()),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1204,7 +1138,7 @@ function save_rename(event) {
 
 function edit(event) {
     $.ajax({
-        url: make_url('edit?file=' + event.data.link),
+        url: utils.make_url('edit?file=' + event.data.link),
         type: 'POST',
         dataType: 'JSON',
         cache: false
@@ -1246,7 +1180,7 @@ function quick_edit_line_number(event) {
     var line = line_number_for_span(event.data.target);
 
     $.ajax({
-        url: make_url('plain_text?file=' + file_name + '&line=' + line),
+        url: utils.make_url('plain_text?file=' + file_name + '&line=' + line),
         type: 'POST',
         dataType: 'JSON',
         cache: false,
@@ -1302,7 +1236,7 @@ function save_quick_edit(event) {
     data.text = $("#quick_edit_text").val();
 
     $.ajax({
-        url: make_url('quick_edit'),
+        url: utils.make_url('quick_edit'),
         type: 'POST',
         dataType: 'JSON',
         cache: false,

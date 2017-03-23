@@ -10,6 +10,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 const { HideButton } = require('./hideButton');
+const rustw = require('./rustw');
 
 class Snippet extends React.Component {
     constructor(props) {
@@ -39,6 +40,12 @@ class Snippet extends React.Component {
 }
 
 class SnippetSpan extends React.Component {
+    componentDidMount() {
+        let src_links = $(".span_loc");
+        src_links.click(rustw.win_src_link);
+        src_links.on("contextmenu", rustw.show_src_link_menu);
+    }
+
     render() {
         const { line_start, line_end, column_start, column_end } = this.props;
         const { label: _label, id, file_name, text } = this.props;
@@ -57,7 +64,9 @@ class SnippetSpan extends React.Component {
 
         return (
             <span className="div_span" id={'div_span_' + id}>
-                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id}>{file_name}:{line_start}:{column_start}: {line_end}:{column_end}</span>
+                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id}>
+                    {file_name}:{line_start}:{column_start}: {line_end}:{column_end}
+                </span>
                 {label}
                 {block}
             </span>
