@@ -108,13 +108,14 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
             }
             let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
 
-            let snippet = Snippet::new(sg.iter().map(|s| s.id).collect(),
+            let snippet = Snippet::new(diagnostic.id,
+                                       sg.iter().map(|s| s.id).collect(),
                                        text,
-                                       file_cache.get_lines(path, line_start, line_end).unwrap(),
                                        first.file_name.to_owned(),
                                        line_start + 1,
                                        line_end,
                                        sg.iter().map(|s| (Highlight::from_diagnostic_span(s), s.label.clone())).collect(),
+                                       file_cache.get_lines(path, line_start, line_end).unwrap(),
                                        primary_span);
             result.snippets.push(snippet);
         }
@@ -161,9 +162,10 @@ struct ReprocessedSnippets {
 }
 
 // TODO which lines are context.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, new)]
 struct Snippet {
-    ids: Vec<u32>,
+    diagnostic_id: u32,
+    span_ids: Vec<u32>,
     // TODO do we ever want to update the plain_text? Probably do to keep the
     // snippet up to date after a quick edit, etc.
     text: Vec<String>,
@@ -202,29 +204,6 @@ impl<'a> ReprocessedSnippets {
         ReprocessedSnippets {
             snippets: vec![],
             key: key,
-        }
-    }
-}
-
-impl Snippet {
-    fn new(ids: Vec<u32>,
-           text: Vec<String>,
-           plain_text: String,
-           file_name: String,
-           line_start: usize,
-           line_end: usize,
-           highlights: Vec<(Highlight, String)>,
-           primary_span: Highlight,)
-           -> Snippet {
-        Snippet {
-            ids: ids,
-            text: text,
-            file_name: file_name,
-            line_start: line_start,
-            line_end: line_end,
-            highlights: highlights,
-            plain_text: plain_text,
-            primary_span: primary_span,
         }
     }
 }

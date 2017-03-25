@@ -91,6 +91,7 @@ impl LoweringContext {
 impl Diagnostic {
     pub fn lower(self, ctxt: &mut LoweringContext) -> errors::Diagnostic {
         errors::Diagnostic {
+            id: ctxt.next_id(),
             message: codify_message(&self.message),
             code: self.code.map(|c| c.lower(ctxt)),
             level: self.level,

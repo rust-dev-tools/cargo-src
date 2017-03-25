@@ -57,6 +57,7 @@ pub fn parse_error(error: &str, lowering_ctxt: &mut LoweringContext) -> ParsedEr
 
 #[derive(Serialize, Debug)]
 pub struct Diagnostic {
+    pub id: u32,
     /// The primary error message.
     pub message: String,
     pub code: Option<DiagnosticCode>,

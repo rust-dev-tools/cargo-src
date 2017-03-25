@@ -8,9 +8,12 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
+import { OrderedMap } from 'immutable';
 
 const { HideButton } = require('./hideButton');
 const rustw = require('./rustw');
+
+// TODO can probably remove uses of id
 
 class Snippet extends React.Component {
     constructor(props) {
@@ -23,7 +26,7 @@ class Snippet extends React.Component {
     }
 
     render() {
-        const { spans } = this.props;
+        const spans = this.props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans}/>));
         if (!spans || spans.length == 0) {
             return null;
         }
@@ -32,7 +35,7 @@ class Snippet extends React.Component {
             <span className="div_snippet">
                 <br /><HideButton hidden={!this.state.showSpans} onClick={this.showSpans.bind(this)}/>
                 <span className="div_spans">
-                    {spans.map((sp) => <SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans}/>)}
+                    {spans}
                 </span>
             </span>
         );
@@ -101,12 +104,5 @@ class SnippetBlock extends React.Component {
 }
 
 module.exports = {
-    renderSnippetSpan: function(data, container) {
-        ReactDOM.render(
-            <SnippetBlock text={data.text} id={data.id} line_start={data.line_start} />,
-            container
-        );
-    },
-
     Snippet: Snippet
 }

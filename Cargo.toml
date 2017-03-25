@@ -5,6 +5,7 @@ authors = ["Nick Cameron <ncameron@mozilla.com>"]
 build = "build.rs"
 
 [dependencies]
+derive-new = "0.3"
 url = "0.5"
 getopts = "0.2"
 rustc-serialize = "0.3"

@@ -8,24 +8,20 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
+import { OrderedMap } from 'immutable';
 
 const { Snippet } = require('./snippet');
 const { HideButton } = require('./hideButton');
 const utils = require('./utils');
 const rustw = require('./rustw');
 
-// TODO state
-// - update spans - call update_span on spans
-// - current page
-// - menus?
-
-// TODO remove uses of pre_load_build
-// TODO Not showing `Building...` message or clearing page.
+// TODO remove uses of pre_load_build, load_build
+// TODO Taking *a long time* to load - maybe something in the rustw server?
 
 class Results extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { errors: [], messages: [], showErrors: true, showMessages: true };
+        this.state = { errors: OrderedMap(), messages: [], showErrors: true, showMessages: true };
     }
 
     showErrors(e) {
@@ -36,8 +32,35 @@ class Results extends React.Component {
     }
 
     componentDidMount() {
-        let updateSource = new EventSource(utils.make_url("build_updates"));
         const self = this;
+
+        $.ajax({
+            url: utils.make_url(this.props.build_str),
+            type: 'POST',
+            dataType: 'JSON',
+            cache: false
+        })
+        .done(function (json) {
+            rustw.stop_build_animation();
+            // TODO this isn't quite right because results doesn't include the incremental updates, OTOH, they should get over-written anyway
+            MAIN_PAGE_STATE = { page: "build", results: json }
+            rustw.load_build(MAIN_PAGE_STATE);
+            self.pull_data(json.push_data_key);
+
+            // TODO probably not right. Do this before we make the ajax call?
+            history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
+        })
+        .fail(function (xhr, status, errorThrown) {
+            rustw.stop_build_animation();
+            console.log("Error with build request");
+            console.log("error: " + errorThrown + "; status: " + status);
+            rustw.load_error();
+
+            MAIN_PAGE_STATE = { page: "error" };
+            history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
+        });
+
+        let updateSource = new EventSource(utils.make_url("build_updates"));
         updateSource.addEventListener("error", function(event) {
             const data = JSON.parse(event.data);
             let key;
@@ -46,8 +69,8 @@ class Results extends React.Component {
             } else {
                 key = data.message;
             }
-            const error = <Error code={data.code} level={data.level} message={data.message} spans={data.spans} childErrors={data.children} key={key}/>;
-            self.setState((prevState) => ({ errors: prevState.errors.concat([error]) }));
+            const error = <Error code={data.code} level={data.level} message={data.message} spans={data.spans} childErrors={data.children} key={data.id}/>;
+            self.setState((prevState) => ({ errors: prevState.errors.set(data.id, error) }));
 
             // TODO
             // for (let s of error.spans) {
@@ -69,6 +92,49 @@ class Results extends React.Component {
         }, false);
     }
 
+    pull_data(key) {
+        if (!key) {
+            return;
+        }
+
+        const self = this;
+        $.ajax({
+            url: utils.make_url('pull?key=' + key),
+            type: 'POST',
+            dataType: 'JSON',
+            cache: false
+        })
+        .done(function (json) {
+            MAIN_PAGE_STATE.snippets = json;
+            self.updateSnippets(json);
+        })
+        .fail(function (xhr, status, errorThrown) {
+            console.log("Error pulling data for key " + key);
+            console.log("error: " + errorThrown + "; status: " + status);
+        });
+    }
+
+    updateSnippets(data) {
+        if (!data) {
+            return;
+        }
+
+        for (let s of data.snippets) {
+            this.setState((prevState) => {
+                let err = prevState.errors.get(s.diagnostic_id);
+                if (err) {
+                    return { errors: prevState.errors.set(s.diagnostic_id, updateSnippet(err, s)) };
+                } else {
+                    console.log('Could not find error to update: ' + s.diagnostic_id);
+                    return {};
+                }
+            });
+        }
+
+        // TODO
+        // set_snippet_plain_text(data.snippets);
+    }
+
     render() {
         let demoMessage = null;
         if (CONFIG.demo_mode) {
@@ -82,7 +148,7 @@ class Results extends React.Component {
         // show/hide stuff
         let errors = null;
         if (this.state.showErrors) {
-            errors = this.state.errors;
+            errors = this.state.errors.toArray();
         }
         let messages = null;
         if (this.state.showMessages) {
@@ -104,6 +170,49 @@ class Results extends React.Component {
                 </div>
             </div>);
     }
+}
+
+function updateSnippet(err, snippet) {
+    const old_spans = OrderedMap(err.props.spans.map((sp) => [sp.id, sp]));
+    let spans = old_spans.filter((v, k) => !snippet.span_ids.includes(k));
+    let primary_span = {
+        id: snippet.span_ids[0],
+        file_name: snippet.file_name,
+        line_start: snippet.primary_span.line_start,
+        line_end: snippet.primary_span.line_end,
+        column_start: snippet.primary_span.column_start,
+        column_end: snippet.primary_span.column_end,
+        text: snippet.text,
+        plain_text: snippet.plain_text,
+        label: ""
+    };
+    spans = spans.set(primary_span.id, primary_span);
+
+    // TODO spans is empty
+    return React.cloneElement(err, { spans: spans.toArray() });
+
+    // TODO - highlights
+    // for (let h of snip.highlights) {
+    //     var css_class = "selected_secondary";
+    //     if (JSON.stringify(h[0]) == JSON.stringify(snip.primary_span)) {
+    //         css_class = "selected";
+    //     }
+    //     highlight_spans(h[0],
+    //                     "snippet_line_number_" + snip.id + "_",
+    //                     "snippet_line_" + snip.id + "_",
+    //                     css_class);
+
+    //     // Make a label for the message.
+    //     if (h[1]) {
+    //         var line_span = $("#snippet_line_" + snip.id + "_" + h[0].line_start);
+    //         var old_width = line_span.width();
+    //         var label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
+    //         line_span.append(label_span);
+    //         var offset = line_span.offset();
+    //         offset.left += old_width + 40;
+    //         label_span.offset(offset);
+    //     }
+    // }
 }
 
 class Error extends React.Component {
@@ -130,9 +239,8 @@ class Error extends React.Component {
             let childrenSub;
             if (this.state.showChildren) {
                 const childList = [];
-                for (let i in childErrors) {
-                    let c = childErrors[i];
-                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={i} />)
+                for (let c of childErrors) {
+                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={c.id} />)
                 }
                 childrenSub = <span className="div_children">{childList}</span>;
             } else {
@@ -161,6 +269,7 @@ class Error extends React.Component {
     }
 }
 
+// TODO update child spans
 class ChildError extends React.Component {
     render() {
         const { level, spans, message } = this.props
@@ -177,19 +286,10 @@ class ChildError extends React.Component {
 }
 
 module.exports = {
-    renderResults: function(container) {
+    renderResults: function(build_str, container) {
         ReactDOM.render(
-            <Results />,
+            <Results build_str={build_str}/>,
             container
         );
-    },
-
-    renderError: function (data, container) {
-        ReactDOM.render(
-            <Error code={data.code} level={data.level} message={data.message} spans={data.spans} childErrors={data.children} />,
-            container
-        );
-    },
-
-    Error
+    }
 }

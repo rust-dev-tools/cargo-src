@@ -41,9 +41,18 @@ version of Rust to build.
 ```sh
 npm install
 
-# if you have yarn installed
+# if you have yarn installed:
 
 yarn
+
+# if not:
+
+npm install --save react react-dom
+npm install --save-dev babel-loader babel-core
+npm install --save-dev babel-preset-react
+npm install --save-dev babel-preset-es2015
+npm install --save-dev webpack
+npm install --save-dev immutable
 ```
 * build the JS components: `npm run build` or `yarn build`
 * `./build_templates.sh` to rebuild the handlebars templates. The compiled targets

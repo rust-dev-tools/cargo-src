@@ -6,32 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const errors = require("./errors");
-const snippet = require("./snippet");
-const utils = require('./utils');
-
-Handlebars.registerHelper("inc", function(value, options)
-{
-    return parseInt(value) + 1;
-});
-
-Handlebars.registerHelper("add", function(a, b, options)
-{
-    return parseInt(a) + parseInt(b);
-});
-
-Handlebars.registerHelper("def", function(a, b, options)
-{
-    return a != undefined;
-});
-
-Handlebars.registerHelper("isDir", function(a, options)
-{
-    return a == "Directory";
-});
-
-Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
-
 module.exports = {
     onLoad: function () {
         $.getJSON("/config", function(data) {
@@ -122,8 +96,61 @@ module.exports = {
         var state = { page: "err_code", data: data };
         load_err_code(state);
         history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
+    },
+
+    stop_build_animation: function () {
+        $("#div_border").css("background-color", "black");
+
+        var border = $("#div_border_animated");
+        border.removeClass("animated_border");
+        border.hide();
+    },
+
+    load_build: function (state) {
+        var rebuild_label = "rebuild";
+        if (CONFIG.build_on_load) {
+            rebuild_label += " (F5)";
+        }
+        enable_button($("#link_build"), rebuild_label);
+        $("#link_build").click(do_build);
+
+        $("#link_back").css("visibility", "hidden");
+        $("#link_browse").css("visibility", "visible");
+
+        // TODO use React for page re-loads
+        // update_snippets(MAIN_PAGE_STATE.snippets);
+    },
+
+    load_error: function () {
+        $("#div_main").text("Server error?");
     }
 };
+
+const errors = require("./errors");
+const utils = require('./utils');
+
+Handlebars.registerHelper("inc", function(value, options)
+{
+    return parseInt(value) + 1;
+});
+
+Handlebars.registerHelper("add", function(a, b, options)
+{
+    return parseInt(a) + parseInt(b);
+});
+
+Handlebars.registerHelper("def", function(a, b, options)
+{
+    return a != undefined;
+});
+
+Handlebars.registerHelper("isDir", function(a, options)
+{
+    return a == "Directory";
+});
+
+Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
+
 
 function load_start() {
     enable_button($("#link_build"), "build");
@@ -165,23 +192,6 @@ function hide_options() {
 function pre_load_build() {
     SNIPPET_PLAIN_TEXT = {};
     window.scroll(0, 0);
-}
-
-function load_build(state) {
-    // TODO need to append any errors in the state to the screen
-    // so that back works and if we missed any earlier
-
-    var rebuild_label = "rebuild";
-    if (CONFIG.build_on_load) {
-        rebuild_label += " (F5)";
-    }
-    enable_button($("#link_build"), rebuild_label);
-    $("#link_build").click(do_build);
-
-    $("#link_back").css("visibility", "hidden");
-    $("#link_browse").css("visibility", "visible");
-
-    update_snippets(MAIN_PAGE_STATE.snippets);
 }
 
 function load_summary(state) {
@@ -309,10 +319,6 @@ function set_one_snippet_plain_text(s) {
         "line_end": s.line_end
     };
     SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
-}
-
-function load_error() {
-    $("#div_main").text("Server error?");
 }
 
 function load_err_code(state) {
@@ -485,116 +491,13 @@ function do_build() {
 }
 
 function do_build_internal(build_str) {
-    $.ajax({
-        url: utils.make_url(build_str),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        stop_build_animation();
-        // TODO this isn't quite right because results doesn't include the incremental updates, OTOH, they should get over-written anyway
-        MAIN_PAGE_STATE = { page: "build", results: json }
-        load_build(MAIN_PAGE_STATE);
-        pull_data(json.push_data_key);
-
-        // TODO should get moved below when state is right
-        history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with build request");
-        console.log("error: " + errorThrown + "; status: " + status);
-        load_error();
-
-        MAIN_PAGE_STATE = { page: "error" };
-        history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
-        stop_build_animation();
-    });
-
+    errors.renderResults(build_str, $("#div_main").get(0));
     $("#link_back").css("visibility", "hidden");
     $("#link_browse").css("visibility", "hidden");
     disable_button($("#link_build"), "building...");
     hide_options();
     start_build_animation();
     window.scroll(0, 0);
-    errors.renderResults($("#div_main").get(0));
-}
-
-function pull_data(key) {
-    if (!key) {
-        return;
-    }
-
-    $.ajax({
-        url: utils.make_url('pull?key=' + key),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        MAIN_PAGE_STATE.snippets = json;
-        update_snippets(json);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error pulling data for key " + key);
-        console.log("error: " + errorThrown + "; status: " + status);
-    });
-}
-
-
-function update_snippets(data) {
-    if (!data) {
-        return;
-    }
-
-    for (let s of data.snippets) {
-        // Used by set_snippet_plain_text.
-        s.id = s.ids[0];
-
-        var loc = $("#span_loc_" + s.id);
-        var p = s.primary_span;
-        loc.attr("data-link", s.file_name + ":" + p.line_start + ":" + p.column_start + ":" + p.line_end + ":" + p.column_end);
-        loc.text(s.file_name + ":" + p.line_start + ":" + p.column_start + ": " + p.line_end + ":" + p.column_end);
-
-        $("#div_span_label_" + s.id).text("");
-
-        let target = $("#src_span_" + s.id);
-        let snip = s;
-        target[0].update_span = function() {
-            // TODO should use state for this rather than updating directly
-            snippet.renderSnippetSpan(snip, target.get(0));
-
-            for (let h of snip.highlights) {
-                var css_class = "selected_secondary";
-                if (JSON.stringify(h[0]) == JSON.stringify(snip.primary_span)) {
-                    css_class = "selected";
-                }
-                highlight_spans(h[0],
-                                "snippet_line_number_" + snip.id + "_",
-                                "snippet_line_" + snip.id + "_",
-                                css_class);
-
-                // Make a label for the message.
-                if (h[1]) {
-                    var line_span = $("#snippet_line_" + snip.id + "_" + h[0].line_start);
-                    var old_width = line_span.width();
-                    var label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
-                    line_span.append(label_span);
-                    var offset = line_span.offset();
-                    offset.left += old_width + 40;
-                    label_span.offset(offset);
-                }
-            }
-        };
-
-        // We are replacing multiple spans with a single one. We put everything
-        // in the first slot, so hide the others.
-        for (var i = 1; i < s.ids.length; ++i) {
-            let div = $("#div_span_" + s.ids[i]);
-            div.hide();
-        }
-    }
-    set_snippet_plain_text(data.snippets);
 }
 
 // Doesn't actually add an action to the button, just makes it look active.
@@ -620,13 +523,6 @@ function start_build_animation() {
     border.addClass("animated_border");
 }
 
-function stop_build_animation() {
-    $("#div_border").css("background-color", "black");
-
-    var border = $("#div_border_animated");
-    border.removeClass("animated_border");
-    border.hide();
-}
 
 function show_hide(element, text, fn) {
     element.text(text);
