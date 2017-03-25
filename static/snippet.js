@@ -49,9 +49,39 @@ class SnippetSpan extends React.Component {
         src_links.on("contextmenu", rustw.show_src_link_menu);
     }
 
+    componentDidUpdate() {
+        const { highlights, id, showBlock } = this.props;
+
+        if (showBlock && highlights) {
+            const { line_start, line_end, column_start, column_end } = this.props;
+
+            for (const h of highlights) {
+                let css_class = "selected_secondary";
+                if (JSON.stringify(h[0]) == JSON.stringify({ line_start, line_end, column_start, column_end })) {
+                    css_class = "selected";
+                }
+                rustw.highlight_spans(h[0],
+                                      "snippet_line_number_" + id + "_",
+                                      "snippet_line_" + id + "_",
+                                      css_class);
+
+                // Make a label for the message.
+                if (h[1]) {
+                    let line_span = $("#snippet_line_" + id + "_" + h[0].line_start);
+                    let old_width = line_span.width();
+                    let label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
+                    line_span.append(label_span);
+                    let offset = line_span.offset();
+                    offset.left += old_width + 40;
+                    label_span.offset(offset);
+                }
+            }
+        }
+    }
+
     render() {
         const { line_start, line_end, column_start, column_end } = this.props;
-        const { label: _label, id, file_name, text } = this.props;
+        const { label: _label, id, file_name, text, showBlock } = this.props;
 
         let label = null;
         if (_label) {
@@ -59,9 +89,14 @@ class SnippetSpan extends React.Component {
         }
 
         let block = null;
-        if (this.props.showBlock) {
+        if (showBlock) {
+            let block_line_start = this.props.block_line_start;
+            if (!block_line_start) {
+                block_line_start = line_start;
+            }
+
             block = <div className="div_all_span_src" id={'src_span_' + id}>
-                    <SnippetBlock id={id} line_start={line_start} text={text}/>
+                    <SnippetBlock id={id} line_start={block_line_start} text={text}/>
                 </div>;
         }
 

@@ -123,6 +123,56 @@ module.exports = {
 
     load_error: function () {
         $("#div_main").text("Server error?");
+    },
+
+
+    highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
+        if (!highlight.line_start || !highlight.line_end) {
+            return;
+        }
+
+        if (line_number_prefix) {
+            for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
+                $("#" + line_number_prefix + i).addClass(css_class);
+            }
+        }
+
+        if (!highlight.column_start || !highlight.column_end || !src_line_prefix) {
+            return;
+        }
+
+        // Highlight all of the middle lines.
+        for (var i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
+            $("#" + src_line_prefix + i).addClass(css_class);
+        }
+
+        // If we don't have columns (at least a start), then highlight all the lines.
+        // If we do, then highlight between columns.
+        if (highlight.column_start <= 0) {
+            $("#" + src_line_prefix + highlight.line_start).addClass(css_class);
+            $("#" + src_line_prefix + highlight.line_end).addClass(css_class);
+
+            // TODO hover text
+        } else {
+            // First line
+            var lhs = (highlight.column_start - 1);
+            var rhs = 0;
+            if (highlight.line_end == highlight.line_start && highlight.column_end > 0) {
+                // If we're only highlighting one line, then the highlight must stop
+                // before the end of the line.
+                rhs = (highlight.column_end - 1);
+            }
+            make_highlight(src_line_prefix, highlight.line_start, lhs, rhs, css_class);
+
+            // Last line
+            if (highlight.line_end > highlight.line_start) {
+                var rhs = 0;
+                if (highlight.column_end > 0) {
+                    rhs = (highlight.column_end - 1);
+                }
+                make_highlight(src_line_prefix, highlight.line_end, 0, rhs, css_class);
+            }
+        }
     }
 };
 
@@ -397,55 +447,6 @@ function add_line_number_menus(page) {
     var line_nums = page.find(".div_src_line_number");
     line_nums.on("contextmenu", show_line_number_menu);
     line_nums.addClass("hand_cursor");
-}
-
-function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
-    if (!highlight.line_start || !highlight.line_end) {
-        return;
-    }
-
-    if (line_number_prefix) {
-        for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
-            $("#" + line_number_prefix + i).addClass(css_class);
-        }
-    }
-
-    if (!highlight.column_start || !highlight.column_end || !src_line_prefix) {
-        return;
-    }
-
-    // Highlight all of the middle lines.
-    for (var i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
-        $("#" + src_line_prefix + i).addClass(css_class);
-    }
-
-    // If we don't have columns (at least a start), then highlight all the lines.
-    // If we do, then highlight between columns.
-    if (highlight.column_start <= 0) {
-        $("#" + src_line_prefix + highlight.line_start).addClass(css_class);
-        $("#" + src_line_prefix + highlight.line_end).addClass(css_class);
-
-        // TODO hover text
-    } else {
-        // First line
-        var lhs = (highlight.column_start - 1);
-        var rhs = 0;
-        if (highlight.line_end == highlight.line_start && highlight.column_end > 0) {
-            // If we're only highlighting one line, then the highlight must stop
-            // before the end of the line.
-            rhs = (highlight.column_end - 1);
-        }
-        make_highlight(src_line_prefix, highlight.line_start, lhs, rhs, css_class);
-
-        // Last line
-        if (highlight.line_end > highlight.line_start) {
-            var rhs = 0;
-            if (highlight.column_end > 0) {
-                rhs = (highlight.column_end - 1);
-            }
-            make_highlight(src_line_prefix, highlight.line_end, 0, rhs, css_class);
-        }
-    }
 }
 
 // Left is the number of chars from the left margin to where the highlight

@@ -175,44 +175,23 @@ class Results extends React.Component {
 function updateSnippet(err, snippet) {
     const old_spans = OrderedMap(err.props.spans.map((sp) => [sp.id, sp]));
     let spans = old_spans.filter((v, k) => !snippet.span_ids.includes(k));
-    let primary_span = {
+    let new_span = {
         id: snippet.span_ids[0],
         file_name: snippet.file_name,
+        block_line_start: snippet.line_start,
+        block_line_end: snippet.line_end,
         line_start: snippet.primary_span.line_start,
         line_end: snippet.primary_span.line_end,
         column_start: snippet.primary_span.column_start,
         column_end: snippet.primary_span.column_end,
         text: snippet.text,
         plain_text: snippet.plain_text,
-        label: ""
+        label: "",
+        highlights: snippet.highlights
     };
-    spans = spans.set(primary_span.id, primary_span);
+    spans = spans.set(new_span.id, new_span);
 
-    // TODO spans is empty
     return React.cloneElement(err, { spans: spans.toArray() });
-
-    // TODO - highlights
-    // for (let h of snip.highlights) {
-    //     var css_class = "selected_secondary";
-    //     if (JSON.stringify(h[0]) == JSON.stringify(snip.primary_span)) {
-    //         css_class = "selected";
-    //     }
-    //     highlight_spans(h[0],
-    //                     "snippet_line_number_" + snip.id + "_",
-    //                     "snippet_line_" + snip.id + "_",
-    //                     css_class);
-
-    //     // Make a label for the message.
-    //     if (h[1]) {
-    //         var line_span = $("#snippet_line_" + snip.id + "_" + h[0].line_start);
-    //         var old_width = line_span.width();
-    //         var label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
-    //         line_span.append(label_span);
-    //         var offset = line_span.offset();
-    //         offset.left += old_width + 40;
-    //         label_span.offset(offset);
-    //     }
-    // }
 }
 
 class Error extends React.Component {
