@@ -206,6 +206,7 @@ html {
 }
 .level_help {
     color: green;
+    vertical-align: top;
 }
 
 a.issue_link, a.link {
@@ -269,6 +270,13 @@ a.issue_link:active, a.link  { color: black }
     margin-top: 30px;
     max-width: 700px;
     font-size: medium;
+}
+span.err_msg {
+    display: inline-block;
+    vertical-align: top;
+}
+span.err_colon {
+    vertical-align: top;
 }
 
 .div_entry {

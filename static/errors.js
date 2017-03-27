@@ -248,7 +248,7 @@ class Error extends React.Component {
 
         return (
             <div className={'div_diagnostic div_' + level}>
-                <span className={'level_' + level}>{level}</span> {code}: <span className="err_msg" dangerouslySetInnerHTML={{__html: message}} />
+                <span className={'level_' + level}>{level}</span><span className="err_colon"> {code}:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}} />
                 <Snippet spans={spans}/>
 
                {children}
@@ -265,7 +265,7 @@ class ChildError extends React.Component {
         return (
             <span>
                 <span className={'div_diagnostic_nested div_' + level}>
-                    <span className={'level_' + level}>{level}</span>: <span className="err_msg" dangerouslySetInnerHTML={{__html: message}}></span>
+                    <span className={'level_' + level}>{level}</span><span className="err_colon">:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}}></span>
                     <Snippet spans={spans}/>
                 </span><br />
             </span>

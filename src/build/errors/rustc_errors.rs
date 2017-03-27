@@ -341,6 +341,7 @@ fn push_char(buf: &mut String, c: char) {
         '&' => buf.push_str("&amp;"),
         '\'' => buf.push_str("&#39;"),
         '"' => buf.push_str("&quot;"),
+        '\n' => buf.push_str("<br />"),
         _ => buf.push(c),
     }
 }
