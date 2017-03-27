@@ -354,23 +354,6 @@ function highlight_needle(results, tag) {
     }
 }
 
-function set_snippet_plain_text(spans) {
-    SNIPPET_PLAIN_TEXT = {};
-    for (var s of spans) {
-        set_one_snippet_plain_text(s);
-    }
-}
-
-function set_one_snippet_plain_text(s) {
-    var data = {
-        "plain_text": s.plain_text,
-        "file_name": s.file_name,
-        "line_start": s.line_start,
-        "line_end": s.line_end
-    };
-    SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
-}
-
 function load_err_code(state) {
     $("#div_main").html(Handlebars.templates.err_code(state.data));
 

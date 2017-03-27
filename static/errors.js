@@ -72,15 +72,14 @@ class Results extends React.Component {
             const error = <Error code={data.code} level={data.level} message={data.message} spans={data.spans} childErrors={data.children} key={data.id}/>;
             self.setState((prevState) => ({ errors: prevState.errors.set(data.id, error) }));
 
-            // TODO
-            // for (let s of error.spans) {
-            //     set_one_snippet_plain_text(s);
-            // }
-            // for (let c of error.children) {
-            //     for (let s of c.spans) {
-            //         set_one_snippet_plain_text(s);
-            //     }
-            // }
+            for (let s of data.spans) {
+                set_one_snippet_plain_text(s);
+            }
+            for (let c of data.children) {
+                for (let s of c.spans) {
+                    set_one_snippet_plain_text(s);
+                }
+            }
         }, false);
         updateSource.addEventListener("message", function(event) {
             const data = JSON.parse(event.data);
@@ -119,6 +118,8 @@ class Results extends React.Component {
             return;
         }
 
+        SNIPPET_PLAIN_TEXT = {};
+
         for (let s of data.snippets) {
             this.setState((prevState) => {
                 let err = prevState.errors.get(s.diagnostic_id);
@@ -129,10 +130,8 @@ class Results extends React.Component {
                     return {};
                 }
             });
+            set_one_snippet_plain_text(s);
         }
-
-        // TODO
-        // set_snippet_plain_text(data.snippets);
     }
 
     render() {
@@ -170,6 +169,16 @@ class Results extends React.Component {
                 </div>
             </div>);
     }
+}
+
+function set_one_snippet_plain_text(s) {
+    var data = {
+        "plain_text": s.plain_text,
+        "file_name": s.file_name,
+        "line_start": s.line_start,
+        "line_end": s.line_end
+    };
+    SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
 }
 
 function updateSnippet(err, snippet) {
