@@ -46,7 +46,7 @@ pub fn reprocess_snippets(key: String,
         // Lock the file_cache on every iteration because this thread should be
         // low priority, and we're happy to wait if someone else wants access to
         // the file_cache.
-        reprocess_diagnostic(d, &file_cache, &mut snippets, &config);
+        reprocess_diagnostic(d, None, &file_cache, &mut snippets, &config);
     }
 
     let mut pending_push_data = pending_push_data.lock().unwrap();
@@ -56,6 +56,7 @@ pub fn reprocess_snippets(key: String,
 }
 
 fn reprocess_diagnostic(diagnostic: &Diagnostic,
+                        parent_id: Option<u32>,
                         file_cache: &Mutex<Cache>,
                         result: &mut ReprocessedSnippets,
                         config: &Config) {
@@ -108,7 +109,8 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
             }
             let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
 
-            let snippet = Snippet::new(diagnostic.id,
+            let snippet = Snippet::new(parent_id,
+                                       diagnostic.id,
                                        sg.iter().map(|s| s.id).collect(),
                                        text,
                                        first.file_name.to_owned(),
@@ -122,7 +124,7 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
     }
 
     for d in &diagnostic.children {
-        reprocess_diagnostic(d, file_cache, result, config);
+        reprocess_diagnostic(d, Some(diagnostic.id), file_cache, result, config);
     }
 }
 
@@ -164,6 +166,7 @@ struct ReprocessedSnippets {
 // TODO which lines are context.
 #[derive(Serialize, Debug, new)]
 struct Snippet {
+    parent_id: Option<u32>,
     diagnostic_id: u32,
     span_ids: Vec<u32>,
     // TODO do we ever want to update the plain_text? Probably do to keep the

@@ -107,7 +107,7 @@ impl ::reprocess::Close for DiagnosticSpan {
             return true;
         }
 
-        next.line_start - self.line_end <= max_lines
+        next.line_start <= max_lines + self.line_end
     }
 }
 

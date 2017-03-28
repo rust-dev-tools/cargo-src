@@ -122,12 +122,23 @@ class Results extends React.Component {
 
         for (let s of data.snippets) {
             this.setState((prevState) => {
-                let err = prevState.errors.get(s.diagnostic_id);
-                if (err) {
-                    return { errors: prevState.errors.set(s.diagnostic_id, updateSnippet(err, s)) };
+                if (s.parent_id) {
+                    let parent = prevState.errors.get(s.parent_id);
+                    if (parent) {
+                        return { errors: prevState.errors.set(s.parent_id, updateChildSnippet(parent, s)) };
+                    } else {
+                        console.log('Could not find error to update: ' + s.parent_id);
+                        return {};
+                    }
+
                 } else {
-                    console.log('Could not find error to update: ' + s.diagnostic_id);
-                    return {};
+                    let err = prevState.errors.get(s.diagnostic_id);
+                    if (err) {
+                        return { errors: prevState.errors.set(s.diagnostic_id, updateSnippet(err, s)) };
+                    } else {
+                        console.log('Could not find error to update: ' + s.diagnostic_id);
+                        return {};
+                    }
                 }
             });
             set_one_snippet_plain_text(s);
@@ -181,10 +192,33 @@ function set_one_snippet_plain_text(s) {
     SNIPPET_PLAIN_TEXT["span_loc_" + s.id] = data;
 }
 
+function updateChildSnippet(err, snippet) {
+    const old_children = OrderedMap(err.props.childErrors.map((c) => [c.id, c]));
+    let child = old_children.get(snippet.diagnostic_id);
+    if (!child) {
+        console.log("Could not find child error: " + snippet.diagnostic_id);
+        return {};
+    }
+    let children = old_children.filter((v, k) => k != snippet.diagnostic_id);
+
+    const oldSpans = OrderedMap(child.spans.map((sp) => [sp.id, sp]));
+    const spans = update_spans(oldSpans, snippet);
+    child.spans = spans.toArray();
+    children = children.set(child.id, child);
+
+    return React.cloneElement(err, { childErrors: children.toArray() });
+}
+
 function updateSnippet(err, snippet) {
-    const old_spans = OrderedMap(err.props.spans.map((sp) => [sp.id, sp]));
-    let spans = old_spans.filter((v, k) => !snippet.span_ids.includes(k));
-    let new_span = {
+    const oldSpans = OrderedMap(err.props.spans.map((sp) => [sp.id, sp]));
+    const spans = update_spans(oldSpans, snippet);
+
+    return React.cloneElement(err, { spans: spans.toArray() });
+}
+
+function update_spans(oldSpans, snippet) {
+    let spans = oldSpans.filter((v, k) => !snippet.span_ids.includes(k));
+    const newSpan = {
         id: snippet.span_ids[0],
         file_name: snippet.file_name,
         block_line_start: snippet.line_start,
@@ -198,9 +232,7 @@ function updateSnippet(err, snippet) {
         label: "",
         highlights: snippet.highlights
     };
-    spans = spans.set(new_span.id, new_span);
-
-    return React.cloneElement(err, { spans: spans.toArray() });
+    return spans.set(newSpan.id, newSpan);
 }
 
 class Error extends React.Component {
@@ -257,7 +289,6 @@ class Error extends React.Component {
     }
 }
 
-// TODO update child spans
 class ChildError extends React.Component {
     render() {
         const { level, spans, message } = this.props
