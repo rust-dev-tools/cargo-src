@@ -13,8 +13,6 @@ import { OrderedMap } from 'immutable';
 const { HideButton } = require('./hideButton');
 const rustw = require('./rustw');
 
-// TODO can probably remove uses of id
-
 class Snippet extends React.Component {
     constructor(props) {
         super(props);
@@ -85,7 +83,7 @@ class SnippetSpan extends React.Component {
 
         let label = null;
         if (_label) {
-            label = <span className="div_span_label" id={'div_span_label_' + id}>{_label}</span>;
+            label = <span className="div_span_label">{_label}</span>;
         }
 
         let block = null;
