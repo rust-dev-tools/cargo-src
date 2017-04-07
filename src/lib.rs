@@ -9,7 +9,6 @@
 #![feature(const_fn)]
 #![feature(custom_derive, plugin)]
 #![feature(type_ascription)]
-#![feature(rustdoc)]
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
 #![feature(proc_macro)]

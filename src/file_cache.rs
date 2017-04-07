@@ -15,6 +15,7 @@ use std::str;
 
 use analysis::{AnalysisHost, Target};
 use rustdoc::html::markdown;
+use rustdoc::html::markdown::MarkdownOutputStyle;
 use span;
 use vfs::Vfs;
 
@@ -360,7 +361,7 @@ impl Cache {
 
     fn make_summary(&self, id: u32) -> Result<DefSummary, String> {
         fn render_markdown(input: &str) -> String {
-            format!("{}", markdown::Markdown(input))
+            format!("{}", markdown::Markdown(input, MarkdownOutputStyle::Fancy))
         }
 
         // FIXME needs crate bread-crumb - needs a change to save-analysis to emit a top-level module: https://github.com/rust-lang/rust/issues/37818
