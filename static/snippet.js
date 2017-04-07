@@ -16,7 +16,7 @@ const rustw = require('./rustw');
 class Snippet extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { showSpans: false };
+        this.state = { showSpans: props.showSpans };
     }
 
     showSpans(e) {
@@ -28,10 +28,15 @@ class Snippet extends React.Component {
         if (!spans || spans.length == 0) {
             return null;
         }
+        let button = null;
+        if (!this.props.hideButtons) {
+            button = <HideButton hidden={!this.state.showSpans} onClick={this.showSpans.bind(this)} />;
+        }
 
         return (
             <span className="div_snippet">
-                <br /><HideButton hidden={!this.state.showSpans} onClick={this.showSpans.bind(this)}/>
+                <br />
+                {button}
                 <span className="div_spans">
                     {spans}
                 </span>
@@ -45,9 +50,14 @@ class SnippetSpan extends React.Component {
         let src_links = $(".span_loc");
         src_links.click(rustw.win_src_link);
         src_links.on("contextmenu", rustw.show_src_link_menu);
+        this.showHighlights();
     }
 
     componentDidUpdate() {
+        this.showHighlights();
+    }
+
+    showHighlights() {
         const { highlights, id, showBlock } = this.props;
 
         if (showBlock && highlights) {

@@ -239,12 +239,8 @@ class Error extends React.Component {
     constructor(props) {
         super(props);
         this.state = { showChildren: true };
-    }
-
-    componentDidMount() {
-        let err_codes = $(".err_code").filter(function(i, e) { return !!$(e).attr("data-explain"); });
-        err_codes.click(rustw.win_err_code);
-        err_codes.addClass("err_code_link");
+        // TODO
+        // showSpans=true hideCodeLink=true hideButtons=true
     }
 
     showChildren(e) {
@@ -256,6 +252,10 @@ class Error extends React.Component {
 
         let children = null;
         if (childErrors && childErrors.length > 0) {
+            let button = null;
+            if (!this.props.hideButtons) {
+                button = <HideButton hidden={!this.state.showChildren} onClick={this.showChildren.bind(this)} />;
+            }
             let childrenSub;
             if (this.state.showChildren) {
                 const childList = [];
@@ -268,20 +268,26 @@ class Error extends React.Component {
             }
             children =
                 <div className="group_children">
-                    <HideButton hidden={!this.state.showChildren} onClick={this.showChildren.bind(this)}/>
+                    {button}
                     {childrenSub}
                 </div>;
         }
 
         let code = null;
         if (_code) {
-            code = <span className="err_code" data-explain={_code.explanation} data-code={_code.code}>{_code.code}</span>;
+            let className = "err_code";
+            let onClick = null;
+            if (_code.explanation && !this.props.hideCodeLink) {
+                className += " err_code_link";
+                onClick = (ev) => rustw.win_err_code(ev.target, this.props);
+            }
+            code = <span className={className} data-explain={_code.explanation} data-code={_code.code} onClick={onClick}>{_code.code}</span>;
         }
 
         return (
             <div className={'div_diagnostic div_' + level}>
                 <span className={'level_' + level}>{level}</span><span className="err_colon"> {code}:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}} />
-                <Snippet spans={spans}/>
+                <Snippet spans={spans} showSpans={this.props.showSpans} hideButtons={this.props.hideButtons}/>
 
                {children}
             </div>
@@ -310,5 +316,7 @@ module.exports = {
             <Results build_str={build_str}/>,
             container
         );
-    }
+    },
+
+    Error: Error
 }

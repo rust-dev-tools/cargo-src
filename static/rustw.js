@@ -80,8 +80,8 @@ module.exports = {
         return false;
     },
 
-    win_err_code: function () {
-        var element = $(this);
+    win_err_code: function (domElement, errData) {
+        let element = $(domElement);
         var explain = element.attr("data-explain");
         if (!explain) {
             return;
@@ -90,8 +90,7 @@ module.exports = {
         show_back_link();
 
         // Prepare the data for the error code window.
-        var error_html = element.parent().html();
-        var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": error_html };
+        var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": errData };
 
         var state = { page: "err_code", data: data };
         load_err_code(state);
@@ -177,6 +176,7 @@ module.exports = {
 };
 
 const errors = require("./errors");
+const err_code = require('./err_code');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -355,21 +355,7 @@ function highlight_needle(results, tag) {
 }
 
 function load_err_code(state) {
-    $("#div_main").html(Handlebars.templates.err_code(state.data));
-
-    // Customise the copied error.
-    var err = $("#div_err_code_error");
-    // Make the error code not a link
-    var err_err_code = err.find(".err_code");
-    err_err_code.css("text-decoration", "none");
-    err_err_code.css("cursor", "auto");
-    err_err_code.off("click");
-    // Make all sub-parts visible.
-    var err_all = err.find(":hidden");
-    err_all.show();
-    // Hide all buttons.
-    var err_buttons = err.find(".small_button");
-    err_buttons.css("visibility", "hidden");
+    err_code.renderErrorExplain(state.data, $("#div_main").get(0));
 }
 
 function load_source(state) {
@@ -525,24 +511,6 @@ function show_back_link() {
         load_build(backup);
         history.pushState(backup, "", utils.make_url("#build"));
     });
-}
-
-function win_err_code() {
-    var element = $(this);
-    var explain = element.attr("data-explain");
-    if (!explain) {
-        return;
-    }
-
-    show_back_link();
-
-    // Prepare the data for the error code window.
-    var error_html = element.parent().html();
-    var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": error_html };
-
-    var state = { page: "err_code", data: data };
-    load_err_code(state);
-    history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
 }
 
 function do_browse() {
