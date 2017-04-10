@@ -13,9 +13,9 @@ serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"
 toml = "0.1"
-rls-analysis = { git = "https://github.com/nrc/rls-analysis" }
+rls-analysis = "0.1"
 rls-span = "0.1"
-rls-vfs = { git = "https://github.com/nrc/rls-vfs" }
+rls-vfs = "0.1"
 log = "0.3"
 env_logger = "0.3"
 

@@ -475,7 +475,7 @@ mod test {
     fn test_partition() {
         let input: Vec<i32> = vec![];
         let result = partition(&input, |a, b| a == b);
-        assert!(result == vec![&[]]);
+        assert!(result == vec![&[]]: Vec<&[i32]>);
 
         let input: Vec<i32> = vec![1, 1, 1];
         let result = partition(&input, |a, b| a == b);
