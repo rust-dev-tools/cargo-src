@@ -14,6 +14,8 @@ const { Snippet } = require('./snippet');
 const { HideButton } = require('./hideButton');
 const utils = require('./utils');
 const rustw = require('./rustw');
+const statusIndicator = require('./status-indicator');
+
 
 // TODO remove uses of pre_load_build, load_build
 // TODO Taking *a long time* to load - maybe something in the rustw server?
@@ -41,7 +43,7 @@ class Results extends React.Component {
             cache: false
         })
         .done(function (json) {
-            rustw.stop_build_animation();
+            statusIndicator.renderBorder();
             // TODO this isn't quite right because results doesn't include the incremental updates, OTOH, they should get over-written anyway
             MAIN_PAGE_STATE = { page: "build", results: json }
             rustw.load_build(MAIN_PAGE_STATE);

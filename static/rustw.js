@@ -97,14 +97,6 @@ module.exports = {
         history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
     },
 
-    stop_build_animation: function () {
-        $("#div_border").css("background-color", "black");
-
-        var border = $("#div_border_animated");
-        border.removeClass("animated_border");
-        border.hide();
-    },
-
     load_build: function (state) {
         var rebuild_label = "rebuild";
         if (CONFIG.build_on_load) {
@@ -177,6 +169,7 @@ module.exports = {
 
 const errors = require("./errors");
 const err_code = require('./err_code');
+const statusIndicator = require('./status-indicator');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -218,6 +211,8 @@ function load_start() {
     $("#div_quick_edit").hide();
     $("#div_rename").hide();
     $("#measure").hide();
+
+    statusIndicator.renderBorder();
 }
 
 function show_options(event) {
@@ -466,7 +461,7 @@ function do_build_internal(build_str) {
     $("#link_browse").css("visibility", "hidden");
     disable_button($("#link_build"), "building...");
     hide_options();
-    start_build_animation();
+    statusIndicator.renderStatus()
     window.scroll(0, 0);
 }
 
@@ -484,15 +479,6 @@ function disable_button(button, text) {
     button.off("click");
     button.text(text);
 }
-
-function start_build_animation() {
-    $("#div_border").css("background-color", "#e3e9ff");
-
-    var border = $("#div_border_animated");
-    border.show();
-    border.addClass("animated_border");
-}
-
 
 function show_hide(element, text, fn) {
     element.text(text);

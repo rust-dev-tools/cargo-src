@@ -98,8 +98,13 @@ html {
 #div_border {
     width: 100%;
     height: 3px;
-    background-color: black;
     opacity: 1;
+}
+.div_border_plain {
+    background-color: black;
+}
+.div_border_status {
+    background-color: #e3e9ff;
 }
 #div_border_animated {
     width: 0;

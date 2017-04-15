@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 import { OrderedMap } from 'immutable';
 
 const { HideButton } = require('./hideButton');
