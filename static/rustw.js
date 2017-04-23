@@ -16,11 +16,6 @@ module.exports = {
         });
 
         load_start();
-        $(document).on("keypress", "#search_box", function(e) {
-             if (e.which == 13) {
-                 win_search(this.value);
-             }
-        });
         MAIN_PAGE_STATE = { page: "start" };
         history.replaceState(MAIN_PAGE_STATE, "");
 
@@ -121,6 +116,10 @@ module.exports = {
         $("#div_main").text("Server error?");
     },
 
+    // Identifer search - shows defs and refs
+    load_search: function (state) {
+        load_search_internal(state);
+    },
 
     highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
         if (!highlight.line_start || !highlight.line_end) {
@@ -204,7 +203,6 @@ Handlebars.registerHelper("isDir", function(a, options)
 
 Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
-
 function load_start() {
     enable_button($("#link_build"), "build");
     $("#link_build").click(do_build);
@@ -221,6 +219,7 @@ function load_start() {
     $("#div_rename").hide();
     $("#measure").hide();
 
+    topbar.renderSearchBox();
     statusIndicator.renderBorder();
 }
 
@@ -289,35 +288,7 @@ function hide_summary_doc() {
     $("#div_summary_doc_more").hide();
 }
 
-function win_search(needle) {
-    $.ajax({
-        url: utils.make_url('search?needle=' + needle),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        var state = {
-            "page": "search",
-            "data": json,
-            "needle": needle,
-        };
-        load_search(state);
-        history.pushState(state, "", utils.make_url("#search=" + needle));
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with search request for " + needle);
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        load_error();
-        history.pushState({}, "", utils.make_url("#search=" + needle));
-    });
-
-    $("#div_main").text("Loading...");
-}
-
-// Identifer search - shows defs and refs
-function load_search(state) {
+function load_search_internal (state) {
     topbar.renderHomeLink();
     $("#div_main").html(Handlebars.templates.search_results(state.data));
     $(".src_link").removeClass("src_link");

@@ -50,6 +50,43 @@ function BrowseLink(props) {
     return renderLink("browse source", "link_browse", props.visible, onClick);
 }
 
+function winSearch(needle) {
+    $.ajax({
+        url: utils.make_url('search?needle=' + needle),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "search",
+            "data": json,
+            "needle": needle,
+        };
+        rustw.load_search(state);
+        history.pushState(state, "", utils.make_url("#search=" + needle));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with search request for " + needle);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        rustw.load_error();
+        history.pushState({}, "", utils.make_url("#search=" + needle));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
+function SearchBox(props) {
+    const onKeyPress = (e) => {
+        if (e.which == 13) {
+            winSearch(e.currentTarget.value);
+        }
+    };
+
+    return <input id="search_box" placeholder="identifier search" autocomplete="off" onKeyPress={onKeyPress}></input>;
+}
+
 module.exports = {
     renderHomeLink: function() {
         ReactDOM.render(
@@ -71,5 +108,12 @@ module.exports = {
 
     unrenderBrowseLink: function() {
             ReactDOM.render(<BrowseLink />, $("#link_browse_container").get(0));
+    },
+
+    renderSearchBox: function() {
+        ReactDOM.render(
+            <SearchBox />,
+            $("#search_box_container").get(0)
+        );
     }
 }
