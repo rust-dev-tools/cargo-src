@@ -12,40 +12,42 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const utils = require('./utils');
 
-function HomeLink(props) {
-    let className;
-    let onClick;
-    if (props.visible) {
-        className = "header_link";
+// TODO
+// search box
+// rebuild button
+// options button
+// progress indicator
+// top bar component + internalise state
 
-        // Save the current window.
-        const backup = history.state;
-        onClick = function() {
-            rustw.pre_load_build();
-            rustw.load_build(backup);
-            history.pushState(backup, "", utils.make_url("#build"));
-        };
+function renderLink(text, id, visible, onClick) {
+    let className;
+    let onClickFn;
+    if (visible) {
+        className = "header_link";
+        onClickFn = onClick;
     } else {
         className = "link_hidden";
-        onClick = null;
+        onClickFn = null;
     }
 
+    return <span id={id} className={className} onClick={onClickFn}>{text}</span>;    
+}
+
+function HomeLink(props) {
+    // Save the current window.
+    const backup = history.state;
+    const onClick = function() {
+        rustw.pre_load_build();
+        rustw.load_build(backup);
+        history.pushState(backup, "", utils.make_url("#build"));
+    };
     // TODO should change this to be home-looking, rather than back-looking
-    return <span id="link_back" className={className} onClick={onClick}>&#8592; return to build results</span>;
+    return renderLink("← return to build results", "link_back", props.visible, onClick);
 }
 
 function BrowseLink(props) {
-    let className;
-    let onClick;
-    if (props.visible) {
-        className = "header_link";
-        onClick = () => rustw.get_source(CONFIG.source_directory);
-    } else {
-        className = "link_hidden";
-        onClick = null;
-    }
-
-    return <span id="link_browse" className={className} onClick={onClick}>browse source</span>;
+    const onClick = () => rustw.get_source(CONFIG.source_directory);
+    return renderLink("browse source", "link_browse", props.visible, onClick);
 }
 
 module.exports = {
