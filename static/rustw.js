@@ -111,7 +111,7 @@ module.exports = {
         $("#link_build").click(do_build);
 
         topbar.unrenderHomeLink();
-        $("#link_browse").css("visibility", "visible");
+        topbar.renderBrowseLink();
 
         // TODO use React for page re-loads
         // update_snippets(MAIN_PAGE_STATE.snippets);
@@ -169,6 +169,10 @@ module.exports = {
                 make_highlight(src_line_prefix, highlight.line_end, 0, rhs, css_class);
             }
         }
+    },
+
+    get_source: function(file_name) {
+        get_source_internal(file_name);
     }
 };
 
@@ -205,7 +209,6 @@ function load_start() {
     enable_button($("#link_build"), "build");
     $("#link_build").click(do_build);
     $("#link_options").click(show_options);
-    $("#link_browse").click(do_browse);
 
     $("#div_main").html("");
     $("#div_options").hide();
@@ -459,7 +462,7 @@ function do_build() {
 function do_build_internal(build_str) {
     errors.renderResults(build_str, $("#div_main").get(0));
     topbar.unrenderHomeLink();
-    $("#link_browse").css("visibility", "hidden");
+    topbar.unrenderBrowseLink();
     disable_button($("#link_build"), "building...");
     hide_options();
     statusIndicator.renderStatus()
@@ -487,11 +490,7 @@ function show_hide(element, text, fn) {
     element.click(fn);
 }
 
-function do_browse() {
-    get_source(CONFIG.source_directory);
-}
-
-function get_source(file_name) {
+function get_source_internal(file_name) {
     topbar.renderHomeLink();
 
     $.ajax({
@@ -542,13 +541,13 @@ function load_dir(state) {
 }
 
 function handle_dir_link(event) {
-    get_source(event.data + "/" + event.target.innerText);
+    get_source_internal(event.data + "/" + event.target.innerText);
 }
 
 function handle_bread_crumb_link(event) {
     var crumbs = event.data.split('/');
     var slice = crumbs.slice(0, parseInt(event.target.id.substring("breadcrumb_".length), 10) + 1);
-    get_source(slice.join('/'));
+    get_source_internal(slice.join('/'));
 }
 
 function load_doc_or_src_link() {

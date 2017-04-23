@@ -13,22 +13,39 @@ const rustw = require('./rustw');
 const utils = require('./utils');
 
 function HomeLink(props) {
-    // Save the current window.
-    const backup = history.state;
-    const onClick = function() {
-        rustw.pre_load_build();
-        rustw.load_build(backup);
-        history.pushState(backup, "", utils.make_url("#build"));
-    };
-
     let className;
+    let onClick;
     if (props.visible) {
         className = "header_link";
+
+        // Save the current window.
+        const backup = history.state;
+        onClick = function() {
+            rustw.pre_load_build();
+            rustw.load_build(backup);
+            history.pushState(backup, "", utils.make_url("#build"));
+        };
     } else {
         className = "link_hidden";
+        onClick = null;
     }
 
+    // TODO should change this to be home-looking, rather than back-looking
     return <span id="link_back" className={className} onClick={onClick}>&#8592; return to build results</span>;
+}
+
+function BrowseLink(props) {
+    let className;
+    let onClick;
+    if (props.visible) {
+        className = "header_link";
+        onClick = () => rustw.get_source(CONFIG.source_directory);
+    } else {
+        className = "link_hidden";
+        onClick = null;
+    }
+
+    return <span id="link_browse" className={className} onClick={onClick}>browse source</span>;
 }
 
 module.exports = {
@@ -41,5 +58,16 @@ module.exports = {
 
     unrenderHomeLink: function() {
             ReactDOM.render(<HomeLink />, $("#link_back_container").get(0));
+    },
+
+    renderBrowseLink: function() {
+        ReactDOM.render(
+            <BrowseLink visible="true"/>,
+            $("#link_browse_container").get(0)
+        );
+    },
+
+    unrenderBrowseLink: function() {
+            ReactDOM.render(<BrowseLink />, $("#link_browse_container").get(0));
     }
 }

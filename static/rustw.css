@@ -73,9 +73,6 @@ html {
 .link_hidden {
     visibility: hidden;
 }
-#link_browse {
-    visibility: hidden;
-}
 #search_box {
     display: inline-block;
     float: right;
