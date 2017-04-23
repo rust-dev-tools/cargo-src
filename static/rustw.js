@@ -59,7 +59,7 @@ module.exports = {
     },
 
     win_src_link: function () {
-        show_back_link();
+        topbar.renderHomeLink();
         load_link.call(this);
     },
 
@@ -87,7 +87,7 @@ module.exports = {
             return;
         }
 
-        show_back_link();
+        topbar.renderHomeLink();
 
         // Prepare the data for the error code window.
         var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": errData };
@@ -95,6 +95,11 @@ module.exports = {
         var state = { page: "err_code", data: data };
         load_err_code(state);
         history.pushState(state, "", utils.make_url("#" + element.attr("data-code")));
+    },
+
+    pre_load_build: function() {
+        SNIPPET_PLAIN_TEXT = {};
+        window.scroll(0, 0);
     },
 
     load_build: function (state) {
@@ -105,7 +110,7 @@ module.exports = {
         enable_button($("#link_build"), rebuild_label);
         $("#link_build").click(do_build);
 
-        $("#link_back").css("visibility", "hidden");
+        topbar.unrenderHomeLink();
         $("#link_browse").css("visibility", "visible");
 
         // TODO use React for page re-loads
@@ -170,6 +175,7 @@ module.exports = {
 const errors = require("./errors");
 const err_code = require('./err_code');
 const statusIndicator = require('./status-indicator');
+const topbar = require('./topbar');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -234,13 +240,8 @@ function hide_options() {
     $("#div_options").hide();
 }
 
-function pre_load_build() {
-    SNIPPET_PLAIN_TEXT = {};
-    window.scroll(0, 0);
-}
-
 function load_summary(state) {
-    show_back_link();
+    topbar.renderHomeLink();
     // console.log(state.data);
     $("#div_main").html(Handlebars.templates.summary(state.data));
 
@@ -314,7 +315,7 @@ function win_search(needle) {
 
 // Identifer search - shows defs and refs
 function load_search(state) {
-    show_back_link();
+    topbar.renderHomeLink();
     $("#div_main").html(Handlebars.templates.search_results(state.data));
     $(".src_link").removeClass("src_link");
     $(".div_search_file_link").click(load_link);
@@ -327,7 +328,7 @@ function load_search(state) {
 
 // Find = basic search, just a list of uses, e.g., find impls or text search
 function load_find(state) {
-    show_back_link();
+    topbar.renderHomeLink();
     $("#div_main").html(Handlebars.templates.find_results(state.data));
     $(".src_link").removeClass("src_link");
     $(".div_search_file_link").click(load_link);
@@ -457,7 +458,7 @@ function do_build() {
 
 function do_build_internal(build_str) {
     errors.renderResults(build_str, $("#div_main").get(0));
-    $("#link_back").css("visibility", "hidden");
+    topbar.unrenderHomeLink();
     $("#link_browse").css("visibility", "hidden");
     disable_button($("#link_build"), "building...");
     hide_options();
@@ -486,25 +487,12 @@ function show_hide(element, text, fn) {
     element.click(fn);
 }
 
-function show_back_link() {
-    // Save the current window.
-    var backup = history.state;
-
-    // Make the 'back' link visible and go back on click.
-    $("#link_back").css("visibility", "visible");
-    $("#link_back").click(function() {
-        pre_load_build();
-        load_build(backup);
-        history.pushState(backup, "", utils.make_url("#build"));
-    });
-}
-
 function do_browse() {
     get_source(CONFIG.source_directory);
 }
 
 function get_source(file_name) {
-    show_back_link();
+    topbar.renderHomeLink();
 
     $.ajax({
         url: 'src' + utils.make_url(file_name),

@@ -67,7 +67,10 @@ html {
     text-decoration: underline;
     cursor: pointer;
 }
-#link_back {
+#link_back_container {
+    width: 20em;
+}
+.link_hidden {
     visibility: hidden;
 }
 #link_browse {
