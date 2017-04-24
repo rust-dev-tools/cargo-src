@@ -7,11 +7,19 @@
 // except according to those terms.
 
 module.exports = {
+    do_build: function() {
+        if (CONFIG.demo_mode) {
+            do_build_internal('test');
+        } else {
+            do_build_internal('build');
+        }
+    },
+
     onLoad: function () {
         $.getJSON("/config", function(data) {
             CONFIG = data;
             if (CONFIG.build_on_load) {
-                do_build();
+                module.exports.do_build();
             }
         });
 
@@ -98,15 +106,9 @@ module.exports = {
     },
 
     load_build: function (state) {
-        var rebuild_label = "rebuild";
-        if (CONFIG.build_on_load) {
-            rebuild_label += " (F5)";
-        }
-        enable_button($("#link_build"), rebuild_label);
-        $("#link_build").click(do_build);
-
         topbar.unrenderHomeLink();
         topbar.renderBrowseLink();
+        topbar.renderBuildButton("built");
 
         // TODO use React for page re-loads
         // update_snippets(MAIN_PAGE_STATE.snippets);
@@ -204,8 +206,6 @@ Handlebars.registerHelper("isDir", function(a, options)
 Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
 function load_start() {
-    enable_button($("#link_build"), "build");
-    $("#link_build").click(do_build);
     $("#link_options").click(show_options);
 
     $("#div_main").html("");
@@ -220,6 +220,7 @@ function load_start() {
     $("#measure").hide();
 
     topbar.renderSearchBox();
+    topbar.renderBuildButton("fresh");
     statusIndicator.renderBorder();
 }
 
@@ -422,21 +423,13 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     highlight.width(width);
 }
 
-function do_build() {
-    if (CONFIG.demo_mode) {
-        do_build_internal('test');
-    } else {
-        do_build_internal('build');
-    }
-}
-
-function do_build_internal(build_str) {
-    errors.renderResults(build_str, $("#div_main").get(0));
+function do_build_internal(buildStr) {
+    errors.rebuildAndRender(buildStr, $("#div_main").get(0));
     topbar.unrenderHomeLink();
     topbar.unrenderBrowseLink();
-    disable_button($("#link_build"), "building...");
+    topbar.renderBuildButton("building");
     hide_options();
-    statusIndicator.renderStatus()
+    statusIndicator.renderStatus();
     window.scroll(0, 0);
 }
 

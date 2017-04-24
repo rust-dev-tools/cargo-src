@@ -13,7 +13,6 @@ const rustw = require('./rustw');
 const utils = require('./utils');
 
 // TODO
-// search box
 // rebuild button
 // options button
 // progress indicator
@@ -84,7 +83,32 @@ function SearchBox(props) {
         }
     };
 
-    return <input id="search_box" placeholder="identifier search" autocomplete="off" onKeyPress={onKeyPress}></input>;
+    return <input id="search_box" placeholder="identifier search" autoComplete="off" onKeyPress={onKeyPress}></input>;
+}
+
+function BuildButton(props) {
+    const state = props.state;
+    let label;
+    let onClick;
+    let className = "button";
+    if (state == "fresh") {
+        label = "build";
+        onClick = rustw.do_build;
+        className += " enabled_button";
+    } else if (state == "building") {
+        label = "building...";
+        onClick = null;
+        className += " disabled_button";
+    } else if (state == "built") {
+        label = "rebuild";
+        if (CONFIG.build_on_load) {
+            label += " (F5)";
+        }
+        onClick = rustw.do_build;
+        className += " enabled_button";
+    }
+
+    return <span id="link_build" className={className} onClick={onClick}>{label}</span>;
 }
 
 module.exports = {
@@ -115,5 +139,12 @@ module.exports = {
             <SearchBox />,
             $("#search_box_container").get(0)
         );
-    }
+    },
+
+    renderBuildButton: function(state) {
+        ReactDOM.render(
+            <BuildButton state={state} />,
+            $("#link_build_container").get(0)
+        );
+    }    
 }

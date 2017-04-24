@@ -61,6 +61,14 @@ html {
     background-color: #f0f0f0;
     cursor: pointer;
 }
+.enabled_button {
+    color: black;
+    cursor: pointer;
+}
+.disabled_button {
+    color: #808080;
+    cursor: auto;
+}
 .header_link {
     display: inline-block;
     margin-right: 1em;

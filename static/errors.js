@@ -17,7 +17,6 @@ const rustw = require('./rustw');
 const statusIndicator = require('./status-indicator');
 
 
-// TODO remove uses of pre_load_build, load_build
 // TODO Taking *a long time* to load - maybe something in the rustw server?
 
 class Results extends React.Component {
@@ -34,10 +33,24 @@ class Results extends React.Component {
     }
 
     componentDidMount() {
+        this.runBuild();
+    }
+
+    componentDidUpdate(prevProps) {
+        const { buildStr, forceRebuild } = this.props;
+
+        if (buildStr != prevProps.buildStr ||
+            (!!forceRebuild && (!prevProps.forceRebuild || forceRebuild != prevProps.forceRebuild))) {
+            const self = this;
+            this.setState({ errors: OrderedMap(), messages: [] }, () => self.runBuild());
+        }
+    }
+
+    runBuild() {
         const self = this;
 
         $.ajax({
-            url: utils.make_url(this.props.build_str),
+            url: utils.make_url(this.props.buildStr),
             type: 'POST',
             dataType: 'JSON',
             cache: false
@@ -313,9 +326,9 @@ class ChildError extends React.Component {
 }
 
 module.exports = {
-    renderResults: function(build_str, container) {
+    rebuildAndRender: function(buildStr, container) {
         ReactDOM.render(
-            <Results build_str={build_str}/>,
+            <Results buildStr={buildStr} forceRebuild={Math.random()} />,
             container
         );
     },
