@@ -13,6 +13,7 @@ function Indicator(props) {
     let overlay = null;
     let className = "div_border_plain";
     if (props.status) {
+        // TODO this is changing the background colour, but not adding the animation
         overlay = <div id="div_border_animated" className="animated_border" />;
         className = "div_border_status";
     }

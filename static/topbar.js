@@ -13,7 +13,6 @@ const rustw = require('./rustw');
 const utils = require('./utils');
 
 // TODO
-// rebuild button
 // options button
 // progress indicator
 // top bar component + internalise state
@@ -111,6 +110,75 @@ function BuildButton(props) {
     return <span id="link_build" className={className} onClick={onClick}>{label}</span>;
 }
 
+class Options extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { open: false };
+    }
+
+    componentDidUpdate() {
+        this.didRender();
+    }
+
+    componentDidMount() {
+        this.didRender();
+    }
+
+    didRender() {
+        if (!!this.state.open) {
+            var options = $("#div_options");
+            options.offset(this.state.open);
+        }
+    }
+
+    render() {
+        let menu = null;
+        let overlay = null;
+        let showOptions = null;
+        const self = this;
+        if (!!this.state.open) {
+            // TODO calling this is triggering some other crap happening
+            const hideOptions = (event) => {
+                self.setState({ open: false });
+                event.preventDefault();
+                event.stopPropagation();
+            };
+            const killProp = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            };
+            menu = <div id="div_options" onClick={killProp}>
+                      <a id="link_close_options" className="link" onClick={hideOptions}>close</a>
+                      <div className="div_option">list view/code view</div>
+                      <div className="div_option">show/hide warnings</div>
+                      <div className="div_option">show/hide notes and help</div>
+                      <div className="div_option">show/hide all source snippets</div>
+                      <div className="div_option">show/hide context for source code</div>
+                      <div className="div_option">show/hide child messages</div>
+                      <div className="div_option">show/hide error context</div>
+                      <br /><div className="div_option">build command: <code>cargo build</code></div>
+                      <div className="div_option">toolchain: TODO</div>
+                      <div className="div_option">build time: TODO</div>
+                      <div className="div_option">exit status: TODO</div>
+                   </div>;
+            overlay = <div id="div_overlay" onClick={hideOptions} />;
+        } else {
+            showOptions = (event) => {
+                self.setState({ open: { "top": event.pageY, "left": event.pageX } });
+                event.preventDefault();
+                event.stopPropagation();
+            };
+        }
+        return <span>
+                    <span id="link_options" className="button" onClick={showOptions}>options</span>
+                    {overlay}
+                    {menu}
+                </span>;
+    }
+}
+
+
+
 module.exports = {
     renderHomeLink: function() {
         ReactDOM.render(
@@ -146,5 +214,12 @@ module.exports = {
             <BuildButton state={state} />,
             $("#link_build_container").get(0)
         );
-    }    
+    },
+
+    renderOptions() {
+        ReactDOM.render(
+            <Options />,
+            $("#link_options_container").get(0)
+        );
+    }
 }

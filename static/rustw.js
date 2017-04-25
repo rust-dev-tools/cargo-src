@@ -57,7 +57,7 @@ module.exports = {
                 load_start();
             }
 
-            hide_options();
+            // hide_options();
         };    
     },
 
@@ -206,10 +206,7 @@ Handlebars.registerHelper("isDir", function(a, options)
 Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
 function load_start() {
-    $("#link_options").click(show_options);
-
     $("#div_main").html("");
-    $("#div_options").hide();
     // TODO at this point, it makes sense to make these programatically.
     $("#div_src_menu").hide();
     $("#div_line_number_menu").hide();
@@ -220,27 +217,9 @@ function load_start() {
     $("#measure").hide();
 
     topbar.renderSearchBox();
+    topbar.renderOptions();
     topbar.renderBuildButton("fresh");
     statusIndicator.renderBorder();
-}
-
-function show_options(event) {
-    var options = $("#div_options");
-
-    options.show();
-    options.offset({ "top": event.pageY, "left": event.pageX });
-
-    $("#div_main").click(hide_options);
-    $("#div_header").click(hide_options);
-
-    return false;
-}
-
-function hide_options() {
-    $("#div_main").off("click");
-    $("#div_header").off("click");
-
-    $("#div_options").hide();
 }
 
 function load_summary(state) {
@@ -428,7 +407,7 @@ function do_build_internal(buildStr) {
     topbar.unrenderHomeLink();
     topbar.unrenderBrowseLink();
     topbar.renderBuildButton("building");
-    hide_options();
+    // hide_options();
     statusIndicator.renderStatus();
     window.scroll(0, 0);
 }
