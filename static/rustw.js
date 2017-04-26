@@ -179,7 +179,6 @@ module.exports = {
 
 const errors = require("./errors");
 const err_code = require('./err_code');
-const statusIndicator = require('./status-indicator');
 const topbar = require('./topbar');
 const utils = require('./utils');
 
@@ -219,7 +218,7 @@ function load_start() {
     topbar.renderSearchBox();
     topbar.renderOptions();
     topbar.renderBuildButton("fresh");
-    statusIndicator.renderBorder();
+    topbar.renderBorder();
 }
 
 function load_summary(state) {
@@ -408,7 +407,7 @@ function do_build_internal(buildStr) {
     topbar.unrenderBrowseLink();
     topbar.renderBuildButton("building");
     // hide_options();
-    statusIndicator.renderStatus();
+    topbar.renderStatus();
     window.scroll(0, 0);
 }
 

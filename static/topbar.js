@@ -13,8 +13,6 @@ const rustw = require('./rustw');
 const utils = require('./utils');
 
 // TODO
-// options button
-// progress indicator
 // top bar component + internalise state
 
 function renderLink(text, id, visible, onClick) {
@@ -177,7 +175,15 @@ class Options extends React.Component {
     }
 }
 
-
+function Indicator(props) {
+    let overlay = null;
+    let className = "div_border_plain";
+    if (props.status) {
+        overlay = <div id="div_border_animated" className="animated_border" />;
+        className = "div_border_status";
+    }
+    return <div id="div_border" className={className}>{overlay}</div>;
+}
 
 module.exports = {
     renderHomeLink: function() {
@@ -220,6 +226,19 @@ module.exports = {
         ReactDOM.render(
             <Options />,
             $("#link_options_container").get(0)
+        );
+    },
+
+    renderStatus: function() {
+        ReactDOM.render(
+            <Indicator status="true" />,
+            $("#status_indicator_container").get(0)
+        );
+    },
+    renderBorder: function() {
+        ReactDOM.render(
+            <Indicator />,
+            $("#status_indicator_container").get(0)
         );
     }
 }

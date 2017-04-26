@@ -119,7 +119,6 @@ html {
     height: 100%;
     background-color: #b3d9ff;
     opacity: 1;
-    display: none;
 }
 .animated_border {
     animation-duration: 30s;
