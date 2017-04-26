@@ -12,8 +12,39 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const utils = require('./utils');
 
-// TODO
-// top bar component + internalise state
+class TopBar extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        let visibleHomeLink = null;
+        let visibleBrowseLink = null;
+        let indicatorStatus = null;
+        let buildState = this.props.state;
+        if (this.props.state == "fresh") {
+        } else if (this.props.state == "building") {
+            indicatorStatus = true;
+        } else if (this.props.state == "built") {
+            visibleBrowseLink = true;
+        } else if (this.props.state == "builtAndNavigating") {
+            visibleBrowseLink = true;
+            visibleHomeLink = true;
+            buildState = "built";
+        }
+
+        return <div id="div_header_group">
+              <div id="div_header">
+                <HomeLink visible={visibleHomeLink} />
+                <BuildButton state={buildState} />
+                <Options />
+                <BrowseLink visible={visibleBrowseLink} />
+                <SearchBox />
+              </div>
+              <Indicator status={indicatorStatus} />
+            </div>;
+    }
+}
 
 function renderLink(text, id, visible, onClick) {
     let className;
@@ -135,7 +166,6 @@ class Options extends React.Component {
         let showOptions = null;
         const self = this;
         if (!!this.state.open) {
-            // TODO calling this is triggering some other crap happening
             const hideOptions = (event) => {
                 self.setState({ open: false });
                 event.preventDefault();
@@ -186,59 +216,10 @@ function Indicator(props) {
 }
 
 module.exports = {
-    renderHomeLink: function() {
+    renderTopBar: function(state) {
         ReactDOM.render(
-            <HomeLink visible="true"/>,
-            $("#link_back_container").get(0)
-        );
-    },
-
-    unrenderHomeLink: function() {
-            ReactDOM.render(<HomeLink />, $("#link_back_container").get(0));
-    },
-
-    renderBrowseLink: function() {
-        ReactDOM.render(
-            <BrowseLink visible="true"/>,
-            $("#link_browse_container").get(0)
-        );
-    },
-
-    unrenderBrowseLink: function() {
-            ReactDOM.render(<BrowseLink />, $("#link_browse_container").get(0));
-    },
-
-    renderSearchBox: function() {
-        ReactDOM.render(
-            <SearchBox />,
-            $("#search_box_container").get(0)
-        );
-    },
-
-    renderBuildButton: function(state) {
-        ReactDOM.render(
-            <BuildButton state={state} />,
-            $("#link_build_container").get(0)
-        );
-    },
-
-    renderOptions() {
-        ReactDOM.render(
-            <Options />,
-            $("#link_options_container").get(0)
-        );
-    },
-
-    renderStatus: function() {
-        ReactDOM.render(
-            <Indicator status="true" />,
-            $("#status_indicator_container").get(0)
-        );
-    },
-    renderBorder: function() {
-        ReactDOM.render(
-            <Indicator />,
-            $("#status_indicator_container").get(0)
+            <TopBar state={state} />,
+            $("#header_container").get(0)
         );
     }
 }

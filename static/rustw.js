@@ -56,13 +56,11 @@ module.exports = {
                 console.log(state);
                 load_start();
             }
-
-            // hide_options();
         };    
     },
 
     win_src_link: function () {
-        topbar.renderHomeLink();
+        topbar.renderTopBar("builtAndNavigating");
         load_link.call(this);
     },
 
@@ -90,7 +88,7 @@ module.exports = {
             return;
         }
 
-        topbar.renderHomeLink();
+        topbar.renderTopBar("builtAndNavigating");
 
         // Prepare the data for the error code window.
         var data = { "code": element.attr("data-code"), "explain": marked(explain), "error": errData };
@@ -106,9 +104,7 @@ module.exports = {
     },
 
     load_build: function (state) {
-        topbar.unrenderHomeLink();
-        topbar.renderBrowseLink();
-        topbar.renderBuildButton("built");
+        topbar.renderTopBar("built");
 
         // TODO use React for page re-loads
         // update_snippets(MAIN_PAGE_STATE.snippets);
@@ -215,14 +211,11 @@ function load_start() {
     $("#div_rename").hide();
     $("#measure").hide();
 
-    topbar.renderSearchBox();
-    topbar.renderOptions();
-    topbar.renderBuildButton("fresh");
-    topbar.renderBorder();
+    topbar.renderTopBar("fresh");
 }
 
 function load_summary(state) {
-    topbar.renderHomeLink();
+    topbar.renderTopBar("builtAndNavigating");
     // console.log(state.data);
     $("#div_main").html(Handlebars.templates.summary(state.data));
 
@@ -268,7 +261,7 @@ function hide_summary_doc() {
 }
 
 function load_search_internal (state) {
-    topbar.renderHomeLink();
+    topbar.renderTopBar("builtAndNavigating");
     $("#div_main").html(Handlebars.templates.search_results(state.data));
     $(".src_link").removeClass("src_link");
     $(".div_search_file_link").click(load_link);
@@ -281,7 +274,7 @@ function load_search_internal (state) {
 
 // Find = basic search, just a list of uses, e.g., find impls or text search
 function load_find(state) {
-    topbar.renderHomeLink();
+    topbar.renderTopBar("builtAndNavigating");
     $("#div_main").html(Handlebars.templates.find_results(state.data));
     $(".src_link").removeClass("src_link");
     $(".div_search_file_link").click(load_link);
@@ -403,11 +396,7 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
 
 function do_build_internal(buildStr) {
     errors.rebuildAndRender(buildStr, $("#div_main").get(0));
-    topbar.unrenderHomeLink();
-    topbar.unrenderBrowseLink();
-    topbar.renderBuildButton("building");
-    // hide_options();
-    topbar.renderStatus();
+    topbar.renderTopBar("building");
     window.scroll(0, 0);
 }
 
@@ -433,7 +422,7 @@ function show_hide(element, text, fn) {
 }
 
 function get_source_internal(file_name) {
-    topbar.renderHomeLink();
+    topbar.renderTopBar("builtAndNavigating");
 
     $.ajax({
         url: 'src' + utils.make_url(file_name),
@@ -475,7 +464,6 @@ function get_source_internal(file_name) {
 }
 
 function load_dir(state) {
-    console.log(state);
     $("#div_main").html(Handlebars.templates.dir_view(state.data));
     $(".div_entry_name").click(state.file, handle_dir_link);
     $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
