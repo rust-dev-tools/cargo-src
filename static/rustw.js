@@ -176,6 +176,7 @@ module.exports = {
 const errors = require("./errors");
 const err_code = require('./err_code');
 const topbar = require('./topbar');
+const dirView = require('./dirView');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -192,13 +193,6 @@ Handlebars.registerHelper("def", function(a, b, options)
 {
     return a != undefined;
 });
-
-Handlebars.registerHelper("isDir", function(a, options)
-{
-    return a == "Directory";
-});
-
-Handlebars.registerPartial("bread_crumbs", Handlebars.templates.bread_crumbs);
 
 function load_start() {
     $("#div_main").html("");
@@ -302,7 +296,8 @@ function load_err_code(state) {
 
 function load_source(state) {
     let page = $(Handlebars.templates.src_view(state.data));
-    page.find(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+    // TODO bread crumbs link
+    // page.find(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
     $("#div_main").empty().append(page);
 
     highlight_spans(state, "src_line_number_", "src_line_", "selected");
@@ -464,20 +459,8 @@ function get_source_internal(file_name) {
 }
 
 function load_dir(state) {
-    $("#div_main").html(Handlebars.templates.dir_view(state.data));
-    $(".div_entry_name").click(state.file, handle_dir_link);
-    $(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
+    dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
     window.scroll(0, 0);
-}
-
-function handle_dir_link(event) {
-    get_source_internal(event.data + "/" + event.target.innerText);
-}
-
-function handle_bread_crumb_link(event) {
-    var crumbs = event.data.split('/');
-    var slice = crumbs.slice(0, parseInt(event.target.id.substring("breadcrumb_".length), 10) + 1);
-    get_source_internal(slice.join('/'));
 }
 
 function load_doc_or_src_link() {
