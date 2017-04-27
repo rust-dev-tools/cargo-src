@@ -61,7 +61,7 @@ module.exports = {
 
     win_src_link: function () {
         topbar.renderTopBar("builtAndNavigating");
-        load_link.call(this);
+        module.exports.load_link.call(this);
     },
 
     show_src_link_menu: function (event) {
@@ -170,6 +170,58 @@ module.exports = {
 
     get_source: function(file_name) {
         get_source_internal(file_name);
+    },
+
+    load_link: function() {
+        var element = $(this);
+        var file_loc = element.attr("data-link").split(':');
+        var file = file_loc[0];
+
+        if (file == "search") {
+            find_uses(file_loc[1]);
+            return;
+        }
+
+        if (file == "summary") {
+            summary(file_loc[1]);
+            return;
+        }
+
+        var line_start = parseInt(file_loc[1], 10);
+        var column_start = parseInt(file_loc[2], 10);
+        var line_end = parseInt(file_loc[3], 10);
+        var column_end = parseInt(file_loc[4], 10);
+
+        if (line_start == 0 || isNaN(line_start)) {
+            line_start = 0;
+            line_end = 0;
+        } else if (line_end == 0 || isNaN(line_end)) {
+            line_end = line_start;
+        }
+
+        if (isNaN(column_start) || isNaN(column_end)) {
+            column_start = 0;
+            column_end = 0;
+        }
+
+        // FIXME the displayed span doesn't include column start and end, should it?
+        var display = "";
+        if (line_start > 0) {
+            display += ":" + line_start;
+            if (!(line_end == 0 || line_end == line_start)) {
+                display += ":" + line_end;
+            }
+        }
+
+        var data = {
+            "file": file,
+            "display": display,
+            "line_start": line_start,
+            "line_end": line_end,
+            "column_start": column_start,
+            "column_end": column_end
+        };
+        load_source_view(data);
     }
 };
 
@@ -177,6 +229,7 @@ const errors = require("./errors");
 const err_code = require('./err_code');
 const topbar = require('./topbar');
 const dirView = require('./dirView');
+const search = require('./search');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -215,7 +268,7 @@ function load_summary(state) {
 
     // Make link and menus for idents on the page.
     let idents = $(".summary_ident");
-    idents.click(load_link);
+    idents.click(module.exports.load_link);
     idents.on("contextmenu", (ev) => {
         let target = ev.target;
         ev.data = ev.target.id.substring("def_".length);
@@ -224,7 +277,7 @@ function load_summary(state) {
 
     // Add links and menus for breadcrumbs.
     let breadcrumbs = $(".link_breadcrumb");
-    breadcrumbs.click(load_link);
+    breadcrumbs.click(module.exports.load_link);
     breadcrumbs.on("contextmenu", (ev) => {
         let target = ev.target;
         ev.data = ev.target.id.substring("breadcrumb_".length);
@@ -235,9 +288,9 @@ function load_summary(state) {
     hide_summary_doc();
 
     // Up link to jump up a level.
-    $("#jump_up").click(load_link);
+    $("#jump_up").click(module.exports.load_link);
     // Down links to jump to children.
-    $(".jump_children").click(load_link);
+    $(".jump_children").click(module.exports.load_link);
 
     window.scroll(0, 0);
 }
@@ -258,9 +311,9 @@ function load_search_internal (state) {
     topbar.renderTopBar("builtAndNavigating");
     $("#div_main").html(Handlebars.templates.search_results(state.data));
     $(".src_link").removeClass("src_link");
-    $(".div_search_file_link").click(load_link);
-    $(".div_span_src_number").click(load_link);
-    $(".span_src").click(load_link);
+    $(".div_search_file_link").click(module.exports.load_link);
+    $(".div_span_src_number").click(module.exports.load_link);
+    $(".span_src").click(module.exports.load_link);
     highlight_needle(state.data.defs, "def");
     highlight_needle(state.data.refs, "ref");
     window.scroll(0, 0);
@@ -269,12 +322,7 @@ function load_search_internal (state) {
 // Find = basic search, just a list of uses, e.g., find impls or text search
 function load_find(state) {
     topbar.renderTopBar("builtAndNavigating");
-    $("#div_main").html(Handlebars.templates.find_results(state.data));
-    $(".src_link").removeClass("src_link");
-    $(".div_search_file_link").click(load_link);
-    $(".div_span_src_number").click(load_link);
-    $(".span_src").click(load_link);
-    highlight_needle(state.data.results, "result");
+    search.renderFindResults(state.data, $("#div_main").get(0));
     window.scroll(0, 0);
 }
 
@@ -469,62 +517,10 @@ function load_doc_or_src_link() {
     var doc_url = element.attr("doc_url")
 
     if (!doc_url) {
-        return load_link.call(this);
+        return module.exports.load_link.call(this);
     }
 
     window.open(doc_url, '_blank');
-}
-
-function load_link() {
-    var element = $(this);
-    var file_loc = element.attr("data-link").split(':');
-    var file = file_loc[0];
-
-    if (file == "search") {
-        find_uses(file_loc[1]);
-        return;
-    }
-
-    if (file == "summary") {
-        summary(file_loc[1]);
-        return;
-    }
-
-    var line_start = parseInt(file_loc[1], 10);
-    var column_start = parseInt(file_loc[2], 10);
-    var line_end = parseInt(file_loc[3], 10);
-    var column_end = parseInt(file_loc[4], 10);
-
-    if (line_start == 0 || isNaN(line_start)) {
-        line_start = 0;
-        line_end = 0;
-    } else if (line_end == 0 || isNaN(line_end)) {
-        line_end = line_start;
-    }
-
-    if (isNaN(column_start) || isNaN(column_end)) {
-        column_start = 0;
-        column_end = 0;
-    }
-
-    // FIXME the displayed span doesn't include column start and end, should it?
-    var display = "";
-    if (line_start > 0) {
-        display += ":" + line_start;
-        if (!(line_end == 0 || line_end == line_start)) {
-            display += ":" + line_end;
-        }
-    }
-
-    var data = {
-        "file": file,
-        "display": display,
-        "line_start": line_start,
-        "line_end": line_end,
-        "column_start": column_start,
-        "column_end": column_end
-    };
-    load_source_view(data);
 }
 
 function load_source_view(data) {
