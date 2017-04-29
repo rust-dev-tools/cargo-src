@@ -26,7 +26,7 @@ function DirView(props) {
         }
     }
     return <div id="div_dir_view">
-        <BreadCrumbs path = {props.file} />
+        <BreadCrumbs path = {props.file.split('/')} />
         <div id="div_dir_contents">
             {files}
         </div>

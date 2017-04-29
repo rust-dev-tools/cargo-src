@@ -108,7 +108,7 @@ pub fn write_span(buf: &mut Vec<u8>,
         write!(buf, " {}", s)?;
     }
     if src_link {
-        write!(buf, " src_link")?;
+        write!(buf, " data-src-link")?;
     }
     write!(buf, "'")?;
     for (k, v) in &extra {
@@ -220,17 +220,17 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
                         let mut extra = HashMap::new();
                         maybe_insert!(extra, "title", title);
-                        maybe_insert!(extra, "link", link);
-                        maybe_insert!(extra, "doc_link", doc_link);
-                        maybe_insert!(extra, "src_link", src_link);
+                        maybe_insert!(extra, "data-link", link);
+                        maybe_insert!(extra, "data-doc-link", doc_link);
+                        maybe_insert!(extra, "data-src-link", src_link);
                         extra.insert("impls".to_owned(), impls.to_string());
 
                         write_span(&mut self.buf,
-                                                Class::Ident,
-                                                css_class,
-                                                text,
-                                                has_link,
-                                                extra)
+                                   Class::Ident,
+                                   css_class,
+                                   text,
+                                   has_link,
+                                   extra)
                     }
                     None => write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
                 }
@@ -329,7 +329,7 @@ impl highlight::Writer for BasicHighlighter {
         let has_link = link.is_some();
         let mut extra = HashMap::new();
         maybe_insert!(extra, "id", id);
-        maybe_insert!(extra, "link", link);
+        maybe_insert!(extra, "data-link", link);
         write_span(&mut self.buf, klass, extra_class, text, has_link, extra)
     }
 }

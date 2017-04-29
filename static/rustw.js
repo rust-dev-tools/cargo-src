@@ -229,6 +229,7 @@ const err_code = require('./err_code');
 const topbar = require('./topbar');
 const dirView = require('./dirView');
 const search = require('./search');
+const srcView = require('./srcView');
 const utils = require('./utils');
 
 Handlebars.registerHelper("inc", function(value, options)
@@ -294,6 +295,12 @@ function load_summary(state) {
     window.scroll(0, 0);
 }
 
+function show_hide(element, text, fn) {
+    element.text(text);
+    element.off("click");
+    element.click(fn);
+}
+
 function show_summary_doc() {
     var element = $("#expand_docs");
     show_hide(element, "-", hide_summary_doc);
@@ -324,64 +331,20 @@ function load_err_code(state) {
 }
 
 function load_source(state) {
-    let page = $(Handlebars.templates.src_view(state.data));
-    // TODO bread crumbs link
-    // page.find(".link_breadcrumb").click(state.file, handle_bread_crumb_link);
-    $("#div_main").empty().append(page);
-
-    highlight_spans(state, "src_line_number_", "src_line_", "selected");
+    const highlight = {
+        file: state.file,
+        display: state.display,
+        line_start: state.line_start,
+        line_end: state.line_end,
+        column_start: state.column_start,
+        column_end: state.column_end
+    };
+    srcView.renderSourceView(state.data.path, state.data.lines, highlight, $("#div_main").get(0));
 
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
-
-    // This is kind of slow and shouldn't cause reflow, so we'll do it after
-    // we display the page.
-    add_source_jump_links(page);
-    add_line_number_menus(page);
-    add_glob_menus(page);
-    add_ref_functionality(page);
-}
-
-// Menus, highlighting on mouseover.
-function add_ref_functionality(page) {
-    for (let el of page.find(".class_id")) {
-        let element = $(el);
-        var classes = el.className.split(' ');
-        for (let c of classes) {
-            if (c.startsWith('class_id_')) {
-                element.hover(function() {
-                    $("." + c).css("background-color", "#d5f3b5");
-                }, function() {
-                    $("." + c).css("background-color", "");
-                });
-
-                var id = c.slice('class_id_'.length);
-                element.on("contextmenu", null, id, show_ref_menu);
-                element.addClass("hand_cursor");
-
-                break;
-            }
-        }
-    }
-}
-
-function add_glob_menus(page) {
-    var globs = page.find(".glob");
-    globs.on("contextmenu", show_glob_menu);
-    globs.addClass("hand_cursor");
-}
-
-function add_source_jump_links(page) {
-    var linkables = page.find(".src_link");
-    linkables.click(load_doc_or_src_link);
-}
-
-function add_line_number_menus(page) {
-    var line_nums = page.find(".div_src_line_number");
-    line_nums.on("contextmenu", show_line_number_menu);
-    line_nums.addClass("hand_cursor");
 }
 
 // Left is the number of chars from the left margin to where the highlight
@@ -422,27 +385,6 @@ function do_build_internal(buildStr) {
     errors.rebuildAndRender(buildStr, $("#div_main").get(0));
     topbar.renderTopBar("building");
     window.scroll(0, 0);
-}
-
-// Doesn't actually add an action to the button, just makes it look active.
-function enable_button(button, text) {
-    button.css("color", "black");
-    button.css("cursor", "pointer");
-    button.text(text);
-}
-
-// Removes click action and makes it look disabled.
-function disable_button(button, text) {
-    button.css("color", "#808080");
-    button.css("cursor", "auto");
-    button.off("click");
-    button.text(text);
-}
-
-function show_hide(element, text, fn) {
-    element.text(text);
-    element.off("click");
-    element.click(fn);
 }
 
 function get_source_internal(file_name) {
@@ -492,18 +434,6 @@ function load_dir(state) {
     window.scroll(0, 0);
 }
 
-function load_doc_or_src_link() {
-    // TODO special case links to the same file
-    var element = $(this);
-    var doc_url = element.attr("doc_url")
-
-    if (!doc_url) {
-        return module.exports.load_link.call(this);
-    }
-
-    window.open(doc_url, '_blank');
-}
-
 function load_source_view(data) {
     $.ajax({
         url: utils.make_url('src/' + data.file),
@@ -544,43 +474,6 @@ function show_menu(menu, event, hide_fn) {
     $("#div_header").click(hide_fn);
 
     return data;
-}
-
-function show_glob_menu(event) {
-    if (CONFIG.unstable_features) {
-        var menu = $("#div_glob_menu");
-        var data = show_menu(menu, event, hide_glob_menu);
-
-        $("#glob_menu_deglob").click(event.target, deglob);
-
-        return false;
-    }
-}
-
-function show_line_number_menu(event) {
-    var menu = $("#div_line_number_menu");
-    var data = show_menu(menu, event, hide_line_number_menu);
-
-    var line_number = line_number_for_span(data.target);
-    var file_name = history.state.file;
-    if (CONFIG.unstable_features) {
-        var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
-        $("#line_number_menu_edit").click(edit_data, edit);
-        $("#line_number_quick_edit").click(data, quick_edit_line_number);
-    } else {
-        $("#line_number_menu_edit").hide();
-        $("#line_number_quick_edit").hide();
-    }
-
-    if (CONFIG.vcs_link) {
-        let link = $("#line_number_vcs").children().first();
-        link.click(function() { hide_line_number_menu(); return true; });
-        link.attr("href", CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number))
-    } else {
-        $("#line_number_vcs").hide();
-    }
-
-    return false;
 }
 
 function show_ref_menu(event) {
@@ -626,20 +519,12 @@ function show_ref_menu(event) {
     return false;
 }
 
-function hide_src_link_menu() {
-    hide_menu($("#div_src_menu"));
-}
-
-function hide_glob_menu() {
-    hide_menu($("#div_glob_menu"));
-}
-
-function hide_line_number_menu() {
-    hide_menu($("#div_line_number_menu"));
-}
-
 function hide_ref_menu() {
     hide_menu($("#div_ref_menu"));
+}
+
+function hide_src_link_menu() {
+    hide_menu($("#div_src_menu"));
 }
 
 function hide_menu(menu) {
@@ -650,53 +535,6 @@ function hide_menu(menu) {
 function open_tab(event) {
     window.open(event.data.link, '_blank');
     event.data.hide_fn();
-}
-
-function deglob(event) {
-    let glob = $(event.data);
-    let location = glob.attr("location").split(":");
-    let file_name = history.state.file;
-    let deglobbed = glob.attr("title");
-
-    let data = {
-        file_name: file_name,
-        line_start: location[0],
-        line_end: location[0],
-        column_start: location[1],
-        column_end: parseInt(location[1]) + 1,
-        // TODO we could be much smarter here - don't use {} if there is only one item, delete the
-        // line if there are none. Put on multiple lines if necessary or use rustfmt.
-        text: "{" + deglobbed + "}"
-    };
-
-    $.ajax({
-        url: utils.make_url('subst'),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false,
-        'data': JSON.stringify(data)
-    })
-    .done(function (json) {
-        console.log("success");
-        var source_data = {
-            "file": data.file_name,
-            "display": ":" + data.line_start,
-            "line_start": data.line_start,
-            "line_end": data.line_end,
-            "column_start": data.column_start,
-            "column_end": parseInt(data.column_start) + parseInt(data.text.length)
-        };
-        load_source_view(source_data);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with subsitution for " + data);
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        load_error();
-        history.pushState({}, "", utils.make_url("#subst"));
-    });
-
-    hide_glob_menu();
 }
 
 function summary(id) {
@@ -878,39 +716,6 @@ function show_quick_edit(event) {
     $("#quick_edit_cancel").click(hide_quick_edit);
     $("#div_main").click(hide_quick_edit);
     $("#div_header").click(hide_quick_edit);
-}
-
-function line_number_for_span(target) {
-    var line_id = target.attr("id");
-    return parseInt(line_id.slice("src_line_number_".length));
-}
-
-function quick_edit_line_number(event) {
-    hide_line_number_menu();
-    var file_name = history.state.file;
-    var line = line_number_for_span(event.data.target);
-
-    $.ajax({
-        url: utils.make_url('plain_text?file=' + file_name + '&line=' + line),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false,
-    })
-    .done(function (json) {
-        console.log("retrieve plain text - success");
-        $("#quick_edit_text").val(json.text);
-        $("#quick_edit_save").show();
-        $("#quick_edit_save").click(json, save_quick_edit);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with plain text request");
-        console.log("error: " + errorThrown + "; status: " + status);
-        $("#quick_edit_text").val("Error: could not load text");
-        $("#quick_edit_save").off("click");
-        $("#quick_edit_save").hide();
-    });
-
-    show_quick_edit(event);
 }
 
 // Quick edit for a source link in an error message.
