@@ -320,7 +320,6 @@ impl Cache {
             };
 
             defs.push(all_refs.next().unwrap());
-            // TODO iterator it up
             for ref_span in all_refs {
                 refs.push(ref_span);
             }

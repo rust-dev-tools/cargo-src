@@ -46,11 +46,11 @@ module.exports = {
             } else if (state.page == "source_dir") {
                 load_dir(state);
             } else if (state.page == "search") {
-                  load_search(state);
+                module.exports.load_search(state);
             } else if (state.page == "find") {
-                  load_find(state);
+                load_find(state);
             } else if (state.page == "summary") {
-                  load_summary(state);
+                load_summary(state);
             } else {
                 console.log("ERROR: Unknown page state: ");
                 console.log(state);
@@ -173,8 +173,7 @@ module.exports = {
     },
 
     load_link: function() {
-        var element = $(this);
-        var file_loc = element.attr("data-link").split(':');
+        var file_loc = this.dataset.link.split(':');
         var file = file_loc[0];
 
         if (file == "search") {
@@ -307,35 +306,17 @@ function hide_summary_doc() {
     $("#div_summary_doc_more").hide();
 }
 
-function load_search_internal (state) {
+function load_search_internal(state) {
     topbar.renderTopBar("builtAndNavigating");
-    $("#div_main").html(Handlebars.templates.search_results(state.data));
-    $(".src_link").removeClass("src_link");
-    $(".div_search_file_link").click(module.exports.load_link);
-    $(".div_span_src_number").click(module.exports.load_link);
-    $(".span_src").click(module.exports.load_link);
-    highlight_needle(state.data.defs, "def");
-    highlight_needle(state.data.refs, "ref");
+    search.renderSearchResults(state.data.defs, state.data.refs, $("#div_main").get(0));
     window.scroll(0, 0);
 }
 
 // Find = basic search, just a list of uses, e.g., find impls or text search
 function load_find(state) {
     topbar.renderTopBar("builtAndNavigating");
-    search.renderFindResults(state.data, $("#div_main").get(0));
+    search.renderFindResults(state.data.results, $("#div_main").get(0));
     window.scroll(0, 0);
-}
-
-function highlight_needle(results, tag) {
-    for (var i in results) {
-        for (var line of results[i].lines) {
-            line.line_end = line.line_start;
-            highlight_spans(line,
-                            null,
-                            "snippet_line_" + tag + "_" + i + "_",
-                            "selected");
-        }
-    }
 }
 
 function load_err_code(state) {
