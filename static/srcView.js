@@ -299,6 +299,6 @@ class SourceView extends React.Component {
 
 module.exports = {
     renderSourceView: function(path, lines, highlight, container) {
-        ReactDOM.render(<SourceView path={path} lines={lines} highlight={highlight}/>, container);
+        ReactDOM.render(<SourceView path={path} lines={lines} highlight={highlight} />, container);
     }
 }

@@ -230,22 +230,8 @@ const topbar = require('./topbar');
 const dirView = require('./dirView');
 const search = require('./search');
 const srcView = require('./srcView');
+const summaryView = require('./summary');
 const utils = require('./utils');
-
-Handlebars.registerHelper("inc", function(value, options)
-{
-    return parseInt(value) + 1;
-});
-
-Handlebars.registerHelper("add", function(a, b, options)
-{
-    return parseInt(a) + parseInt(b);
-});
-
-Handlebars.registerHelper("def", function(a, b, options)
-{
-    return a != undefined;
-});
 
 function load_start() {
     $("#div_main").html("");
@@ -263,54 +249,8 @@ function load_start() {
 
 function load_summary(state) {
     topbar.renderTopBar("builtAndNavigating");
-    // console.log(state.data);
-    $("#div_main").html(Handlebars.templates.summary(state.data));
-
-    // Make link and menus for idents on the page.
-    let idents = $(".summary_ident");
-    idents.click(module.exports.load_link);
-    idents.on("contextmenu", (ev) => {
-        let target = ev.target;
-        ev.data = ev.target.id.substring("def_".length);
-        return show_ref_menu(ev);
-    });
-
-    // Add links and menus for breadcrumbs.
-    let breadcrumbs = $(".link_breadcrumb");
-    breadcrumbs.click(module.exports.load_link);
-    breadcrumbs.on("contextmenu", (ev) => {
-        let target = ev.target;
-        ev.data = ev.target.id.substring("breadcrumb_".length);
-        return show_ref_menu(ev);
-    });
-
-    // Hide extra docs.
-    hide_summary_doc();
-
-    // Up link to jump up a level.
-    $("#jump_up").click(module.exports.load_link);
-    // Down links to jump to children.
-    $(".jump_children").click(module.exports.load_link);
-
+    summaryView.renderSummary(state.data, $("#div_main").get(0));
     window.scroll(0, 0);
-}
-
-function show_hide(element, text, fn) {
-    element.text(text);
-    element.off("click");
-    element.click(fn);
-}
-
-function show_summary_doc() {
-    var element = $("#expand_docs");
-    show_hide(element, "-", hide_summary_doc);
-    $("#div_summary_doc_more").show();
-}
-
-function hide_summary_doc() {
-    var element = $("#expand_docs");
-    show_hide(element, "+", show_summary_doc);
-    $("#div_summary_doc_more").hide();
 }
 
 function load_search_internal(state) {
@@ -327,6 +267,7 @@ function load_find(state) {
 }
 
 function load_err_code(state) {
+    topbar.renderTopBar("builtAndNavigating");
     err_code.renderErrorExplain(state.data, $("#div_main").get(0));
 }
 
@@ -345,6 +286,17 @@ function load_source(state) {
     // right at the top of the window, which makes it easier to see.
     var y = state.line_start * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
+}
+
+function do_build_internal(buildStr) {
+    errors.rebuildAndRender(buildStr, $("#div_main").get(0));
+    topbar.renderTopBar("building");
+    window.scroll(0, 0);
+}
+
+function load_dir(state) {
+    dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
+    window.scroll(0, 0);
 }
 
 // Left is the number of chars from the left margin to where the highlight
@@ -379,12 +331,6 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     offset.left += left;
     highlight.offset(offset);
     highlight.width(width);
-}
-
-function do_build_internal(buildStr) {
-    errors.rebuildAndRender(buildStr, $("#div_main").get(0));
-    topbar.renderTopBar("building");
-    window.scroll(0, 0);
 }
 
 function get_source_internal(file_name) {
@@ -429,11 +375,6 @@ function get_source_internal(file_name) {
     $("#div_main").text("Loading...");
 }
 
-function load_dir(state) {
-    dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
-    window.scroll(0, 0);
-}
-
 function load_source_view(data) {
     $.ajax({
         url: utils.make_url('src/' + data.file),
@@ -457,84 +398,6 @@ function load_source_view(data) {
     });
 
     $("#div_main").text("Loading...");
-}
-
-function show_menu(menu, event, hide_fn) {
-    var target = $(event.target);
-    var data = {
-        "position": { "top": event.pageY, "left": event.pageX },
-        "target": target
-    };
-
-    menu.show();
-    menu.offset(data.position);
-
-    // TODO can we do better than this to close the menu? (Also options menu).
-    $("#div_main").click(hide_fn);
-    $("#div_header").click(hide_fn);
-
-    return data;
-}
-
-function show_ref_menu(event) {
-    var menu = $("#div_ref_menu");
-    var data = show_menu(menu, event, hide_ref_menu);
-    data.id = event.data;
-
-    var doc_url = data.target.attr("doc_url");
-    if (doc_url) {
-        var view_data = { 'link': doc_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_docs").show();
-        $("#ref_menu_view_docs").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_docs").hide();
-    }
-
-    var src_url = data.target.attr("src_url");
-    if (src_url) {
-        var view_data = { 'link': src_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_source").show();
-        $("#ref_menu_view_source").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_source").hide();
-    }
-
-    $("#ref_menu_view_summary").click(event.data, (ev) => summary(ev.data));
-    $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
-
-    let impls = data.target.attr("impls");
-    // FIXME we could display the impl count in the menu
-    if (impls && impls != "0") {
-        $("#ref_menu_find_impls").click(event.data, (ev) => find_impls(ev.data));
-    } else {
-        $("#ref_menu_find_impls").hide();
-    }
-
-    if (CONFIG.unstable_features) {
-        $("#ref_menu_rename").click(data, show_rename);
-    } else {
-        $("#ref_menu_rename").hide();
-    }
-
-    return false;
-}
-
-function hide_ref_menu() {
-    hide_menu($("#div_ref_menu"));
-}
-
-function hide_src_link_menu() {
-    hide_menu($("#div_src_menu"));
-}
-
-function hide_menu(menu) {
-    menu.children("div").off("click");
-    menu.hide();
-}
-
-function open_tab(event) {
-    window.open(event.data.link, '_blank');
-    event.data.hide_fn();
 }
 
 function summary(id) {
@@ -791,4 +654,30 @@ function reload_source() {
 function view_from_menu(event) {
     hide_src_link_menu();
     win_src_link.call(event.data);
+}
+
+function show_menu(menu, event, hide_fn) {
+    var target = $(event.target);
+    var data = {
+        "position": { "top": event.pageY, "left": event.pageX },
+        "target": target
+    };
+
+    menu.show();
+    menu.offset(data.position);
+
+    // TODO use the overlay trick
+    $("#div_main").click(hide_fn);
+    $("#div_header").click(hide_fn);
+
+    return data;
+}
+
+function hide_src_link_menu() {
+    hide_menu($("#div_src_menu"));
+}
+
+function hide_menu(menu) {
+    menu.children("div").off("click");
+    menu.hide();
 }

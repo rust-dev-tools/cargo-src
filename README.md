@@ -55,9 +55,6 @@ npm install --save-dev webpack
 npm install --save-dev immutable
 ```
 * build the JS components: `npm run build` or `yarn build`
-* `./build_templates.sh` to rebuild the handlebars templates. The compiled targets
-  are part of the repo, so you shouldn't need to do this unless you edit the
-  templates. You will need handlebars [installed](http://handlebarsjs.com/) to do this.
 
 ## Running
 
