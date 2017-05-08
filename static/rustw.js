@@ -218,7 +218,6 @@ module.exports = {
     }
 };
 
-
 const errors = require("./errors");
 const err_code = require('./err_code');
 const topbar = require('./topbar');
@@ -230,10 +229,6 @@ const utils = require('./utils');
 
 function load_start() {
     $("#div_main").html("");
-    // TODO at this point, it makes sense to make these programatically.
-    $("#div_line_number_menu").hide();
-    $("#div_ref_menu").hide();
-    $("#div_glob_menu").hide();
     $("#div_quick_edit").hide();
     $("#div_rename").hide();
     $("#measure").hide();

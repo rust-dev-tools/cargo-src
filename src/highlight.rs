@@ -108,7 +108,7 @@ pub fn write_span(buf: &mut Vec<u8>,
         write!(buf, " {}", s)?;
     }
     if src_link {
-        write!(buf, " data-src-link")?;
+        write!(buf, " src_link")?;
     }
     write!(buf, "'")?;
     for (k, v) in &extra {
@@ -235,14 +235,14 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     None => write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
                 }
             }
-            Class::Op if text == "*" => {
+            Class::RefKeyWord if text == "*" => {
                 match tas {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
                         let span = &self.span_from_locs(&lo, &hi);
                         let mut extra = HashMap::new();
-                        extra.insert("location".to_owned(), format!("{}:{}", lo.line, lo.col.0 + 1));
+                        extra.insert("data-location".to_owned(), format!("{}:{}", lo.line, lo.col.0 + 1));
                         maybe_insert!(extra, "title", self.analysis.show_type(span).ok());
                         let css_class = Some(" glob".to_owned());
 

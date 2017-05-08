@@ -12,79 +12,7 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { quick_edit_line_number } = require('./quickEdit');
-
-function add_source_jump_links() {
-    var linkables = $("#div_src_view").find(".src_link");
-    linkables.click(load_doc_or_src_link);
-}
-
-function add_glob_menus() {
-    var globs = $("#div_src_view").find(".glob");
-    globs.on("contextmenu", show_glob_menu);
-    globs.addClass("hand_cursor");
-}
-
-function show_glob_menu(event) {
-    if (CONFIG.unstable_features) {
-        var menu = $("#div_glob_menu");
-        var data = show_menu(menu, event, hide_glob_menu);
-
-        $("#glob_menu_deglob").click(event.target, deglob);
-
-        return false;
-    }
-}
-
-function deglob(event) {
-    let glob = $(event.data);
-    let location = glob.attr("location").split(":");
-    let file_name = history.state.file;
-    let deglobbed = glob.attr("title");
-
-    let data = {
-        file_name: file_name,
-        line_start: location[0],
-        line_end: location[0],
-        column_start: location[1],
-        column_end: parseInt(location[1]) + 1,
-        // TODO we could be much smarter here - don't use {} if there is only one item, delete the
-        // line if there are none. Put on multiple lines if necessary or use rustfmt.
-        text: "{" + deglobbed + "}"
-    };
-
-    $.ajax({
-        url: utils.make_url('subst'),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false,
-        'data': JSON.stringify(data)
-    })
-    .done(function (json) {
-        console.log("success");
-        var source_data = {
-            "file": data.file_name,
-            "display": ":" + data.line_start,
-            "line_start": data.line_start,
-            "line_end": data.line_end,
-            "column_start": data.column_start,
-            "column_end": parseInt(data.column_start) + parseInt(data.text.length)
-        };
-        load_source_view(source_data);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with subsitution for " + data);
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        load_error();
-        history.pushState({}, "", utils.make_url("#subst"));
-    });
-
-    hide_glob_menu();
-}
-
-function hide_glob_menu() {
-    hide_menu($("#div_glob_menu"));
-}
+const { GlobMenu } = require('./menus');
 
 function show_line_number_menu(event) {
     var menu = $("#div_line_number_menu");
@@ -228,12 +156,29 @@ function line_number_for_span(target) {
 }
 
 class SourceView extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { globMenu: null };
+    }
+
     componentDidMount() {
         rustw.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
 
-        add_source_jump_links();
-        add_glob_menus();
+        // Make source links active.
+        var linkables = $("#div_src_view").find(".src_link");
+        linkables.click(load_doc_or_src_link);
+
         add_ref_functionality();
+
+        if (CONFIG.unstable_features) {
+            var globs = $("#div_src_view").find(".glob");
+            const self = this;
+            globs.on("contextmenu", (ev) => {
+                self.setState({ globMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
+                ev.preventDefault();
+            });
+            globs.addClass("hand_cursor");
+        }
     }
 
     render() {
@@ -255,6 +200,14 @@ class SourceView extends React.Component {
             const lineId = "src_line_" + count;
             lines.push(<div className="div_src_line" id={lineId} key={"line-" + count} dangerouslySetInnerHTML={{__html: line}} />);
         }
+
+        let globMenu = null;
+        if (!!this.state.globMenu) {
+            const self = this;
+            const onClose = () => self.setState({ globMenu: null});
+            globMenu = <GlobMenu location={this.state.globMenu} onClose={onClose} target={this.state.globMenu.target} />;
+        }
+
         return <div id="div_src_view">
             <BreadCrumbs path={this.props.path} />
             <br />
@@ -266,6 +219,7 @@ class SourceView extends React.Component {
                     {lines}
                 </span>
             </div>
+            {globMenu}
         </div>;
     }
 }
