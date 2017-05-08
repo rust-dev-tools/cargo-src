@@ -11,6 +11,7 @@ import ReactDOM from 'react-dom';
 
 const rustw = require('./rustw');
 const { BreadCrumbs } = require('./breadCrumbs');
+const { quick_edit_line_number } = require('./quickEdit');
 
 function add_source_jump_links() {
     var linkables = $("#div_src_view").find(".src_link");
@@ -224,34 +225,6 @@ function hide_menu(menu) {
 function line_number_for_span(target) {
     var line_id = target.attr("id");
     return parseInt(line_id.slice("src_line_number_".length));
-}
-
-function quick_edit_line_number(event) {
-    hide_line_number_menu();
-    var file_name = history.state.file;
-    var line = line_number_for_span(event.data.target);
-
-    $.ajax({
-        url: utils.make_url('plain_text?file=' + file_name + '&line=' + line),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false,
-    })
-    .done(function (json) {
-        console.log("retrieve plain text - success");
-        $("#quick_edit_text").val(json.text);
-        $("#quick_edit_save").show();
-        $("#quick_edit_save").click(json, save_quick_edit);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with plain text request");
-        console.log("error: " + errorThrown + "; status: " + status);
-        $("#quick_edit_text").val("Error: could not load text");
-        $("#quick_edit_save").off("click");
-        $("#quick_edit_save").hide();
-    });
-
-    show_quick_edit(event);
 }
 
 class SourceView extends React.Component {

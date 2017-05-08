@@ -11,6 +11,7 @@ import { OrderedMap } from 'immutable';
 
 const { HideButton } = require('./hideButton');
 const rustw = require('./rustw');
+const { SrcLinkMenu } = require('./menus');
 
 class Snippet extends React.Component {
     constructor(props) {
@@ -45,10 +46,12 @@ class Snippet extends React.Component {
 }
 
 class SnippetSpan extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { menuOpen: null };
+    }
+
     componentDidMount() {
-        let src_links = $(".span_loc");
-        src_links.click(rustw.win_src_link);
-        src_links.on("contextmenu", rustw.show_src_link_menu);
         this.showHighlights();
     }
 
@@ -107,13 +110,27 @@ class SnippetSpan extends React.Component {
                 </div>;
         }
 
+        let menu = null;
+        if (!!this.state.menuOpen) {
+            const self = this;
+            const onClose = () => self.setState({ menuOpen: null});
+            menu = <SrcLinkMenu location={this.state.menuOpen} onClose={onClose} target={this.state.menuOpen.target} />;
+        }
+
+        const self = this;
+        const contextMenu = (ev) => {
+            self.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
+            ev.preventDefault();
+        };
+
         return (
             <span className="div_span" id={'div_span_' + id}>
-                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id}>
+                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id} onClick={(ev) => rustw.load_link.call(ev.target)} onContextMenu={contextMenu}>
                     {file_name}:{line_start}:{column_start}: {line_end}:{column_end}
                 </span>
                 {label}
                 {block}
+                {menu}
             </span>
         );
     }

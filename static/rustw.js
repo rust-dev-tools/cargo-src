@@ -59,28 +59,6 @@ module.exports = {
         };    
     },
 
-    win_src_link: function () {
-        topbar.renderTopBar("builtAndNavigating");
-        module.exports.load_link.call(this);
-    },
-
-    show_src_link_menu: function (event) {
-        var src_menu = $("#div_src_menu");
-        var data = show_menu(src_menu, event, hide_src_link_menu);
-
-        if (CONFIG.unstable_features) {
-            var edit_data = { 'link': data.target.attr("data-link"), 'hide_fn': hide_src_link_menu };
-            $("#src_menu_edit").click(edit_data, edit);
-            $("#src_menu_quick_edit").click(data, quick_edit_link);
-        } else {
-            $("#src_menu_edit").hide();
-            $("#src_menu_quick_edit").hide();        
-        }
-        $("#src_menu_view").click(data.target, view_from_menu);
-
-        return false;
-    },
-
     win_err_code: function (domElement, errData) {
         let element = $(domElement);
         var explain = element.attr("data-explain");
@@ -173,6 +151,8 @@ module.exports = {
     },
 
     load_link: function() {
+        topbar.renderTopBar("builtAndNavigating");
+
         var file_loc = this.dataset.link.split(':');
         var file = file_loc[0];
 
@@ -221,8 +201,23 @@ module.exports = {
             "column_end": column_end
         };
         load_source_view(data);
+    },
+
+    reload_source: function() {
+        if (history.state.page == "source") {
+            var source_data = {
+                "file": history.state.file,
+                "display": "",
+                "line_start": 0,
+                "line_end": 0,
+                "column_start": 0,
+                "column_end": 0
+            };
+            load_source_view(source_data);
+        }
     }
 };
+
 
 const errors = require("./errors");
 const err_code = require('./err_code');
@@ -236,7 +231,6 @@ const utils = require('./utils');
 function load_start() {
     $("#div_main").html("");
     // TODO at this point, it makes sense to make these programatically.
-    $("#div_src_menu").hide();
     $("#div_line_number_menu").hide();
     $("#div_ref_menu").hide();
     $("#div_glob_menu").hide();
@@ -536,7 +530,7 @@ function save_rename(event) {
         console.log("rename - success");
         $("#rename_message").text("rename saved");
 
-        reload_source();
+        module.exports.reload_source();
 
         // TODO add a fade-out animation here
         window.setTimeout(hide_rename, 1000);
@@ -566,96 +560,6 @@ function edit(event) {
     event.data.hide_fn();
 }
 
-function show_quick_edit(event) {
-    var quick_edit_div = $("#div_quick_edit");
-
-    quick_edit_div.show();
-    quick_edit_div.offset(event.data.position);
-
-    $("#quick_edit_text").prop("disabled", false);
-
-    $("#quick_edit_message").hide();
-    $("#quick_edit_cancel").text("cancel");
-    $("#quick_edit_cancel").click(hide_quick_edit);
-    $("#div_main").click(hide_quick_edit);
-    $("#div_header").click(hide_quick_edit);
-}
-
-// Quick edit for a source link in an error message.
-function quick_edit_link(event) {
-    hide_src_link_menu();
-
-    var id = event.data.target.attr("id");
-    var data = SNIPPET_PLAIN_TEXT[id];
-    show_quick_edit(event);
-    $("#quick_edit_save").show();
-    $("#quick_edit_save").click(data, save_quick_edit);
-
-    $("#quick_edit_text").val(data.plain_text);
-}
-
-function hide_quick_edit() {
-    $("#quick_edit_save").off("click");
-    $("#quick_edit_cancel").off("click");
-    $("#div_quick_edit").hide();
-}
-
-function show_quick_edit_saving() {
-    $("#quick_edit_message").show();
-    $("#quick_edit_message").text("saving...");
-    $("#quick_edit_save").hide();
-    $("#quick_edit_cancel").text("close");
-    $("#quick_edit_text").prop("disabled", true);
-}
-
-function save_quick_edit(event) {
-    show_quick_edit_saving();
-
-    var data = event.data;
-    data.text = $("#quick_edit_text").val();
-
-    $.ajax({
-        url: utils.make_url('quick_edit'),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false,
-        'data': JSON.stringify(data),
-    })
-    .done(function (json) {
-        console.log("quick edit - success");
-        $("#quick_edit_message").text("edit saved");
-
-        reload_source();
-
-        // TODO add a fade-out animation here
-        window.setTimeout(hide_quick_edit, 1000);
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with quick edit request");
-        console.log("error: " + errorThrown + "; status: " + status);
-        $("#quick_edit_message").text("error trying to save edit");
-    });
-}
-
-function reload_source() {
-    if (history.state.page == "source") {
-        var source_data = {
-            "file": history.state.file,
-            "display": "",
-            "line_start": 0,
-            "line_end": 0,
-            "column_start": 0,
-            "column_end": 0
-        };
-        load_source_view(source_data);
-    }
-}
-
-function view_from_menu(event) {
-    hide_src_link_menu();
-    win_src_link.call(event.data);
-}
-
 function show_menu(menu, event, hide_fn) {
     var target = $(event.target);
     var data = {
@@ -671,13 +575,4 @@ function show_menu(menu, event, hide_fn) {
     $("#div_header").click(hide_fn);
 
     return data;
-}
-
-function hide_src_link_menu() {
-    hide_menu($("#div_src_menu"));
-}
-
-function hide_menu(menu) {
-    menu.children("div").off("click");
-    menu.hide();
 }

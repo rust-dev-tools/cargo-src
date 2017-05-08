@@ -442,6 +442,10 @@ span#measure {
     padding: 10px;
     z-index: 1;
 }
+.menu_link {
+    text-decoration: underline;
+    cursor: pointer;
+}
 .src_menu_link {
     text-decoration: underline;
     cursor: pointer;

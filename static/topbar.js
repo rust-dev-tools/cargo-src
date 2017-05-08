@@ -139,6 +139,7 @@ function BuildButton(props) {
     return <span id="link_build" className={className} onClick={onClick}>{label}</span>;
 }
 
+// TODO could we share code with menus?
 class Options extends React.Component {
     constructor(props) {
         super(props);
