@@ -15,11 +15,11 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Instant;
 
-use rustdoc::html::highlight::{self, Classifier, Class};
+use rustdoc_highlight::{self as highlight, Classifier, Class};
 use span;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
-use syntax::codemap::{CodeMap, Loc};
+use syntax::codemap::{CodeMap, Loc, FilePathMapping};
 
 use analysis::AnalysisHost;
 use analysis::raw::DefKind;
@@ -28,8 +28,8 @@ type Span = span::Span<span::ZeroIndexed>;
 
 pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
 
     let mut out = Highlighter::new(analysis, project_path, sess.codemap());
 
@@ -46,8 +46,8 @@ pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_na
 
 pub fn custom_highlight<H: highlight::Writer + GetBuf>(file_name: String, file_text: String, highlighter: &mut H) -> String {
     debug!("custom_highlight `{}` in `{}`", file_text, file_name);
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap(file_name.clone(), None, file_text);
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
 
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
     classifier.write_source(highlighter).unwrap();

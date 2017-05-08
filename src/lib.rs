@@ -22,7 +22,9 @@ extern crate rls_analysis as analysis;
 extern crate rls_span as span;
 extern crate rls_vfs as vfs;
 extern crate rustc_serialize;
+// Used for markdown rendering
 extern crate rustdoc;
+extern crate rustdoc_highlight;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

@@ -365,7 +365,7 @@ impl Cache {
 
         // FIXME needs crate bread-crumb - needs a change to save-analysis to emit a top-level module: https://github.com/rust-lang/rust/issues/37818
         let bread_crumbs = self.analysis.def_parents(id).unwrap_or(vec![]).into_iter().map(|(id, name)| {
-            use rustdoc::html::highlight::Class;
+            use rustdoc_highlight::Class;
 
             let mut buf = vec![];
             let mut extra = HashMap::new();

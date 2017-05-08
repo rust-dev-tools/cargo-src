@@ -18,6 +18,7 @@ rls-span = "0.1"
 rls-vfs = "0.1"
 log = "0.3"
 env_logger = "0.3"
+rustdoc-highlight = { git = "https://github.com/nrc/rustdoc-highlight" }
 
 [dependencies.hyper]
 version = "0.8"
