@@ -12,37 +12,8 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { quick_edit_line_number } = require('./quickEdit');
-const { GlobMenu } = require('./menus');
+const { GlobMenu, LineNumberMenu } = require('./menus');
 
-function show_line_number_menu(event) {
-    var menu = $("#div_line_number_menu");
-    var data = show_menu(menu, event, hide_line_number_menu);
-
-    var line_number = line_number_for_span(data.target);
-    var file_name = history.state.file;
-    if (CONFIG.unstable_features) {
-        var edit_data = { 'link': file_name + ":" + line_number, 'hide_fn': hide_line_number_menu };
-        $("#line_number_menu_edit").click(edit_data, edit);
-        $("#line_number_quick_edit").click(data, quick_edit_line_number);
-    } else {
-        $("#line_number_menu_edit").hide();
-        $("#line_number_quick_edit").hide();
-    }
-
-    if (CONFIG.vcs_link) {
-        let link = $("#line_number_vcs").children().first();
-        link.click(function() { hide_line_number_menu(); return true; });
-        link.attr("href", CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number))
-    } else {
-        $("#line_number_vcs").hide();
-    }
-
-    return false;
-}
-
-function hide_line_number_menu() {
-    hide_menu($("#div_line_number_menu"));
-}
 
 function load_doc_or_src_link() {
     // TODO special case links to the same file
@@ -150,15 +121,10 @@ function hide_menu(menu) {
     menu.hide();
 }
 
-function line_number_for_span(target) {
-    var line_id = target.attr("id");
-    return parseInt(line_id.slice("src_line_number_".length));
-}
-
 class SourceView extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { globMenu: null };
+        this.state = { globMenu: null, lineNumberMenu: null };
     }
 
     componentDidMount() {
@@ -182,6 +148,7 @@ class SourceView extends React.Component {
     }
 
     render() {
+        const self = this;
         let numbers = [];
         let lines = []
         let count = 0;
@@ -189,7 +156,12 @@ class SourceView extends React.Component {
         for (const l of this.props.lines) {
             count += 1;
             const numId = "src_line_number_" + count;
-            numbers.push(<div className="div_src_line_number hand_cursor" id={numId} key={"num-" + count} onContextMenu={show_line_number_menu}>{count}</div>);
+            const link = this.props.path.join('/') + ":" + count;
+            const showLineNumberMenu = (ev) => {
+                self.setState({ lineNumberMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
+                ev.preventDefault();                
+            };
+            numbers.push(<div className="div_src_line_number hand_cursor" id={numId} key={"num-" + count} onContextMenu={showLineNumberMenu} data-link={link}>{count}</div>);
 
             let line;
             if (!l) {
@@ -203,9 +175,14 @@ class SourceView extends React.Component {
 
         let globMenu = null;
         if (!!this.state.globMenu) {
-            const self = this;
-            const onClose = () => self.setState({ globMenu: null});
+            const onClose = () => self.setState({ globMenu: null });
             globMenu = <GlobMenu location={this.state.globMenu} onClose={onClose} target={this.state.globMenu.target} />;
+        }
+
+        let lineNumberMenu = null;
+        if (!!this.state.lineNumberMenu) {
+            const onClose = () => self.setState({ lineNumberMenu: null });
+            lineNumberMenu = <LineNumberMenu location={this.state.lineNumberMenu} onClose={onClose} target={this.state.lineNumberMenu.target} />;            
         }
 
         return <div id="div_src_view">
@@ -220,6 +197,7 @@ class SourceView extends React.Component {
                 </span>
             </div>
             {globMenu}
+            {lineNumberMenu}
         </div>;
     }
 }

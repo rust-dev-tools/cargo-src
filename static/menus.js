@@ -24,6 +24,11 @@ class Menu extends React.Component {
     }
 
     didRender() {
+        if (this.isEmpty) {
+            this.props.onClose();
+            return;
+        }
+
         var menuDiv = $("#" + this.props.id);
         menuDiv.offset(this.props.location);
     }
@@ -47,6 +52,10 @@ class Menu extends React.Component {
                 items.push(<div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>);
             }
         }
+        if (items == 0) {
+            this.isEmpty = true;
+            return null;
+        }
         return <div>
             <div id="div_overlay" onClick={hideMenu} />
             <div id={this.props.id} className="div_menu">
@@ -67,15 +76,26 @@ function SrcLinkMenu(props) {
     return <Menu id={"div_src_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
 }
 
-// TODO
 function LineNumberMenu(props) {
-    const items = [
+    let items = [
         { id: "line_number_menu_edit", label: "edit", fn: edit, unstable: true },
-        { id: "line_number_quick_edit", label: "quick edit", fn: quick_edit_link, unstable: true },
-        // <a target="_blank" class="link">view in VCS</a>
-        { id: "line_number_vcs", label: "view in VCS", fn: TODO }
+        { id: "line_number_quick_edit", label: "quick edit", fn: quick_edit_link, unstable: true }
     ];
+    if (CONFIG.vcs_link) {
+        items.push({ id: "line_number_vcs", label: "view in VCS", fn: view_in_vcs });
+    }
     return <Menu id={"div_line_number_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
+}
+
+function view_in_vcs(target) {
+    const file_name = history.state.file;
+    const line_number = line_number_for_span(target);
+    window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
+}
+
+function line_number_for_span(target) {
+    var line_id = target.getAttribute("id");
+    return parseInt(line_id.slice("src_line_number_".length));
 }
 
 // TODO
@@ -159,4 +179,4 @@ function edit(target) {
     });
 }
 
-module.exports = { SrcLinkMenu, GlobMenu };
+module.exports = { SrcLinkMenu, GlobMenu, LineNumberMenu };

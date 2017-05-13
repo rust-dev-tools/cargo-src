@@ -7,6 +7,7 @@
 // except according to those terms.
 
 // TODO test and fix it
+// `data is undefined`
 
 function quick_edit_line_number(event) {
     var file_name = history.state.file;
