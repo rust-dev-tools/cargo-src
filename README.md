@@ -33,10 +33,8 @@ Motivation:
 
 ## Building
 
-You must perform the first three steps, the forth is optional. Requires a nightly
-version of Rust to build.
+Requires a nightly version of Rust to build.
 
-* `cargo build --release` to build the Rust parts.
 * setup the React/webpack environment (requires npm):
 ```sh
 npm install
@@ -55,6 +53,7 @@ npm install --save-dev webpack
 npm install --save-dev immutable
 ```
 * build the JS components: `npm run build` or `yarn build`
+* `cargo build --release` to build the Rust parts.
 
 ## Running
 
@@ -144,4 +143,4 @@ heavy use of JSON for communicating between rustc and rustw and between the
 server and client. For JSON serialisation/deserialisation we use Serde.rs.
 
 The rustw frontend is a single page web app written in HTML and Javascript. It
-uses Handlebars for templating, and JQuery, it doesn't use any other framework.
+uses React and JQuery.
