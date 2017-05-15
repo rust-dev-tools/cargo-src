@@ -9,140 +9,95 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+module.exports = {
+    pullSummary: function(id) {
+        pullSummaryInternal(id);
+    },
+    loadSummary: function(state) {
+        loadSummaryInternal(state);
+    },
+};
+
 const rustw = require('./rustw');
+const { RefMenu } = require('./menus');
+const utils = require('./utils');
+const topbar = require('./topbar');
 
-// TODO dup'ed in srcView
-function show_ref_menu(event) {
-    var menu = $("#div_ref_menu");
-    var data = show_menu(menu, event, hide_ref_menu);
-    data.id = event.data;
-
-    var doc_url = data.target.attr("doc_url");
-    if (doc_url) {
-        var view_data = { 'link': doc_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_docs").show();
-        $("#ref_menu_view_docs").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_docs").hide();
-    }
-
-    var src_url = data.target.attr("src_url");
-    if (src_url) {
-        var view_data = { 'link': src_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_source").show();
-        $("#ref_menu_view_source").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_source").hide();
-    }
-
-    $("#ref_menu_view_summary").click(event.data, (ev) => summary(ev.data));
-    $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
-
-    let impls = data.target.attr("impls");
-    // FIXME we could display the impl count in the menu
-    if (impls && impls != "0") {
-        $("#ref_menu_find_impls").click(event.data, (ev) => find_impls(ev.data));
-    } else {
-        $("#ref_menu_find_impls").hide();
-    }
-
-    if (CONFIG.unstable_features) {
-        $("#ref_menu_rename").click(data, show_rename);
-    } else {
-        $("#ref_menu_rename").hide();
-    }
-
-    return false;
-}
-
-function open_tab(event) {
-    window.open(event.data.link, '_blank');
-    event.data.hide_fn();
-}
-
-// TODO dup'ed in rustw.js
-function show_menu(menu, event, hide_fn) {
-    var target = $(event.target);
-    var data = {
-        "position": { "top": event.pageY, "left": event.pageX },
-        "target": target
-    };
-
-    menu.show();
-    menu.offset(data.position);
-
-    // TODO can we do better than this to close the menu? (Also options menu).
-    $("#div_main").click(hide_fn);
-    $("#div_header").click(hide_fn);
-
-    return data;
-}
-
-// TODO dup'ed in rustw.js
-function hide_ref_menu() {
-    hide_menu($("#div_ref_menu"));
-}
-
-// TODO dup'ed in rustw.js
-function hide_menu(menu) {
-    menu.children("div").off("click");
-    menu.hide();
-}
-
-// TODO needs testing
 class Summary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { showDocs: false };
+        this.state = { showDocs: false, refMenu: null };
     }
 
     componentDidMount() {
+        const self = this;
+        const showRefMenu = (ev, id) => {
+            self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
+            ev.preventDefault();
+        };
+
+        const loadLink = (e) => {
+            rustw.load_link.call(e.target);
+            e.preventDefault();
+        };
+
         // Make link and menus for idents on the page.
         let idents = $(".summary_ident");
-        idents.click(rustw.load_link);
+        idents.click(loadLink);
         idents.on("contextmenu", (ev) => {
-            let target = ev.target;
-            ev.data = ev.target.id.substring("def_".length);
-            return show_ref_menu(ev);
+            return showRefMenu(ev, ev.target.id.substring("def_".length));
         });
 
         // Add links and menus for breadcrumbs.
         let breadcrumbs = $(".link_breadcrumb");
-        breadcrumbs.click(rustw.load_link);
+        breadcrumbs.click(loadLink);
         breadcrumbs.on("contextmenu", (ev) => {
-            let target = ev.target;
-            ev.data = ev.target.id.substring("breadcrumb_".length);
-            return show_ref_menu(ev);
+            return showRefMenu(ev, ev.target.id.substring("breadcrumb_".length));
         });
     }
 
     render() {
+        const loadLink = (e) => {
+            rustw.load_link.call(e.target);
+            e.preventDefault();
+        };
         let breadCrumbs = [];
         for (const bc in this.props.breadCrumbs) {
             breadCrumbs.push(<span>{bc} :: </span>);
         }
         let parent = null;
         if (this.props.parent) {
-            parent = <span className="small_button" id="jump_up" data-link={'summary:' + this.props.parent} onClick={rustw.load_link}>&#x2191;</span>;
+            parent = <span className="small_button" id="jump_up" data-link={'summary:' + this.props.parent} onClick={loadLink}>&#x2191;</span>;
         }
 
         let docExpandButton = null;
+        let docsRest = null;
         if (this.props.doc_rest) {
+            const self = this;
             if (this.state.showDocs) {
-                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => $("#div_summary_doc_more").hide()}>-</span>;
+                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => self.setState({ showDocs: false })}>-</span>;
+                docsRest = <div id="div_summary_doc_more" dangerouslySetInnerHTML={{__html: this.props.doc_rest}} />;
             } else {
-                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => $("#div_summary_doc_more").show()}>+</span>;
+                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => self.setState({ showDocs: true })}>+</span>;
             }
         }
 
         let children = [];
         for (const c of this.props.children) {
             children.push(<div className="div_summary_sub" id={"div_summary_sub_" + c.id} key={c.id}>
-                            <span className="jump_children small_button" data-link={"summary:" + c.id} onClick={rustw.load_link}>&#x2192;</span>
+                            <span className="jump_children small_button" data-link={"summary:" + c.id} onClick={loadLink}>&#x2192;</span>
                             <span className="summary_sig_sub div_all_span_src" dangerouslySetInnerHTML={{__html: c.signature}} />
                             <p className="div_summary_doc_sub" dangerouslySetInnerHTML={{__html: c.doc_summary}} />
                         </div>);
         }
+
+        let refMenu = null;
+        if (!!this.state.refMenu) {
+            const self = this;
+            const onClose = () => self.setState({ refMenu: null });
+            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;            
+        }
+
         return <div id="div_summary">
             <div id="div_mod_path">
                 {breadCrumbs}
@@ -154,21 +109,53 @@ class Summary extends React.Component {
                 </div>
                 <div className="div_summary_doc">
                     {docExpandButton}<span id="div_summary_doc_summary" dangerouslySetInnerHTML={{__html: this.props.doc_summary}} />
-                    <div id="div_summary_doc_more" dangerouslySetInnerHTML={{__html: this.props.doc_rest}} />
+                    {docsRest}
                 </div>
                 <div className="div_summary_children">
                     {children}
                 </div>
             </div>
+            {refMenu}
         </div>;
     }
 }
 
-module.exports = {
-    renderSummary: function(data, container) {
-        ReactDOM.render(
-            <Summary breadCrumbs={data.breadCrumbs} parent={data.parent} signature={data.signature} doc_summary={data.doc_summary} doc_rest={data.doc_rest} children={data.children} />,
-            container
-        );
-    }
+function pullSummaryInternal(id) {
+    $.ajax({
+        url: utils.make_url('summary?id=' + id),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "summary",
+            "data": json,
+            "id": id,
+        };
+        loadSummaryInternal(state);
+        history.pushState(state, "", utils.make_url("#summary=" + id));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with summary request for " + id);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        rustw.load_error();
+        history.pushState({}, "", utils.make_url("#summary=" + id));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
+function loadSummaryInternal(state) {
+    topbar.renderTopBar("builtAndNavigating");
+    renderSummary(state.data, $("#div_main").get(0));
+    window.scroll(0, 0);
+}
+
+function renderSummary(data, container) {
+    ReactDOM.render(
+        <Summary breadCrumbs={data.breadCrumbs} parent={data.parent} signature={data.signature} doc_summary={data.doc_summary} doc_rest={data.doc_rest} children={data.children} />,
+        container
+    );
 }

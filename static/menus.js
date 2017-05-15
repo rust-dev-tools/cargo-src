@@ -11,6 +11,8 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const utils = require('./utils');
 const { quick_edit_link } = require('./quickEdit');
+const search = require('./search');
+const summary = require('./summary');
 
 // props: { id, items: [{id, label, fn, unstable}], location, onClose, target }
 //   fn: (target: Element, location) -> ()
@@ -65,6 +67,8 @@ class Menu extends React.Component {
     }
 }
 
+// TODO move actions into their own module
+
 // props: location, onClose, target
 // location: { "top": event.pageY, "left": event.pageX }
 function SrcLinkMenu(props) {
@@ -98,16 +102,31 @@ function line_number_for_span(target) {
     return parseInt(line_id.slice("src_line_number_".length));
 }
 
-// TODO
+// props: location, onClose, target, id
+// location: { "top": event.pageY, "left": event.pageX }
 function RefMenu(props) {
-    const items = [
-        { id: "ref_menu_view_summary", label: "view summary", fn: TODO },
-        { id: "ref_menu_view_docs", label: "view docs", fn: TODO },
-        { id: "ref_menu_view_source", label: "view source", fn: TODO },
-        { id: "ref_menu_find_uses", label: "find all uses", fn: TODO },
-        { id: "ref_menu_find_impls", label: "find impls", fn: TODO },
-        { id: "ref_menu_rename", label: "refactor - rename", fn: TODO, unstable: true }
-    ];
+    // TODO summary, findUses, findImpls are going wrong - bad id, I think
+    // target doesn't have id field
+    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => summary.pullSummary(props.id) }];
+
+    const docUrl = props.target.dataset['doc-url'];
+    if (docUrl) {
+        items.push({ id: "ref_menu_view_docs", label: "view docs", fn: () => window.open(docUrl, '_blank') });
+    }
+    const srcUrl = props.target.dataset['src-url'];
+    if (srcUrl) {
+        items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
+    }
+
+    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => search.findUses(props.id) });
+
+    let impls = props.target.dataset.impls;
+    if (impls && impls != "0") {
+        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => search.findImpls(props.id) });
+    }
+
+    items.push({ id: "ref_menu_rename", label: "refactor - rename", fn: show_rename, unstable: true });
+
     return <Menu id={"div_ref_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
 }
 
@@ -162,7 +181,6 @@ function deglob(target) {
     });
 }
 
-// Needs testing
 function edit(target) {
     $.ajax({
         url: utils.make_url('edit?file=' + target.dataset.link),
@@ -179,4 +197,77 @@ function edit(target) {
     });
 }
 
-module.exports = { SrcLinkMenu, GlobMenu, LineNumberMenu };
+function show_rename(target, location) {
+    let id = null;
+    for (const c of target.className.split(' ')) {
+        if (c.startsWith('class_id_')) {
+            id = c.slice('class_id_'.length);
+            break;
+        }
+    }
+    if (!id) {
+        console.log("Couldn't find id for element");
+        console.log(target);
+        return;
+    }
+
+    var div_rename = $("#div_rename");
+
+    div_rename.show();
+    div_rename.offset(location);
+
+    $("#rename_text").prop("disabled", false);
+
+    $("#rename_message").hide();
+    $("#rename_cancel").text("cancel");
+    $("#rename_cancel").click(hide_rename);
+    $("#div_main").click(hide_rename);
+    $("#div_header").click(hide_rename);
+    $("#rename_save").show();
+    $("#rename_save").click(() => save_rename(id));
+    $(document).on("keypress", "#rename_text", function(e) {
+         if (e.which == 13) {
+             save_rename(id);
+         }
+    });
+
+    $("#rename_text").val(target.textContent);
+    $("#rename_text").select();
+}
+
+function hide_rename() {
+    $("#rename_save").off("click");
+    $("#rename_cancel").off("click");
+    $("#div_rename").hide();
+}
+
+function save_rename(id) {
+    $("#rename_message").show();
+    $("#rename_message").text("saving...");
+    $("#rename_save").hide();
+    $("#rename_cancel").text("close");
+    $("#rename_text").prop("disabled", true);
+
+    $.ajax({
+        url: utils.make_url('rename?id=' + id + "&text=" + $("#rename_text").val()),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        console.log("rename - success");
+        $("#rename_message").text("rename saved");
+
+        module.exports.reload_source();
+
+        // TODO add a fade-out animation here
+        window.setTimeout(hide_rename, 1000);
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with rename request");
+        console.log("error: " + errorThrown + "; status: " + status);
+        $("#rename_message").text("error trying to save rename");
+    });
+}
+
+module.exports = { SrcLinkMenu, GlobMenu, LineNumberMenu, RefMenu };

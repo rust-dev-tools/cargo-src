@@ -9,6 +9,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
+const utils = require('./utils');
 
 // FIXME there is a bunch of refactoring that could be done here
 
@@ -20,22 +21,25 @@ class FindResults extends React.Component {
     }
 
     render() {
-        if (!props.results) {
+        if (!this.props.results) {
             return <span className="div_search_no_results">No results found</span>;
         } else {
-            const loadLink = (e) => rustw.load_link.call(e.target);
+            const loadLink = (e) => {
+                rustw.load_link.call(e.target);
+                e.preventDefault();
+            };
             let results = [];
             let count = 0;
-            for (const r of props.results) {
+            for (const r of this.props.results) {
                 let lines = [];
                 for (const l of r.lines) {
                     const lineLink = r.file_name + ":" + l.line_start;
-                    const spanLink = lineLink  + ":" + l.column_start + ":" + l.line_start + ":" + column_end;
+                    const spanLink = lineLink  + ":" + l.column_start + ":" + l.line_start + ":" + l.column_end;
                     const lineNumberId = "snippet_line_number_result_" + count + "_" + l.line_start;
-                    const lineId = "snippet_line_def_" + count + "_" + l.line_start;
+                    const lineId = "snippet_line_result_" + count + "_" + l.line_start;
                     lines.push(<span key={l.line_start}>
-                                    <span className="div_span_src_number" data-link={lineLink}  onClick={loadLink}>
-                                        <div className="span_src_number" id={lineNumberId}>{l.line_start}</div>
+                                    <span className="div_span_src_number">
+                                        <div className="span_src_number" id={lineNumberId} data-link={lineLink} onClick={loadLink}>{l.line_start}</div>
                                     </span>
                                     <span className="div_span_src">
                                         <div className="span_src" id={lineId} data-link={spanLink} onClick={loadLink} dangerouslySetInnerHTML={{__html: l.line}} />
@@ -43,8 +47,8 @@ class FindResults extends React.Component {
                                     <br />
                                </span>);
                 }
-                results.push(<div>
-                                <div className="div_search_file_link" data-link={r.file_name} key={r.file_name} onClick={loadLink}>{r.file_name}</div>
+                results.push(<div key={r.file_name}>
+                                <div className="div_search_file_link" data-link={r.file_name} onClick={loadLink}>{r.file_name}</div>
                                 <div className="div_all_span_src">
                                     {lines}
                                 </div>
@@ -72,7 +76,10 @@ class SearchResults extends React.Component {
         if (!this.props.defs) {
             return <span className="div_search_no_results">No results found</span>;
         } else {
-            const loadLink = (e) => rustw.load_link.call(e.target);
+            const loadLink = (e) => {
+                rustw.load_link.call(e.target);
+                e.preventDefault();
+            };
             let defs = [];
             let count = 0;
             for (const d of this.props.defs) {
@@ -83,8 +90,8 @@ class SearchResults extends React.Component {
                     const snippetLink = lineLink + ":" + l.column_start + ":" +  l.line_start + ":" + l.column_end;
                     const snippetId = "snippet_line_def_" + count + "_" + l.line_start;
                     lines.push(<div key={"def-" + lineLink}>
-                        <span className="div_span_src_number" data-link={lineLink} onClick={loadLink}>
-                            <div className="span_src_number" id={lineId}>{l.line_start}</div>
+                        <span className="div_span_src_number">
+                            <div className="span_src_number" id={lineId} data-link={lineLink} onClick={loadLink}>{l.line_start}</div>
                         </span>
                         <span className="div_span_src">
                             <div className="span_src" id={snippetId} data-link={snippetLink} onClick={loadLink} dangerouslySetInnerHTML={{__html: l.line}} />
@@ -111,8 +118,8 @@ class SearchResults extends React.Component {
                     const snippetLink = lineLink + ":" + l.column_start + ":" +  l.line_start + ":" + l.column_end;
                     const snippetId = "snippet_line_ref_" + count + "_" + l.line_start;
                     lines.push(<div key={"ref-" + lineLink}>
-                        <span className="div_span_src_number" data-link={lineLink} onClick={loadLink}>
-                            <div className="span_src_number" id={lineId}>{l.line_start}</div>
+                        <span className="div_span_src_number">
+                            <div className="span_src_number" id={lineId} data-link={lineLink} onClick={loadLink}>{l.line_start}</div>
                         </span>
                         <span className="div_span_src">
                             <div className="span_src" id={snippetId} data-link={snippetLink} onClick={loadLink} dangerouslySetInnerHTML={{__html: l.line}} />
@@ -154,6 +161,61 @@ function highlight_needle(results, tag) {
     }
 }
 
+function findUses(needle) {
+    $.ajax({
+        url: utils.make_url('search?id=' + needle),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "search",
+            "data": json,
+            "id": needle,
+        };
+        rustw.load_search(state);
+        history.pushState(state, "", utils.make_url("#search=" + needle));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with search request for " + needle);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        rustw.load_error();
+        history.pushState({}, "", utils.make_url("#search=" + needle));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
+function findImpls(needle) {
+    $.ajax({
+        url: utils.make_url('find?impls=' + needle),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        var state = {
+            "page": "find",
+            "data": json,
+            "kind": "impls",
+            "id": needle,
+        };
+        rustw.load_find(state);
+        history.pushState(state, "", utils.make_url("#impls=" + needle));
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with find (impls) request for " + needle);
+        console.log("error: " + errorThrown + "; status: " + status);
+
+        rustw.load_error();
+        history.pushState({}, "", utils.make_url("#impls=" + needle));
+    });
+
+    $("#div_main").text("Loading...");
+}
+
 module.exports = {
     renderFindResults: function(results, container) {
         ReactDOM.render(<FindResults results={results}/>, container);
@@ -161,5 +223,7 @@ module.exports = {
 
     renderSearchResults: function(defs, refs, container) {
         ReactDOM.render(<SearchResults defs={defs} refs={refs}/>, container);
-    }
+    },
+
+    findImpls, findUses
 }

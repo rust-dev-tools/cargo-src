@@ -223,7 +223,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         maybe_insert!(extra, "data-link", link);
                         maybe_insert!(extra, "data-doc-link", doc_link);
                         maybe_insert!(extra, "data-src-link", src_link);
-                        extra.insert("impls".to_owned(), impls.to_string());
+                        extra.insert("data-impls".to_owned(), impls.to_string());
 
                         write_span(&mut self.buf,
                                    Class::Ident,

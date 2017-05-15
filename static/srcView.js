@@ -12,7 +12,7 @@ import ReactDOM from 'react-dom';
 const rustw = require('./rustw');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { quick_edit_line_number } = require('./quickEdit');
-const { GlobMenu, LineNumberMenu } = require('./menus');
+const { GlobMenu, LineNumberMenu, RefMenu } = require('./menus');
 
 
 function load_doc_or_src_link() {
@@ -27,7 +27,7 @@ function load_doc_or_src_link() {
 }
 
 // Menus, highlighting on mouseover.
-function add_ref_functionality() {
+function add_ref_functionality(self) {
     for (const el of $("#div_src_view").find(".class_id")) {
         const element = $(el);
         const classes = el.className.split(' ');
@@ -40,7 +40,11 @@ function add_ref_functionality() {
                 });
 
                 const id = c.slice('class_id_'.length);
-                element.on("contextmenu", null, id, show_ref_menu);
+                const showRefMenu = (ev) => {
+                    self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
+                    ev.preventDefault();
+                };
+                element.on("contextmenu", showRefMenu);
                 element.addClass("hand_cursor");
 
                 break;
@@ -49,82 +53,10 @@ function add_ref_functionality() {
     }
 }
 
-// TODO dup'ed in rustw.js
-function show_ref_menu(event) {
-    var menu = $("#div_ref_menu");
-    var data = show_menu(menu, event, hide_ref_menu);
-    data.id = event.data;
-
-    var doc_url = data.target.attr("doc_url");
-    if (doc_url) {
-        var view_data = { 'link': doc_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_docs").show();
-        $("#ref_menu_view_docs").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_docs").hide();
-    }
-
-    var src_url = data.target.attr("src_url");
-    if (src_url) {
-        var view_data = { 'link': src_url, 'hide_fn': hide_ref_menu };
-        $("#ref_menu_view_source").show();
-        $("#ref_menu_view_source").click(view_data, open_tab);
-    } else {
-        $("#ref_menu_view_source").hide();
-    }
-
-    $("#ref_menu_view_summary").click(event.data, (ev) => summary(ev.data));
-    $("#ref_menu_find_uses").click(event.data, (ev) => find_uses(ev.data));
-
-    let impls = data.target.attr("impls");
-    // FIXME we could display the impl count in the menu
-    if (impls && impls != "0") {
-        $("#ref_menu_find_impls").click(event.data, (ev) => find_impls(ev.data));
-    } else {
-        $("#ref_menu_find_impls").hide();
-    }
-
-    if (CONFIG.unstable_features) {
-        $("#ref_menu_rename").click(data, show_rename);
-    } else {
-        $("#ref_menu_rename").hide();
-    }
-
-    return false;
-}
-
-function hide_ref_menu() {
-    hide_menu($("#div_ref_menu"));
-}
-
-// TODO dup'ed
-function show_menu(menu, event, hide_fn) {
-    var target = $(event.target);
-    var data = {
-        "position": { "top": event.pageY, "left": event.pageX },
-        "target": target
-    };
-
-    menu.show();
-    menu.offset(data.position);
-
-    // TODO use the overlay trick.
-    $("#div_main").click(hide_fn);
-    $("#div_header").click(hide_fn);
-
-    return data;
-}
-
-// TODO dup'ed
-function hide_menu(menu) {
-    menu.children("div").off("click");
-    menu.hide();
-}
-
 class SourceView extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { globMenu: null, lineNumberMenu: null };
+        this.state = { globMenu: null, lineNumberMenu: null, refMenu: null };
     }
 
     componentDidMount() {
@@ -134,7 +66,7 @@ class SourceView extends React.Component {
         var linkables = $("#div_src_view").find(".src_link");
         linkables.click(load_doc_or_src_link);
 
-        add_ref_functionality();
+        add_ref_functionality(this);
 
         if (CONFIG.unstable_features) {
             var globs = $("#div_src_view").find(".glob");
@@ -185,6 +117,12 @@ class SourceView extends React.Component {
             lineNumberMenu = <LineNumberMenu location={this.state.lineNumberMenu} onClose={onClose} target={this.state.lineNumberMenu.target} />;            
         }
 
+        let refMenu = null;
+        if (!!this.state.refMenu) {
+            const onClose = () => self.setState({ refMenu: null });
+            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
+        }
+
         return <div id="div_src_view">
             <BreadCrumbs path={this.props.path} />
             <br />
@@ -198,6 +136,7 @@ class SourceView extends React.Component {
             </div>
             {globMenu}
             {lineNumberMenu}
+            {refMenu}
         </div>;
     }
 }

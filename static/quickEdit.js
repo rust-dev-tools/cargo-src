@@ -9,6 +9,7 @@
 // TODO test and fix it
 // `data is undefined`
 
+// TODO is this used?
 function quick_edit_line_number(event) {
     var file_name = history.state.file;
     var line = line_number_for_span(event.data.target);
