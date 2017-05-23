@@ -225,7 +225,7 @@ impl<'a> Handler<'a> {
     fn handle_config<'b: 'a, 'k: 'a>(&mut self,
                                      _req: Request<'b, 'k>,
                                      mut res: Response<'b, Fresh>) {
-        let text = serde_json::to_string(&self.config).unwrap();
+        let text = serde_json::to_string(&**self.config).unwrap();
 
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();

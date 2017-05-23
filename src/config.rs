@@ -8,58 +8,7 @@
 
 use toml;
 
-// Copy-pasta from rustfmt (but using Serde instead of rustc_decode).
-macro_rules! impl_enum_decodable {
-    ( $e:ident, $( $x:ident ),* ) => {
-        impl ::serde::Deserialize for $e {
-            fn decode<D: ::serde::Deserializer>(d: &mut D) -> Result<Self, D::Error> {
-                use std::ascii::AsciiExt;
-                let s = try!(d.read_str());
-                $(
-                    if stringify!($x).eq_ignore_ascii_case(&s) {
-                      return Ok($e::$x);
-                    }
-                )*
-                Err(d.error("Bad variant"))
-            }
-        }
-
-        impl ::std::str::FromStr for $e {
-            type Err = &'static str;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                use std::ascii::AsciiExt;
-                $(
-                    if stringify!($x).eq_ignore_ascii_case(s) {
-                        return Ok($e::$x);
-                    }
-                )*
-                Err("Bad variant")
-            }
-        }
-
-        impl ::config::ConfigType for $e {
-            fn get_variant_names() -> String {
-                let mut variants = Vec::new();
-                $(
-                    variants.push(stringify!($x));
-                )*
-                format!("[{}]", variants.join("|"))
-            }
-        }
-    };
-}
-
-macro_rules! configuration_option_enum {
-    ($e:ident: $( $x:ident ),+ $(,)*) => {
-        #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-        pub enum $e {
-            $( $x ),+
-        }
-
-        impl_enum_decodable!($e, $( $x ),+);
-    }
-}
+// Copy-pasta from rustfmt.
 
 // This trait and the following impl blocks are there so that we an use
 // UCFS inside the get_docs() function on types for configs.
@@ -87,7 +36,7 @@ impl ConfigType for String {
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $unstable:expr, $( $dstring:expr ),+ );+ $(;)*) => (
-        #[derive(Serialize, RustcDecodable, Clone)]
+        #[derive(Serialize, Deserialize, Clone)]
         pub struct Config {
             $(pub $i: $ty),+
         }
@@ -97,7 +46,7 @@ macro_rules! create_config {
         // specity all properties of `Config`.
         // We first parse into `ParsedConfig`, then create a default `Config`
         // and overwrite the properties with corresponding values from `ParsedConfig`
-        #[derive(RustcDecodable, Clone)]
+        #[derive(Deserialize, Clone)]
         pub struct ParsedConfig {
             $(pub $i: Option<$ty>),+
         }
@@ -114,17 +63,8 @@ macro_rules! create_config {
                 self
             }
 
-            pub fn from_toml(toml: &str) -> Config {
-                let parsed = toml.parse().expect("Could not parse TOML");
-                let parsed_config:ParsedConfig = match toml::decode(parsed) {
-                    Some(decoded) => decoded,
-                    None => {
-                        debug!("Decoding config file failed. Config:\n{}", toml);
-                        let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
-                        debug!("\n\nParsed:\n{:?}", parsed);
-                        panic!();
-                    }
-                };
+            pub fn from_toml(s: &str) -> Config {
+                let parsed_config: ParsedConfig = toml::from_str(s).expect("Could not parse TOML");
                 Config::default().fill_from_parsed_config(parsed_config)
             }
 
