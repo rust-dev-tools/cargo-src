@@ -17,7 +17,7 @@ use analysis::{AnalysisHost, Target};
 use rustdoc::html::markdown;
 use rustdoc::html::markdown::RenderType;
 use span;
-use vfs::Vfs;
+use vfs::{Vfs, FileContents};
 
 use super::highlight;
 
@@ -131,7 +131,19 @@ impl Cache {
     }
 
     pub fn get_text(&self, path: &Path) -> Result<String, String> {
-        self.files.load_file(path).map_err(|e| e.into())
+        match self.files.load_file(path) {
+            Ok(FileContents::Text(s)) => Ok(s),
+            Ok(FileContents::Binary(_)) => Err(::vfs::Error::BadFileKind.into()),
+            Err(e) => Err(e.into())
+        }
+    }
+
+    pub fn get_bytes(&self, path: &Path) -> Result<Vec<u8>, String> {
+        match self.files.load_file(path) {
+            Ok(FileContents::Text(s)) => Ok(s.into_bytes()),
+            Ok(FileContents::Binary(b)) => Ok(b),
+            Err(e) => Err(e.into())
+        }
     }
 
     pub fn get_line_count(&self, path: &Path) -> Result<usize, String> {
@@ -153,6 +165,11 @@ impl Cache {
         vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
         vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
+            let text = match text {
+                Some(t) => t,
+                None => return Err(::vfs::Error::BadFileKind),
+            };
+
             if u.new_lines.is_empty() {
                 u.new_lines = compute_new_lines(text)
             }
@@ -176,6 +193,10 @@ impl Cache {
         vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
         vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
+            let text = match text {
+                Some(t) => t,
+                None => return Err(::vfs::Error::BadFileKind),
+            };
             if u.highlighted_lines.is_empty() {
                 let highlighted = highlight::highlight(&self.analysis,
                                                        &self.project_dir,

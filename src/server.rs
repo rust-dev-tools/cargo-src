@@ -163,13 +163,15 @@ impl<'a> Handler<'a> {
         };
 
         let file_cache = self.file_cache.lock().unwrap();
-        if let Ok(s) = file_cache.get_text(&path_buf) {
-            trace!("handle_static: serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), s.len(), content_type);
+        let file_contents = file_cache.get_bytes(&path_buf);
+        if let Ok(bytes) = file_contents {
+            trace!("handle_static: serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), bytes.len(), content_type);
             res.headers_mut().set(content_type);
-            res.send(s.as_bytes()).unwrap();
+            res.send(&bytes).unwrap();
             return;
         }
 
+        trace!("404 {:?}", file_contents);
         self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
     }
 
