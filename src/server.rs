@@ -30,6 +30,7 @@ use hyper::server::response::Response;
 use hyper::status::StatusCode;
 use hyper::uri::RequestUri;
 use serde_json;
+use span;
 use url::parse_path;
 
 /// An instance of the server. Runs a session of rustw.
@@ -551,19 +552,9 @@ impl<'a> Handler<'a> {
 
                 // Hard-coded 2 lines of context before and after target line.
                 let line_start = line.saturating_sub(3);
-                let mut line_end = line + 2;
-                let len = match file_cache.get_line_count(&Path::new(&file_name)) {
-                    Ok(l) => l,
-                    Err(msg) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
-                        return;
-                    }
-                };
-                if line_end >= len {
-                    line_end = len - 1;
-                }
+                let line_end = line + 2;
 
-                match file_cache.get_lines(&Path::new(&file_name), line_start, line_end) {
+                match file_cache.get_lines(&Path::new(&file_name), span::Row::new_zero_indexed(line_start as u32), span::Row::new_zero_indexed(line_end as u32)) {
                     Ok(ref lines) => {
                         res.headers_mut().set(ContentType::json());
                         let result = TextResult {

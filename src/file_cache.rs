@@ -146,16 +146,10 @@ impl Cache {
         }
     }
 
-    pub fn get_line_count(&self, path: &Path) -> Result<usize, String> {
-        self.ensure_new_lines_then(path, |_, u| Ok(u.new_lines.len()))
-    }
-
-    pub fn get_lines(&self, path: &Path, line_start: usize, line_end: usize) -> Result<String, String> {
-        self.ensure_new_lines_then(path, |f, u| {
-            let line_start = u.new_lines[line_start];
-            let line_end = u.new_lines[line_end] - 1;
-            Ok(f[line_start..line_end].to_owned())
-        })
+    pub fn get_lines(&self, path: &Path, line_start: span::Row<span::ZeroIndexed>, line_end: span::Row<span::ZeroIndexed>) -> Result<String, String> {
+        vfs_err!(self.files.load_file(path))?;
+        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
+        vfs_err!(self.files.load_lines(path, line_start, line_end))
     }
 
     fn ensure_new_lines_then<F, T>(&self, path: &Path, f: F) -> Result<T, String>
@@ -276,7 +270,7 @@ impl Cache {
             let file_path = &Path::new(file_name);
 
             self.ensure_new_lines_then(file_path, |file_str, user_data| {
-                // TODO should do a two-step file write here.
+                // FIXME should do a two-step file write here.
                 let out_file = File::create(&file_name).unwrap();
                 let mut writer = BufWriter::new(out_file);
 
@@ -298,16 +292,19 @@ impl Cache {
                         let mut last_char = 0;
                         while next_line == i {
                             assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
-                            // TODO WRONG using char offsets for byte offsets
+                            // FIXME WRONG using char offsets for byte offsets
+                            // TODO
                             writer.write(line_str[last_char..(file_bucket[next_index].range.col_start.0 as usize - 1)].as_bytes()).unwrap();
                             writer.write(new_bytes).unwrap();
 
+                            // TODO
                             last_char = file_bucket[next_index].range.col_end.0 as usize - 1;
                             next_index += 1;
                             if next_index >= file_bucket.len() {
                                 next_line = 0;
                                 break;
                             }
+                            // TODO
                             next_line = file_bucket[next_index].range.row_start.0 as usize;
                         }
                         writer.write(line_str[last_char..].as_bytes()).unwrap();

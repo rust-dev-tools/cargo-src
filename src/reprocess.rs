@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::time;
 
 use serde_json;
+use span;
 
 pub fn make_key() -> String {
     // This is a pretty roundabout way to make a fairly unique string.
@@ -117,7 +118,7 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                                        line_start + 1,
                                        line_end,
                                        sg.iter().map(|s| (Highlight::from_diagnostic_span(s), s.label.clone())).collect(),
-                                       file_cache.get_lines(path, line_start, line_end).unwrap(),
+                                       file_cache.get_lines(path, span::Row::new_zero_indexed(line_start as u32), span::Row::new_zero_indexed(line_end as u32)).unwrap(),
                                        primary_span);
             result.snippets.push(snippet);
         }
