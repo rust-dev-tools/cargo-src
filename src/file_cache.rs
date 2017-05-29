@@ -90,14 +90,12 @@ pub struct DefChild {
 // Our data which we attach to files in the VFS.
 struct VfsUserData {
     highlighted_lines: Vec<String>,
-    new_lines: Vec<usize>,
 }
 
 impl VfsUserData {
     fn new() -> VfsUserData {
         VfsUserData {
             highlighted_lines: vec![],
-            new_lines: vec![],
         }
     }
 }
@@ -148,28 +146,7 @@ impl Cache {
 
     pub fn get_lines(&self, path: &Path, line_start: span::Row<span::ZeroIndexed>, line_end: span::Row<span::ZeroIndexed>) -> Result<String, String> {
         vfs_err!(self.files.load_file(path))?;
-        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
         vfs_err!(self.files.load_lines(path, line_start, line_end))
-    }
-
-    fn ensure_new_lines_then<F, T>(&self, path: &Path, f: F) -> Result<T, String>
-        where F: FnOnce(&str, &VfsUserData) -> Result<T, ::vfs::Error>
-    {
-        vfs_err!(self.files.load_file(path))?;
-        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
-        vfs_err!(self.files.with_user_data(path, |u| {
-            let (text, u) = u?;
-            let text = match text {
-                Some(t) => t,
-                None => return Err(::vfs::Error::BadFileKind),
-            };
-
-            if u.new_lines.is_empty() {
-                u.new_lines = compute_new_lines(text)
-            }
-
-            f(text, u)
-        }))
     }
 
     pub fn summary(&mut self, id: u32) -> Result<&DefSummary, String> {
@@ -269,54 +246,43 @@ impl Cache {
             let file_name = &file_bucket[0].file;
             let file_path = &Path::new(file_name);
 
-            self.ensure_new_lines_then(file_path, |file_str, user_data| {
-                // FIXME should do a two-step file write here.
-                let out_file = File::create(&file_name).unwrap();
-                let mut writer = BufWriter::new(out_file);
+            vfs_err!(self.files.load_file(file_path))?;
 
-                let mut last = 0;
-                let mut next_index = 0;
-                // TODO off by one error for line number
-                let mut next_line = file_bucket[next_index].range.row_start.0 as usize;
+            // FIXME should do a two-step file write here.
+            let out_file = File::create(&file_name).unwrap();
+            let mut writer = BufWriter::new(out_file);
+            let mut next_index = 0;
+            let mut next_line = (file_bucket[0].range.row_start: span::Row<span::ZeroIndexed>).0 as usize;
 
-                for (i, &line_end) in user_data.new_lines.iter().enumerate().skip(1) {
-                    // For convenience elsewhere (ha!), new_lines has an extra entry at the end beyond
-                    // the end of the file, we have to catch that and run away crying.
-                    if line_end > file_str.len() {
-                        break;
-                    }
-                    let line_str = &file_str[last..line_end];
 
-                    if i == next_line {
+            vfs_err!(self.files.for_each_line(file_path, &mut |line: &str, idx| {
+                if next_index < file_bucket.len() {
+                    if idx == next_line {
                         // Need to replace one or more spans on the line.
                         let mut last_char = 0;
-                        while next_line == i {
+                        while idx == next_line {
                             assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
                             // FIXME WRONG using char offsets for byte offsets
-                            // TODO
-                            writer.write(line_str[last_char..(file_bucket[next_index].range.col_start.0 as usize - 1)].as_bytes()).unwrap();
+                            writer.write(line[last_char..(file_bucket[next_index].range.col_start: span::Column<span::ZeroIndexed>).0 as usize].as_bytes()).unwrap();
                             writer.write(new_bytes).unwrap();
 
-                            // TODO
-                            last_char = file_bucket[next_index].range.col_end.0 as usize - 1;
+                            last_char = (file_bucket[next_index].range.col_end: span::Column<span::ZeroIndexed>).0 as usize;
                             next_index += 1;
+
                             if next_index >= file_bucket.len() {
-                                next_line = 0;
                                 break;
                             }
-                            // TODO
-                            next_line = file_bucket[next_index].range.row_start.0 as usize;
+                            next_line = (file_bucket[next_index].range.row_start: span::Row<span::ZeroIndexed>).0 as usize;
                         }
-                        writer.write(line_str[last_char..].as_bytes()).unwrap();
-                    } else {
-                        // Nothing to replace.
-                        writer.write(line_str.as_bytes()).unwrap();
+                        writer.write(line[last_char..].as_bytes()).unwrap();
+                        return Ok(());
                     }
-
-                    last = line_end;
                 }
+
+                // Nothing to replace.
+                writer.write(line.as_bytes()).unwrap();
                 Ok(())
-            })?;
+            }))?;
 
             self.reset_file(file_path);
         }
@@ -446,19 +412,6 @@ impl Cache {
             children: children,
         })
     }
-}
-
-fn compute_new_lines(plain_text: &str) -> Vec<usize> {
-    let bytes = plain_text.as_bytes();
-    let mut new_lines = vec![];
-    new_lines.push(0);
-    for (i, c) in bytes.iter().enumerate() {
-        if *c == '\n' as u8 {
-            new_lines.push(i + 1);
-        }
-    }
-    new_lines.push(bytes.len() + 1);
-    new_lines
 }
 
 fn partition<T, F>(input: &[T], f: F) -> Vec<&[T]>
