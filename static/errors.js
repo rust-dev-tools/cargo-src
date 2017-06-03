@@ -167,7 +167,7 @@ class Results extends React.Component {
                 <div id="div_message">
                     <h2>demo mode</h2>
                     Click '+' and '-' to expand/hide info.<br />
-                    Click error codes or source links to see more stuff. Source links can be right-clicked for more options (note that edit functionality won't work in demo mode).
+                    Click error codes or source links to see more stuff. Source links can be right-clicked for more options.
                 </div>;
         }
         // show/hide stuff
@@ -254,8 +254,6 @@ class Error extends React.Component {
     constructor(props) {
         super(props);
         this.state = { showChildren: true };
-        // TODO
-        // showSpans=true hideCodeLink=true hideButtons=true
     }
 
     showChildren(e) {

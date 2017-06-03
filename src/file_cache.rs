@@ -9,8 +9,6 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::io::{Write, BufWriter};
 use std::str;
 
 use analysis::{AnalysisHost, Target};
@@ -124,10 +122,6 @@ impl Cache {
         self.summaries = HashMap::new();
     }
 
-    pub fn reset_file(&self, path: &Path) {
-        self.files.flush_file(&path.canonicalize().unwrap()).unwrap();
-    }
-
     pub fn get_text(&self, path: &Path) -> Result<String, String> {
         match self.files.load_file(path) {
             Ok(FileContents::Text(s)) => Ok(s),
@@ -231,63 +225,6 @@ impl Cache {
         Ok(FindResult {
             results: self.make_search_results(impls)?,
         })
-    }
-
-    pub fn replace_str_for_id(&mut self, id: u32, new_text: &str) -> Result<(), String> {
-        // FIXME(#118) move any file stuff into VFS.
-        // TODO do better than unwrap
-
-        let new_bytes = new_text.as_bytes();
-        let mut spans = self.analysis.find_all_refs_by_id(id).unwrap_or(vec![]);
-        spans.sort();
-
-        let by_file = partition(&spans, |a, b| a.file == b.file);
-        for file_bucket in by_file {
-            let file_name = &file_bucket[0].file;
-            let file_path = &Path::new(file_name);
-
-            vfs_err!(self.files.load_file(file_path))?;
-
-            // FIXME should do a two-step file write here.
-            let out_file = File::create(&file_name).unwrap();
-            let mut writer = BufWriter::new(out_file);
-            let mut next_index = 0;
-            let mut next_line = (file_bucket[0].range.row_start: span::Row<span::ZeroIndexed>).0 as usize;
-
-
-            vfs_err!(self.files.for_each_line(file_path, &mut |line: &str, idx| {
-                if next_index < file_bucket.len() {
-                    if idx == next_line {
-                        // Need to replace one or more spans on the line.
-                        let mut last_char = 0;
-                        while idx == next_line {
-                            assert!(file_bucket[next_index].range.row_end == file_bucket[next_index].range.row_start, "Can't handle multi-line idents for replacement");
-                            // FIXME WRONG using char offsets for byte offsets
-                            writer.write(line[last_char..(file_bucket[next_index].range.col_start: span::Column<span::ZeroIndexed>).0 as usize].as_bytes()).unwrap();
-                            writer.write(new_bytes).unwrap();
-
-                            last_char = (file_bucket[next_index].range.col_end: span::Column<span::ZeroIndexed>).0 as usize;
-                            next_index += 1;
-
-                            if next_index >= file_bucket.len() {
-                                break;
-                            }
-                            next_line = (file_bucket[next_index].range.row_start: span::Row<span::ZeroIndexed>).0 as usize;
-                        }
-                        writer.write(line[last_char..].as_bytes()).unwrap();
-                        return Ok(());
-                    }
-                }
-
-                // Nothing to replace.
-                writer.write(line.as_bytes()).unwrap();
-                Ok(())
-            }))?;
-
-            self.reset_file(file_path);
-        }
-
-        Ok(())
     }
 
     fn ids_search(&mut self, ids: Vec<u32>) -> Result<SearchResult, String> {
@@ -411,51 +348,5 @@ impl Cache {
             parent: def.parent.unwrap_or(0),
             children: children,
         })
-    }
-}
-
-fn partition<T, F>(input: &[T], f: F) -> Vec<&[T]>
-    where F: Fn(&T, &T) -> bool
-{
-    if input.len() <= 1 {
-        return vec![input];
-    }
-
-    let mut result = vec![];
-    let mut last = &input[0];
-    let mut last_index = 0;
-    for (i, x) in input[1..].iter().enumerate() {
-        if !f(last, x) {
-            result.push(&input[last_index..(i+1)]);
-            last = x;
-            last_index = i + 1;
-        }
-    }
-    if last_index < input.len() {
-        result.push(&input[last_index..input.len()]);
-    }
-    result
-}
-
-#[cfg(test)]
-mod test {
-    use super:: partition;
-
-    #[test]
-    fn test_partition() {
-        let input: Vec<i32> = vec![];
-        let result = partition(&input, |a, b| a == b);
-        assert!(result == vec![&[]]: Vec<&[i32]>);
-
-        let input: Vec<i32> = vec![1, 1, 1];
-        let result = partition(&input, |a, b| a == b);
-        assert!(result == vec![&[1, 1, 1]]);
-
-        let input: Vec<i32> = vec![1, 1, 1, 2, 5, 5];
-        let result = partition(&input, |a, b| a == b);
-        let a: &[_] = &[1, 1, 1];
-        let b: &[_] = &[2];
-        let c: &[_] = &[5, 5];
-        assert!(result == vec![a, b, c]);
     }
 }

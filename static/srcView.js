@@ -11,7 +11,6 @@ import ReactDOM from 'react-dom';
 
 const rustw = require('./rustw');
 const { BreadCrumbs } = require('./breadCrumbs');
-const { quick_edit_line_number } = require('./quickEdit');
 const { GlobMenu, LineNumberMenu, RefMenu } = require('./menus');
 
 
@@ -67,16 +66,6 @@ class SourceView extends React.Component {
         linkables.click(load_doc_or_src_link);
 
         add_ref_functionality(this);
-
-        if (CONFIG.unstable_features) {
-            var globs = $("#div_src_view").find(".glob");
-            const self = this;
-            globs.on("contextmenu", (ev) => {
-                self.setState({ globMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
-                ev.preventDefault();
-            });
-            globs.addClass("hand_cursor");
-        }
     }
 
     render() {

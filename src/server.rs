@@ -14,8 +14,7 @@ use listings::DirectoryListing;
 use reprocess;
 
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write, BufRead};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -351,45 +350,6 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_quick_edit<'b: 'a, 'k: 'a>(&mut self,
-                                         mut req: Request<'b, 'k>,
-                                         mut res: Response<'b, Fresh>) {
-        assert!(!self.config.demo_mode, "Quick edit shouldn't happen in demo mode");
-        assert!(self.config.unstable_features, "Quick edit is unstable");
-
-        res.headers_mut().set(ContentType::json());
-
-        let mut buf = String::new();
-        req.read_to_string(&mut buf).unwrap();
-        if let Err(msg) = self.quick_edit(serde_json::from_str(&buf).unwrap()) {
-            *res.status_mut() = StatusCode::InternalServerError;
-            res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
-            return;
-        }
-
-        res.send("{}".as_bytes()).unwrap();
-    }
-
-    fn handle_subst<'b: 'a, 'k: 'a>(&mut self,
-                                    mut req: Request<'b, 'k>,
-                                    mut res: Response<'b, Fresh>) {
-        assert!(!self.config.demo_mode, "Substitution shouldn't happen in demo mode");
-        assert!(self.config.unstable_features, "Substitution is unstable");
-
-        res.headers_mut().set(ContentType::json());
-
-        let mut buf = String::new();
-        req.read_to_string(&mut buf).unwrap();
-
-        if let Err(msg) = self.substitute(serde_json::from_str(&buf).unwrap()) {
-            *res.status_mut() = StatusCode::InternalServerError;
-            res.send(format!("{{ \"message\": \"{}\" }}", msg).as_bytes()).unwrap();
-            return;
-        }
-
-        res.send("{}".as_bytes()).unwrap();
-    }
-
     fn handle_edit<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
@@ -576,32 +536,6 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_rename<'b: 'a, 'k: 'a>(&mut self,
-                                     _req: Request<'b, 'k>,
-                                     mut res: Response<'b, Fresh>,
-                                     query: Option<String>) {
-        assert!(self.config.unstable_features, "Rename is unstable");
-        match (parse_query_value(&query, "id="), parse_query_value(&query, "text=")) {
-            (Some(id), Some(text)) => {
-                // TODO we could do some verification on text here.
-
-                let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.replace_str_for_id(u32::from_str(&id).unwrap(), &text) {
-                   Ok(()) => {
-                       res.headers_mut().set(ContentType::json());
-                       res.send("{}".as_bytes()).unwrap();
-                   }
-                   Err(msg) => {
-                       self.handle_error(_req, res, StatusCode::InternalServerError, format!("Error renaming: {}", msg));
-                   }
-               }
-            }
-            _ => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
-            }
-        }
-    }
-
     fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
@@ -636,67 +570,6 @@ impl<'a> Handler<'a> {
                 self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
             }
         }
-    }
-
-    // FIXME there may well be a better place for this functionality.
-    fn quick_edit(&self, data: QuickEditData) -> Result<(), String> {
-        // TODO all these unwraps should return Err instead.
-
-        // TODO we should check that the file has not been modified since we read it,
-        // otherwise the file line locations will be incorrect.
-
-        let lines = read_lines(&data.file_name)?;
-
-        {
-            let file_cache = self.file_cache.lock().unwrap();
-            file_cache.reset_file(&Path::new(&data.file_name));
-        }
-
-        assert!(data.line_start <= data.line_end && data.line_end <= lines.len());
-
-        let file = File::create(&data.file_name).unwrap();
-        let mut writer = BufWriter::new(file);
-
-        for i in 0..(data.line_start - 1) {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-        writer.write(data.text.as_bytes()).unwrap();
-        writer.write(&['\n' as u8]).unwrap();
-        for i in data.line_end..lines.len() {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-
-        writer.flush().unwrap();
-        Ok(())
-    }
-
-    fn substitute(&self, data: SubstData) -> Result<(), String> {
-        // TODO could factor more closely with quick edit
-        let lines = read_lines(&data.file_name)?;
-
-        {
-            let file_cache = self.file_cache.lock().unwrap();
-            file_cache.reset_file(&Path::new(&data.file_name));
-        }
-
-        assert!(data.line_start <= data.line_end && data.line_end < lines.len());
-
-        let file = File::create(&data.file_name).unwrap();
-        let mut writer = BufWriter::new(file);
-
-        for i in 0..(data.line_start - 1) {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-        // TODO WRONG! Using char offsets as byte offsets
-        writer.write(lines[data.line_start-1].chars().take(data.column_start - 1).collect::<String>().as_bytes()).unwrap();
-        writer.write(data.text.as_bytes()).unwrap();
-        writer.write(lines[data.line_end-1].chars().skip(data.column_end - 1).collect::<String>().as_bytes()).unwrap();
-        for i in data.line_end..lines.len() {
-            writer.write(lines[i].as_bytes()).unwrap();
-        }
-
-        writer.flush().unwrap();
-        Ok(())
     }
 }
 
@@ -772,46 +645,6 @@ fn parse_query_value(query: &Option<String>, key: &str) -> Option<String> {
     }
 }
 
-fn read_lines(file_name: &str) -> Result<Vec<String>, String> {
-    let file = match File::open(file_name) {
-        Ok(f) => f,
-        Err(e) => return Err(e.to_string()),
-    };
-
-    let mut result = Vec::new();
-    let mut reader = BufReader::new(file);
-
-    loop {
-        let mut buf = String::new();
-        match reader.read_line(&mut buf) {
-            Ok(0) => {
-                result.push(buf);
-                return Ok(result);
-            }
-            Ok(_) => result.push(buf),
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-}
-
-#[derive(Deserialize, Debug)]
-struct SubstData {
-    file_name: String,
-    line_start: usize,
-    line_end: usize,
-    column_start: usize,
-    column_end: usize,
-    text: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct QuickEditData {
-    file_name: String,
-    line_start: usize,
-    line_end: usize,
-    text: String,
-}
-
 const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
 const PLAIN_TEXT: &'static str = "plain_text";
@@ -820,9 +653,6 @@ const BUILD_REQUEST: &'static str = "build";
 const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
-const QUICK_EDIT_REQUEST: &'static str = "quick_edit";
-const SUBST_REQUEST: &'static str = "subst";
-const RENAME_REQUEST: &'static str = "rename";
 const SEARCH_REQUEST: &'static str = "search";
 const FIND_REQUEST: &'static str = "find";
 const SUMMARY_REQUEST: &'static str = "summary";
@@ -905,21 +735,6 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
 
         if path[0] == EDIT_REQUEST {
             handler.handle_edit(req, res, query);
-            return;
-        }
-
-        if path[0] == QUICK_EDIT_REQUEST {
-            handler.handle_quick_edit(req, res);
-            return;
-        }
-
-        if path[0] == SUBST_REQUEST {
-            handler.handle_subst(req, res);
-            return;
-        }
-
-        if path[0] == RENAME_REQUEST {
-            handler.handle_rename(req, res, query);
             return;
         }
     }
