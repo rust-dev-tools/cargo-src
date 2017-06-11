@@ -12,7 +12,7 @@ import { OrderedMap } from 'immutable';
 const { HideButton } = require('./hideButton');
 const rustw = require('./rustw');
 const utils = require('./utils');
-const { SrcLinkMenu } = require('./menus');
+const { MenuHost, Menu } = require('./menus');
 
 class Snippet extends React.Component {
     constructor(props) {
@@ -46,10 +46,36 @@ class Snippet extends React.Component {
     }
 }
 
-class SnippetSpan extends React.Component {
+// props: location, onClose, target
+// location: { "top": event.pageY, "left": event.pageX }
+function SrcLinkMenu(props) {
+    const items = [
+        { id: "src_menu_edit", label: "edit", fn: edit, unstable: true },
+        { id: "src_menu_view", label: "view file", fn: (target) => rustw.load_link.call(target) }
+    ];
+    return <Menu id={"div_src_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
+}
+
+function edit(target) {
+    $.ajax({
+        url: utils.make_url('edit?file=' + target.dataset.link),
+        type: 'POST',
+        dataType: 'JSON',
+        cache: false
+    })
+    .done(function (json) {
+        console.log("edit - success");
+    })
+    .fail(function (xhr, status, errorThrown) {
+        console.log("Error with edit request");
+        console.log("error: " + errorThrown + "; status: " + status);
+    });
+}
+
+class SnippetSpan extends MenuHost {
     constructor(props) {
         super(props);
-        this.state = { menuOpen: null };
+        this.menuFn = SrcLinkMenu;
     }
 
     componentDidMount() {
@@ -90,7 +116,7 @@ class SnippetSpan extends React.Component {
         }
     }
 
-    render() {
+    renderInner() {
         const { line_start, line_end, column_start, column_end } = this.props;
         const { label: _label, id, file_name, text, showBlock } = this.props;
 
@@ -111,56 +137,40 @@ class SnippetSpan extends React.Component {
                 </div>;
         }
 
-        let menu = null;
-        if (!!this.state.menuOpen) {
-            const self = this;
-            const onClose = () => self.setState({ menuOpen: null});
-            menu = <SrcLinkMenu location={this.state.menuOpen} onClose={onClose} target={this.state.menuOpen.target} />;
-        }
-
-        const self = this;
-        const contextMenu = (ev) => {
-            self.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
-            ev.preventDefault();
-        };
-
         return (
             <span className="div_span" id={'div_span_' + id}>
-                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id} onClick={(ev) => rustw.load_link.call(ev.target)} onContextMenu={contextMenu}>
+                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id} onClick={(ev) => rustw.load_link.call(ev.target)}>
                     {file_name}:{line_start}:{column_start}: {line_end}:{column_end}
                 </span>
                 {label}
                 {block}
-                {menu}
             </span>
         );
     }
 }
 
-class SnippetBlock extends React.Component {
-    render() {
-        let { line_start: line_number, text, id } = this.props;
-        const numbers = [];
-        const lines = [];
-        for (let line of text) {
-            numbers.push(<div className="span_src_number" id={'snippet_line_number_' + id + '_' + line_number} key={'number_' + line_number}>{line_number}</div>);
-            let text = "&nbsp;";
-            if (line) {
-                text = line;
-            }
-            lines.push(<div className="span_src" id={'snippet_line_' + id + '_' + line_number} key={'span_' + line_number}  dangerouslySetInnerHTML={{__html: text}} />);
-            line_number += 1;
+function SnippetBlock(props) {
+    let { line_start: line_number, text, id } = props;
+    const numbers = [];
+    const lines = [];
+    for (let line of text) {
+        numbers.push(<div className="span_src_number" id={'snippet_line_number_' + id + '_' + line_number} key={'number_' + line_number}>{line_number}</div>);
+        let text = "&nbsp;";
+        if (line) {
+            text = line;
         }
-        return (
-            <span>
-                <span className="div_span_src_number">
-                    {numbers}
-                </span><span className="div_span_src">
-                    {lines}
-                </span>
-            </span>
-        );
+        lines.push(<div className="span_src" id={'snippet_line_' + id + '_' + line_number} key={'span_' + line_number}  dangerouslySetInnerHTML={{__html: text}} />);
+        line_number += 1;
     }
+    return (
+        <span>
+            <span className="div_span_src_number">
+                {numbers}
+            </span><span className="div_span_src">
+                {lines}
+            </span>
+        </span>
+    );
 }
 
 module.exports = {

@@ -51,6 +51,27 @@ module.exports = {
             }
         }
     },
+
+    request: function(urlStr, success, errStr, skipLoadingPage) {
+        $.ajax({
+            url: this.make_url(urlStr),
+            type: 'POST',
+            dataType: 'JSON',
+            cache: false
+        })
+        .done(success)
+        .fail(function (xhr, status, errorThrown) {
+            console.log(errStr);
+            console.log("error: " + errorThrown + "; status: " + status);
+
+            $("#div_main").text("Server error?");
+            history.pushState({}, "", this.make_url("#error"));
+        });
+
+        if (!skipLoadingPage) {
+            $("#div_main").text("Loading...");
+        }
+    }
 }
 
 // Left is the number of chars from the left margin to where the highlight

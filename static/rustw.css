@@ -440,7 +440,9 @@ span#measure {
     border-radius: 6px;
     border-top-left-radius: 0;
     padding: 10px;
-    z-index: 1;
+    z-index: 2;
+    font-size: small;
+    font-family: 'Fira Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 .menu_link {
     text-decoration: underline;

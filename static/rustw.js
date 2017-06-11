@@ -9,11 +9,7 @@
 
 module.exports = {
     do_build: function() {
-        if (CONFIG.demo_mode) {
-            do_build_internal('test');
-        } else {
-            do_build_internal('build');
-        }
+        do_build_internal();
     },
 
     onLoad: function () {
@@ -24,11 +20,12 @@ module.exports = {
             }
         });
 
-        load_start();
+        $("#measure").hide();
         MAIN_PAGE_STATE = { page: "start" };
         history.replaceState(MAIN_PAGE_STATE, "");
 
         window.onpopstate = onPopState;    
+        topbar.renderTopBar("fresh");
     },
 
     win_err_code: function (domElement, errData) {
@@ -49,7 +46,6 @@ module.exports = {
     },
 
     pre_load_build: function() {
-        SNIPPET_PLAIN_TEXT = {};
         window.scroll(0, 0);
     },
 
@@ -96,14 +92,14 @@ module.exports = {
     }
 };
 
+const utils = require('./utils');
 const errors = require("./errors");
 const err_code = require('./err_code');
-const topbar = require('./topbar');
 const dirView = require('./dirView');
 const srcView = require('./srcView');
-const utils = require('./utils');
 const summary = require('./summary');
 const search = require('./search');
+const topbar = require('./topbar');
 
 function load_link_internal() {
     topbar.renderTopBar("builtAndNavigating");
@@ -158,26 +154,15 @@ function load_link_internal() {
     load_source_view(data);
 }
 
-function load_start() {
-    $("#div_main").html("");
-    $("#div_quick_edit").hide();
-    $("#div_rename").hide();
-    $("#measure").hide();
-
-    topbar.renderTopBar("fresh");
-}
-
 function load_search_internal(state) {
     topbar.renderTopBar("builtAndNavigating");
     search.renderSearchResults(state.data.defs, state.data.refs, $("#div_main").get(0));
-    window.scroll(0, 0);
 }
 
 // Find = basic search, just a list of uses, e.g., find impls or text search
 function load_find_internal(state) {
     topbar.renderTopBar("builtAndNavigating");
     search.renderFindResults(state.data.results, $("#div_main").get(0));
-    window.scroll(0, 0);
 }
 
 function load_err_code(state) {
@@ -185,8 +170,8 @@ function load_err_code(state) {
     err_code.renderErrorExplain(state.data, $("#div_main").get(0));
 }
 
-function load_source(state) {
-    const highlight = {
+function makeHighlight(state) {
+    return {
         file: state.file,
         display: state.display,
         line_start: state.line_start,
@@ -194,99 +179,68 @@ function load_source(state) {
         column_start: state.column_start,
         column_end: state.column_end
     };
-    srcView.renderSourceView(state.data.path, state.data.lines, highlight, $("#div_main").get(0));
-
-    // Jump to the start line. 100 is a fudge so that the start line is not
-    // right at the top of the window, which makes it easier to see.
-    var y = state.line_start * $("#src_line_number_1").height() - 100;
-    window.scroll(0, y);
 }
 
-function do_build_internal(buildStr) {
+function do_build_internal() {
+    let buildStr;
+    if (CONFIG.demo_mode) {
+        buildStr = 'test';
+    } else {
+        buildStr = 'build';
+    }
     errors.rebuildAndRender(buildStr, $("#div_main").get(0));
     topbar.renderTopBar("building");
-    window.scroll(0, 0);
-}
-
-function load_dir(state) {
-    dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
-    window.scroll(0, 0);
 }
 
 function get_source_internal(file_name) {
     topbar.renderTopBar("builtAndNavigating");
 
-    $.ajax({
-        url: 'src' + utils.make_url(file_name),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        if (json.Directory) {
-            var state = {
-                "page": "source_dir",
-                "data": json.Directory,
-                "file": file_name,
-            };
-            load_dir(state);
-            history.pushState(state, "", utils.make_url("#src=" + file_name));
-        } else if (json.Source) {
-            var state = {
-                "page": "source",
-                "data": json.Source,
-                "file": file_name,
-            };
-            load_source(state);
-            history.pushState(state, "", utils.make_url("#src=" + file_name));
-        } else {
-            console.log("Unexpected source data.")
-            console.log(json);
-        }
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with source request for " + file_name);
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        load_error();
-        history.pushState({}, "", utils.make_url("#src=" + file_name));
-    });
-
-    $("#div_main").text("Loading...");
+    utils.request('src/' + file_name,
+        function(json) {
+            if (json.Directory) {
+                var state = {
+                    "page": "source_dir",
+                    "data": json.Directory,
+                    "file": file_name,
+                };
+                dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
+                history.pushState(state, "", utils.make_url("#src=" + file_name));
+            } else if (json.Source) {
+                var state = {
+                    "page": "source",
+                    "data": json.Source,
+                    "file": file_name,
+                };
+                srcView.renderSourceView(state.data.path, state.data.lines, makeHighlight(state), state.line_start, $("#div_main").get(0));
+                history.pushState(state, "", utils.make_url("#src=" + file_name));
+            } else {
+                console.log("Unexpected source data.")
+                console.log(json);
+            }
+        },
+        "Error with source request for " + file_name);
 }
 
 function load_source_view(data) {
-    $.ajax({
-        url: utils.make_url('src/' + data.file),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        data.page = "source";
-        data.data = json.Source;
-        load_source(data);
+    utils.request('src/' + data.file,
+        function(json) {
+            data.page = "source";
+            data.data = json.Source;
+            srcView.renderSourceView(data.data.path, data.data.lines, makeHighlight(data), data.line_start, $("#div_main").get(0));
 
-        history.pushState(data, "", utils.make_url("#src=" + data.file + data.display));
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with source request");
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        load_error();
-        history.pushState({ page: "error"}, "", utils.make_url("#src=" + data.file + data.display));
-    });
-
-    $("#div_main").text("Loading...");
+            history.pushState(data, "", utils.make_url("#src=" + data.file + data.display));
+        },
+        "Error with source request");
 }
 
 function onPopState(event) {
     var state = event.state;
     if (!state) {
         console.log("ERROR: null state: ");
-        load_start();
+        load_error();
     } else if (state.page == "start") {
-        load_start();
+        $("#div_main").html("");
+        topbar.renderTopBar("fresh");
     } else if (state.page == "error") {
         load_error();
     } else if (state.page == "build") {
@@ -295,9 +249,9 @@ function onPopState(event) {
     } else if (state.page == "err_code") {
         load_err_code(state);
     } else if (state.page == "source") {
-        load_source(state);
+        srcView.renderSourceView(state.data.path, state.data.lines, makeHighlight(state), state.line_start, $("#div_main").get(0));
     } else if (state.page == "source_dir") {
-        load_dir(state);
+        dirView.renderDirView(state.file, state.data.files, state.data.path, $("#div_main").get(0));
     } else if (state.page == "search") {
         module.exports.load_search(state);
     } else if (state.page == "find") {
@@ -307,6 +261,6 @@ function onPopState(event) {
     } else {
         console.log("ERROR: Unknown page state: ");
         console.log(state);
-        load_start();
+        load_error();
     }
 }
