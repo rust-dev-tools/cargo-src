@@ -10,6 +10,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 const rustw = require('./rustw');
+const utils = require('./utils');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { GlobMenu, LineNumberMenu, RefMenu } = require('./menus');
 
@@ -59,7 +60,7 @@ class SourceView extends React.Component {
     }
 
     componentDidMount() {
-        rustw.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
+        utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");

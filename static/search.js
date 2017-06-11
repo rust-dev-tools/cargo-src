@@ -153,7 +153,7 @@ function highlight_needle(results, tag) {
     for (const i in results) {
         for (const line of results[i].lines) {
             line.line_end = line.line_start;
-            rustw.highlight_spans(line,
+            utils.highlight_spans(line,
                                   null,
                                   "snippet_line_" + tag + "_" + i + "_",
                                   "selected");

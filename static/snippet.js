@@ -11,6 +11,7 @@ import { OrderedMap } from 'immutable';
 
 const { HideButton } = require('./hideButton');
 const rustw = require('./rustw');
+const utils = require('./utils');
 const { SrcLinkMenu } = require('./menus');
 
 class Snippet extends React.Component {
@@ -70,7 +71,7 @@ class SnippetSpan extends React.Component {
                 if (JSON.stringify(h[0]) == JSON.stringify({ line_start, line_end, column_start, column_end })) {
                     css_class = "selected";
                 }
-                rustw.highlight_spans(h[0],
+                utils.highlight_spans(h[0],
                                       "snippet_line_number_" + id + "_",
                                       "snippet_line_" + id + "_",
                                       css_class);
