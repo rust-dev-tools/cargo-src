@@ -69,6 +69,7 @@ function HomeLink(props) {
         history.pushState(backup, "", utils.make_url("#build"));
     };
     // TODO should change this to be home-looking, rather than back-looking
+    // TODO or even have this as a popup, rather than a 'home screen'
     return renderLink("← return to build results", "link_back", props.visible, onClick);
 }
 
@@ -139,7 +140,6 @@ function BuildButton(props) {
     return <span id="link_build" className={className} onClick={onClick}>{label}</span>;
 }
 
-// TODO could we share code with menus?
 class Options extends React.Component {
     constructor(props) {
         super(props);
