@@ -1,3 +1,13 @@
+// Copyright 2017 The Rustw Project Developers.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+const actions = require('./actions');
+
 module.exports = {
     make_url: function (suffix) {
         return '/' + CONFIG.demo_mode_root_path + suffix;
@@ -28,8 +38,6 @@ module.exports = {
         if (highlight.column_start <= 0) {
             $("#" + src_line_prefix + highlight.line_start).addClass(css_class);
             $("#" + src_line_prefix + highlight.line_end).addClass(css_class);
-
-            // TODO hover text
         } else {
             // First line
             var lhs = (highlight.column_start - 1);
@@ -53,7 +61,8 @@ module.exports = {
     },
 
     // used in errors and app
-    request: function(callbacks, urlStr, success, errStr, suppressMessages) {
+    // TODO pass dispatch
+    request: function(dispatch, urlStr, success, errStr, suppressMessages) {
         const self = this;
         $.ajax({
             url: self.make_url(urlStr),
@@ -67,13 +76,13 @@ module.exports = {
             console.log("error: " + errorThrown + "; status: " + status);
 
             if (!suppressMessages) {
-                callbacks.showError();
+                dispatch(actions.showError());
             }
             // history.pushState({}, "", self.make_url("#error"));
         });
 
         if (!suppressMessages) {
-            callbacks.showLoading();
+            dispatch(actions.showLoading());
         }
     },
 

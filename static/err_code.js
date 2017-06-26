@@ -7,7 +7,8 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { connect } from 'react-redux';
+import * as actions from './actions';
 
 const { Error } = require('./errors');
 
@@ -26,12 +27,16 @@ function ErrCode(props) {
         <hr className="separator" />
 
         <div id="div_err_code_error">
-            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true" callbacks={props.callbacks} />
+            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true" />
         </div>
     </div>
     );
 }
 
-module.exports = {
-    ErrCode
+const mapStateToProps = (state) => {
+    return state.errCode;
 }
+
+export const ErrCodeController = connect(
+    mapStateToProps,
+)(ErrCode);

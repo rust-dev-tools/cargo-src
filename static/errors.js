@@ -7,6 +7,8 @@
 // except according to those terms.
 
 import React from 'react';
+import { connect } from 'react-redux';
+import * as actions from './actions';
 
 const { Snippet } = require('./snippet');
 const { HideButton } = require('./hideButton');
@@ -34,7 +36,7 @@ class Results extends React.Component {
         // show/hide stuff
         let errors = null;
         if (this.state.showErrors) {
-            errors = <Errors errors={this.props.errors.toArray()} />;
+            errors = <ErrorsController errors={this.props.errors.toArray()} />;
         }
         let messages = null;
         if (this.state.showMessages) {
@@ -57,6 +59,18 @@ class Results extends React.Component {
     }
 }
 
+const mapStateToProps = (state) => {
+    return {
+        errors: state.errors.errors,
+        messages: state.errors.messages,
+    }
+}
+
+export const ResultsController = connect(
+    mapStateToProps,
+)(Results);
+
+
 function demoMsg() {
     return <div id="div_message">
         <h2>demo mode</h2>
@@ -75,37 +89,22 @@ function Messages(props) {
     </div>;
 }
 
-function Errors(props) {
-    return <div>
-        {props.errors}
-    </div>;
-}
-
-class Error extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { showChildren: true };
-    }
-
-    showChildren(e) {
-        this.setState((prevState) => ({ showChildren: !prevState.showChildren }));
-    }
-
+export class Error extends React.Component {
     render() {
-        const { childErrors, code: _code, level, spans, message } = this.props;
+        const { children: _children, code: _code, level, spans, message } = this.props;
         const self = this;
 
         let children = null;
-        if (childErrors && childErrors.length > 0) {
+        if (_children && _children.length > 0) {
             let button = null;
             if (!this.props.hideButtons) {
-                button = <HideButton hidden={!this.state.showChildren} onClick={this.showChildren.bind(this)} />;
+                button = <HideButton hidden={!this.props.showChildren} onClick={this.props.toggleChildren} />;
             }
             let childrenSub;
-            if (this.state.showChildren) {
+            if (this.props.showChildren) {
                 const childList = [];
-                for (let c of childErrors) {
-                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={c.id} callbacks={this.props.callbacks} />)
+                for (let c of _children) {
+                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={c.id} />)
                 }
                 childrenSub = <span className="div_children">{childList}</span>;
             } else {
@@ -124,15 +123,15 @@ class Error extends React.Component {
             let onClick = null;
             if (_code.explanation && !this.props.hideCodeLink) {
                 className += " err_code_link";
-                onClick = (ev) => self.props.callbacks.showErrCode(ev.target, self.props);
+                onClick = () => self.props.showErrCode(_code.code, marked(_code.explanation), self.props);
             }
-            code = <span className={className} data-explain={_code.explanation} data-code={_code.code} onClick={onClick}>{_code.code}</span>;
+            code = <span className={className} onClick={onClick}>{_code.code}</span>;
         }
 
         return (
             <div className={'div_diagnostic div_' + level}>
                 <span className={'level_' + level}>{level}</span><span className="err_colon"> {code}:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}} />
-                <Snippet spans={spans} showSpans={this.props.showSpans} hideButtons={this.props.hideButtons} callbacks={this.props.callbacks} />
+                <Snippet spans={spans} showSpans={this.props.showSpans} hideButtons={this.props.hideButtons} toggleSpans={this.props.toggleSpans} />
 
                {children}
             </div>
@@ -147,13 +146,53 @@ function ChildError(props) {
         <span>
             <span className={'div_diagnostic_nested div_' + level}>
                 <span className={'level_' + level}>{level}</span><span className="err_colon">:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}}></span>
-                <Snippet spans={spans} callbacks={props.callbacks} />
+                <Snippet spans={spans} showSpans={true} hideButtons={true} />
             </span><br />
         </span>
     );
 }
 
-module.exports = {
-    Error,
-    Results
+const mapStateToPropsError = (state, ownProps) => {
+    let data = state.errors.errors.get(ownProps.id);
+    return data;
+}
+
+const mapDispatchToPropsError = (dispatch, ownProps) => {
+    return {
+        toggleChildren: () => dispatch(actions.toggleChildren(ownProps.id)),
+        toggleSpans: () => dispatch(actions.toggleSpans(ownProps.id)),
+        showErrCode: (code, explain, error) => dispatch(actions.showErrCode(code, explain, error)),
+    };
+}
+
+export const ErrorController = connect(
+    mapStateToPropsError,
+    mapDispatchToPropsError
+)(Error);
+
+function Errors(props) {
+    const errors = props.errors.toArray().map((data) => {
+        return <ErrorController id={data.id} key={data.id} />;
+    });
+    return <div>
+        {errors}
+    </div>;
+}
+
+const mapStateToPropsErrors = (state) => {
+    return {
+        errors: state.errors.errors
+    };
+}
+
+const ErrorsController = connect(
+    mapStateToPropsErrors,
+)(Errors);
+
+export function makeError(data) {
+    data.showChildren = true;
+    data.showSpans = false;
+    data.hideButtons = false;
+    data.hideCodeLink = false;
+    return data;
 }

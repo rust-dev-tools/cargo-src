@@ -7,47 +7,74 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { connect } from 'react-redux';
 
 const { Menu, MenuHost } = require('./menus');
+const actions = require('./actions');
 
 class TopBar extends React.Component {
     render() {
-        let visibleHomeLink = null;
-        let visibleBrowseLink = null;
-        let indicatorStatus = null;
-        let buildState = this.props.state;
-        let clickBuild = null;
-        if (this.props.state == "fresh") {
-            clickBuild = this.props.callbacks.doBuild;
-        } else if (this.props.state == "building") {
-            indicatorStatus = true;
-        } else if (this.props.state == "built") {
-            visibleBrowseLink = true;
-            clickBuild = this.props.callbacks.doBuild;
-        } else if (this.props.state == "builtAndNavigating") {
-            visibleBrowseLink = true;
-            visibleHomeLink = true;
-            buildState = "built";
-            clickBuild = this.props.callbacks.doBuild;
-        }
-
-        // Save the current window.
-        const clickHomeLink = this.props.callbacks.showBuildResults;
-        const clickBrowseLink = () => this.props.callbacks.getSource(CONFIG.source_directory);
-
         return <div id="div_header_group">
               <div id="div_header">
-                <HomeLink visible={visibleHomeLink} onClick={clickHomeLink} />
-                <BuildButton state={buildState} onClick={clickBuild} />
+                <HomeLink visible={this.props.visibleHomeLink} onClick={this.props.clickHomeLink} />
+                <BuildButton state={this.props.buildState} onClick={this.props.clickBuild} />
                 <Options />
-                <BrowseLink visible={visibleBrowseLink} onClick={clickBrowseLink} />
-                <SearchBox callbacks={this.props.callbacks} />
+                <BrowseLink visible={this.props.visibleBrowseLink} onClick={this.props.clickBrowseLink} />
+                <SearchBox />
               </div>
-              <Indicator status={indicatorStatus} />
+              <Indicator status={this.props.indicatorStatus} />
             </div>;
     }
 }
+
+const mapStateToProps = (state) => {
+    let visibleHomeLink = null;
+    let visibleBrowseLink = null;
+    let indicatorStatus = null;
+    let buildState = state.build;
+    switch (state.build) {
+        case actions.BuildState.BUILDING:
+            indicatorStatus = true;
+            break;
+        case actions.BuildState.BUILT:
+            visibleBrowseLink = true;
+            break;
+        case actions.BuildState.BUILT_AND_NAVIGATING:
+            visibleBrowseLink = true;
+            visibleHomeLink = true;
+            buildState = actions.BuildState.BUILT;
+            break;
+    }
+
+    return {
+        visibleHomeLink,
+        visibleBrowseLink,
+        indicatorStatus,
+        buildState
+    }
+};
+
+const mapDispatchToProps = (dispatch) => {
+    return {
+        clickHomeLink: actions.showBuildResults(),
+        clickBrowseLink: () => dispatch(actions.viewDir(CONFIG.source_directory)),
+        clickBuild: () => dispatch(actions.doBuild()),
+    }
+};
+
+const mergeProps = (stateProps, dispatchProps) => {
+    let props = Object.assign({}, stateProps, dispatchProps);
+    if (stateProps.buildState == actions.BuildState.BUILDING) {
+        props.clickBuild = null;
+    }
+    return props;
+};
+
+export const TopBarController = connect(
+    mapStateToProps,
+    mapDispatchToProps,
+    mergeProps
+)(TopBar);
 
 function renderLink(text, id, visible, onClick) {
     let className;
@@ -87,13 +114,13 @@ function BuildButton(props) {
     const state = props.state;
     let label;
     let className = "button";
-    if (state == "fresh") {
+    if (state == actions.BuildState.FRESH) {
         label = "build";
         className += " enabled_button";
-    } else if (state == "building") {
+    } else if (state == actions.BuildState.BUILDING) {
         label = "building...";
         className += " disabled_button";
-    } else if (state == "built") {
+    } else if (state == actions.BuildState.BUILT) {
         label = "rebuild";
         if (CONFIG.build_on_load) {
             label += " (F5)";
@@ -142,8 +169,4 @@ function Indicator(props) {
         className = "div_border_status";
     }
     return <div id="div_border" className={className}>{overlay}</div>;
-}
-
-module.exports = {
-    TopBar
 }

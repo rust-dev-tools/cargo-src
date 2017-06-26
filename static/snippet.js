@@ -7,42 +7,34 @@
 // except according to those terms.
 
 import React from 'react';
+import { connect } from 'react-redux';
+import * as actions from './actions';
 
 const { HideButton } = require('./hideButton');
 const utils = require('./utils');
 const { MenuHost, Menu } = require('./menus');
 
-class Snippet extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { showSpans: props.showSpans };
+export function Snippet(props) {
+    const spans = props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={props.showSpans} />));
+    if (!spans || spans.length == 0) {
+        return null;
+    }
+    let button = null;
+    if (!props.hideButtons) {
+        button = <HideButton hidden={!props.showSpans} onClick={props.toggleSpans} />;
     }
 
-    showSpans(e) {
-        this.setState((prevState) => ({ showSpans: !prevState.showSpans }));
-    }
-
-    render() {
-        const spans = this.props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans} callbacks={this.props.callbacks} />));
-        if (!spans || spans.length == 0) {
-            return null;
-        }
-        let button = null;
-        if (!this.props.hideButtons) {
-            button = <HideButton hidden={!this.state.showSpans} onClick={this.showSpans.bind(this)} />;
-        }
-
-        return (
-            <span className="div_snippet">
-                <br />
-                {button}
-                <span className="div_spans">
-                    {spans}
-                </span>
+    return (
+        <span className="div_snippet">
+            <br />
+            {button}
+            <span className="div_spans">
+                {spans}
             </span>
-        );
-    }
+        </span>
+    );
 }
+
 
 // props: location, onClose, target, file_name, line_start, line_end, column_start, column_end
 // location: { "top": event.pageY, "left": event.pageX }
@@ -57,6 +49,7 @@ function SrcLinkMenu(props) {
                 "column_start": column_start,
                 "column_end": column_end
             };
+            // TODO
             props.callbacks.getSource(file_name, highlight);
         } }
     ];
@@ -152,6 +145,7 @@ class SnippetSpan extends MenuHost {
                 "column_start": column_start,
                 "column_end": column_end
             };
+            // TODO
             self.props.callbacks.getSource(file_name, highlight);
         };
         return (
@@ -188,8 +182,4 @@ function SnippetBlock(props) {
             </span>
         </span>
     );
-}
-
-module.exports = {
-    Snippet: Snippet
 }

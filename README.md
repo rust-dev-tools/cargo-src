@@ -45,10 +45,11 @@ yarn
 
 # if not:
 
-npm install --save react react-dom
+npm install --save react react-dom redux react-redux redux-thunk
 npm install --save-dev babel-loader babel-core
 npm install --save-dev babel-preset-react
 npm install --save-dev babel-preset-es2015
+npm install --save-dev babel-plugin-transform-object-rest-spread
 npm install --save-dev webpack
 npm install --save-dev immutable
 ```
