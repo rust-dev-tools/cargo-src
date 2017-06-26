@@ -7,26 +7,12 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 const rustw = require('./rustw');
 const utils = require('./utils');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { MenuHost, Menu } = require('./menus');
-const search = require('./search');
-const summary = require('./summary');
 
-
-function load_doc_or_src_link() {
-    // TODO special case links to the same file
-    var docUrl = this.dataset['doc-url'];
-
-    if (!docUrl) {
-        return rustw.load_link.call(this);
-    }
-
-    window.open(docUrl, '_blank');
-}
 
 // Menus, highlighting on mouseover.
 function add_ref_functionality(self) {
@@ -70,7 +56,7 @@ function LineNumberMenu(props) {
 // props: location, onClose, target, id
 // location: { "top": event.pageY, "left": event.pageX }
 function RefMenu(props) {
-    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => summary.pullSummary(props.id) }];
+    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => props.callbacks.getSummary(props.id) }];
 
     const docUrl = props.target.dataset['doc-url'];
     if (docUrl) {
@@ -81,11 +67,11 @@ function RefMenu(props) {
         items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
     }
 
-    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => search.findUses(props.id) });
+    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.callbacks.getUses(props.id) });
 
     let impls = props.target.dataset.impls;
     if (impls && impls != "0") {
-        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => search.findImpls(props.id) });
+        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.callbacks.getImpls(props.id) });
     }
 
     return <Menu id={"div_ref_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
@@ -121,13 +107,47 @@ class SourceView extends React.Component {
     }
 
     componentDidMount() {
-        utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
+        if (this.props.highlight) {
+            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
+        }
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
-        linkables.click(load_doc_or_src_link);
+        const self = this;
+        const callbacks = this.props.callbacks;
+        linkables.click((e) => {
+            // The data for what to do on-click is encoded in the data-link attribute.
+            // We need to process it here.
+            e.preventDefault();
+            var docUrl = e.target.dataset['doc-url'];
+
+            if (docUrl) {
+                window.open(docUrl, '_blank');
+                return;
+            }
+
+            var file_loc = e.target.dataset.link.split(':');
+            var file = file_loc[0];
+
+            if (file == "search") {
+                callbacks.getUses(file_loc[1]);
+                return;
+            }
+
+            if (file == "summary") {
+                callbacks.getSummary(file_loc[1]);
+                return;
+            }
+
+            let data = utils.parseLink(file_loc);
+            callbacks.getSource(file, data);
+        });
 
         add_ref_functionality(this);
+
+        if (this.props.scrollTo) {
+            jumpToLine(this.props.scrollTo);
+        }
     }
 
     render() {
@@ -146,11 +166,11 @@ class SourceView extends React.Component {
         let refMenu = null;
         if (!!this.state.refMenu) {
             const onClose = () => self.setState({ refMenu: null });
-            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
+            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} callbacks={this.props.callbacks}/>;
         }
 
         return <div id="div_src_view">
-            <BreadCrumbs path={this.props.path} />
+            <BreadCrumbs path={this.props.path} callbacks={this.props.callbacks} />
             <br />
             <div id="div_src_contents">
                 <span className="div_src_line_numbers">
@@ -163,6 +183,13 @@ class SourceView extends React.Component {
             {refMenu}
         </div>;
     }
+}
+
+function jumpToLine(line) {
+    // Jump to the start line. 100 is a fudge so that the start line is not
+    // right at the top of the window, which makes it easier to see.
+    var y = line * $("#src_line_number_1").height() - 100;
+    window.scroll(0, y);
 }
 
 class LineNumber extends MenuHost {
@@ -199,8 +226,5 @@ function jumpToLine(line) {
 }
 
 module.exports = {
-    renderSourceView: function(path, lines, highlight, line_start, container) {
-        ReactDOM.render(<SourceView path={path} lines={lines} highlight={highlight} />, container);
-        jumpToLine(line_start);
-    }
+    SourceView
 }

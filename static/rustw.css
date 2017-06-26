@@ -144,6 +144,16 @@ html {
     min-height: 100%;
     font-size: small;
 }
+#div_app {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+#container {
+    min-height: 100%;    
+}
 #div_message {
     margin-bottom: 20px;
 }

@@ -26,17 +26,12 @@ function ErrCode(props) {
         <hr className="separator" />
 
         <div id="div_err_code_error">
-            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true"/>
+            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true" callbacks={props.callbacks} />
         </div>
     </div>
     );
 }
 
 module.exports = {
-    renderErrorExplain: function(errData, container) {
-        ReactDOM.render(
-            <ErrCode code={errData.code} explain={errData.explain} error={errData.error} />,
-            container
-        );
-    }
+    ErrCode
 }

@@ -7,10 +7,8 @@
 // except according to those terms.
 
 import React from 'react';
-import { OrderedMap } from 'immutable';
 
 const { HideButton } = require('./hideButton');
-const rustw = require('./rustw');
 const utils = require('./utils');
 const { MenuHost, Menu } = require('./menus');
 
@@ -25,7 +23,7 @@ class Snippet extends React.Component {
     }
 
     render() {
-        const spans = this.props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans}/>));
+        const spans = this.props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={this.state.showSpans} callbacks={this.props.callbacks} />));
         if (!spans || spans.length == 0) {
             return null;
         }
@@ -46,12 +44,21 @@ class Snippet extends React.Component {
     }
 }
 
-// props: location, onClose, target
+// props: location, onClose, target, file_name, line_start, line_end, column_start, column_end
 // location: { "top": event.pageY, "left": event.pageX }
 function SrcLinkMenu(props) {
+    const { file_name, line_start, line_end, column_start, column_end } = props;
     const items = [
         { id: "src_menu_edit", label: "edit", fn: edit, unstable: true },
-        { id: "src_menu_view", label: "view file", fn: (target) => rustw.load_link.call(target) }
+        { id: "src_menu_view", label: "view file", fn: (target) => {
+            const highlight = {
+                "line_start": line_start,
+                "line_end": line_end,
+                "column_start": column_start,
+                "column_end": column_end
+            };
+            props.callbacks.getSource(file_name, highlight);
+        } }
     ];
     return <Menu id={"div_src_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
 }
@@ -137,10 +144,20 @@ class SnippetSpan extends MenuHost {
                 </div>;
         }
 
+        const self = this;
+        const onClick = (ev) => {
+            var highlight = {
+                "line_start": line_start,
+                "line_end": line_end,
+                "column_start": column_start,
+                "column_end": column_end
+            };
+            self.props.callbacks.getSource(file_name, highlight);
+        };
         return (
             <span className="div_span" id={'div_span_' + id}>
-                <span className="span_loc" data-link={file_name + ':' + line_start + ':' + column_start + ':' + line_end + ':' + column_end}  id={'span_loc_' + id} onClick={(ev) => rustw.load_link.call(ev.target)}>
-                    {file_name}:{line_start}:{column_start}: {line_end}:{column_end}
+                <span className="span_loc" id={'span_loc_' + id} onClick={onClick}>
+                    {file_name}:{line_start}:{column_start}:{line_end}:{column_end}
                 </span>
                 {label}
                 {block}

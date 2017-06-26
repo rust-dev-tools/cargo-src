@@ -21,17 +21,15 @@ except according to those terms.
 </head>
 
 <body>
-<div id="header_container"></div>
-
-<div id="div_main"></div>
-
-<span id="measure">abcdefghij</span>
+    <div id="container" />
+    <span id="measure">abcdefghij</span>
 </body>
 
 <script>
-var CHAR_WIDTH = $("#measure").innerWidth() / 10;
 var MAIN_PAGE_STATE = null;
 var CONFIG;
-Rustw.onLoad();
+var CHAR_WIDTH = $("#measure").innerWidth() / 10;
+
+Rustw.renderApp();
 </script>
 </html>

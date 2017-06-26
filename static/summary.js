@@ -7,21 +7,13 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 module.exports = {
-    pullSummary: function(id) {
-        pullSummaryInternal(id);
-    },
-    loadSummary: function(state) {
-        loadSummaryInternal(state);
-    },
+    Summary
 };
 
-const rustw = require('./rustw');
 const { RefMenu } = require('./menus');
 const utils = require('./utils');
-const topbar = require('./topbar');
 
 class Summary extends React.Component {
     constructor(props) {
@@ -37,7 +29,8 @@ class Summary extends React.Component {
         };
 
         const loadLink = (e) => {
-            rustw.load_link.call(e.target);
+            // TODO
+            // rustw.load_link.call(e.target);
             e.preventDefault();
         };
 
@@ -58,7 +51,8 @@ class Summary extends React.Component {
 
     render() {
         const loadLink = (e) => {
-            rustw.load_link.call(e.target);
+            // TODO
+            // rustw.load_link.call(e.target);
             e.preventDefault();
         };
         let breadCrumbs = [];
@@ -118,44 +112,4 @@ class Summary extends React.Component {
             {refMenu}
         </div>;
     }
-}
-
-function pullSummaryInternal(id) {
-    $.ajax({
-        url: utils.make_url('summary?id=' + id),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        var state = {
-            "page": "summary",
-            "data": json,
-            "id": id,
-        };
-        loadSummaryInternal(state);
-        history.pushState(state, "", utils.make_url("#summary=" + id));
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with summary request for " + id);
-        console.log("error: " + errorThrown + "; status: " + status);
-
-        rustw.load_error();
-        history.pushState({}, "", utils.make_url("#summary=" + id));
-    });
-
-    $("#div_main").text("Loading...");
-}
-
-function loadSummaryInternal(state) {
-    topbar.renderTopBar("builtAndNavigating");
-    renderSummary(state.data, $("#div_main").get(0));
-    window.scroll(0, 0);
-}
-
-function renderSummary(data, container) {
-    ReactDOM.render(
-        <Summary breadCrumbs={data.breadCrumbs} parent={data.parent} signature={data.signature} doc_summary={data.doc_summary} doc_rest={data.doc_rest} children={data.children} />,
-        container
-    );
 }

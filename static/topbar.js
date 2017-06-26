@@ -9,15 +9,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-const rustw = require('./rustw');
-const utils = require('./utils');
-const { Menu, MenuHost } = require('./menus.js');
+const { Menu, MenuHost } = require('./menus');
 
 class TopBar extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-
     render() {
         let visibleHomeLink = null;
         let visibleBrowseLink = null;
@@ -25,28 +19,22 @@ class TopBar extends React.Component {
         let buildState = this.props.state;
         let clickBuild = null;
         if (this.props.state == "fresh") {
-            clickBuild = rustw.do_build;
+            clickBuild = this.props.callbacks.doBuild;
         } else if (this.props.state == "building") {
             indicatorStatus = true;
         } else if (this.props.state == "built") {
             visibleBrowseLink = true;
-            clickBuild = rustw.do_build;
+            clickBuild = this.props.callbacks.doBuild;
         } else if (this.props.state == "builtAndNavigating") {
             visibleBrowseLink = true;
             visibleHomeLink = true;
             buildState = "built";
-            clickBuild = rustw.do_build;
+            clickBuild = this.props.callbacks.doBuild;
         }
 
         // Save the current window.
-        const backup = history.state;
-        const clickHomeLink = function() {
-            rustw.pre_load_build();
-            rustw.load_build(backup);
-            history.pushState(backup, "", utils.make_url("#build"));
-        };
-        const clickBrowseLink = () => rustw.get_source(CONFIG.source_directory);
-
+        const clickHomeLink = this.props.callbacks.showBuildResults;
+        const clickBrowseLink = () => this.props.callbacks.getSource(CONFIG.source_directory);
 
         return <div id="div_header_group">
               <div id="div_header">
@@ -54,7 +42,7 @@ class TopBar extends React.Component {
                 <BuildButton state={buildState} onClick={clickBuild} />
                 <Options />
                 <BrowseLink visible={visibleBrowseLink} onClick={clickBrowseLink} />
-                <SearchBox />
+                <SearchBox callbacks={this.props.callbacks} />
               </div>
               <Indicator status={indicatorStatus} />
             </div>;
@@ -88,7 +76,7 @@ function BrowseLink(props) {
 function SearchBox(props) {
     const onKeyPress = (e) => {
         if (e.which == 13) {
-            winSearch(e.currentTarget.value);
+            props.callbacks.getSearch(e.currentTarget.value);
         }
     };
 
@@ -156,26 +144,6 @@ function Indicator(props) {
     return <div id="div_border" className={className}>{overlay}</div>;
 }
 
-
-function winSearch(needle) {
-    utils.request('search?needle=' + needle,
-        function(json) {
-            var state = {
-                "page": "search",
-                "data": json,
-                "needle": needle,
-            };
-            rustw.load_search(state);
-            history.pushState(state, "", utils.make_url("#search=" + needle));
-        },
-        "Error with search request for " + needle);
-}
-
 module.exports = {
-    renderTopBar: function(state) {
-        ReactDOM.render(
-            <TopBar state={state} />,
-            $("#header_container").get(0)
-        );
-    }
+    TopBar
 }

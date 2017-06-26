@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 // props: { id, items: [{id, label, fn, unstable}], location, onClose, target }
 //   fn: (target: Element, location) -> ()
@@ -73,7 +72,7 @@ class MenuHost extends React.Component {
         if (!!this.state.menuOpen) {
             const self = this;
             const onClose = () => self.setState({ menuOpen: null});
-            menu = React.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target });
+            menu = React.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target, callbacks: this.props.callbacks });
         }
 
         const self = this;

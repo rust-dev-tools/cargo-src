@@ -52,9 +52,11 @@ module.exports = {
         }
     },
 
-    request: function(urlStr, success, errStr, skipLoadingPage) {
+    // used in errors and app
+    request: function(callbacks, urlStr, success, errStr, suppressMessages) {
+        const self = this;
         $.ajax({
-            url: this.make_url(urlStr),
+            url: self.make_url(urlStr),
             type: 'POST',
             dataType: 'JSON',
             cache: false
@@ -64,13 +66,52 @@ module.exports = {
             console.log(errStr);
             console.log("error: " + errorThrown + "; status: " + status);
 
-            $("#div_main").text("Server error?");
-            history.pushState({}, "", this.make_url("#error"));
+            if (!suppressMessages) {
+                callbacks.showError();
+            }
+            // history.pushState({}, "", self.make_url("#error"));
         });
 
-        if (!skipLoadingPage) {
-            $("#div_main").text("Loading...");
+        if (!suppressMessages) {
+            callbacks.showLoading();
         }
+    },
+
+    parseLink: function(file_loc) {
+        var line_start = parseInt(file_loc[1], 10);
+        var column_start = parseInt(file_loc[2], 10);
+        var line_end = parseInt(file_loc[3], 10);
+        var column_end = parseInt(file_loc[4], 10);
+
+        if (line_start == 0 || isNaN(line_start)) {
+            line_start = 0;
+            line_end = 0;
+        } else if (line_end == 0 || isNaN(line_end)) {
+            line_end = line_start;
+        }
+
+        if (isNaN(column_start) || isNaN(column_end)) {
+            column_start = 0;
+            column_end = 0;
+        }
+
+        // FIXME the displayed span doesn't include column start and end, should it?
+        // var display = "";
+        // if (line_start > 0) {
+        //     display += ":" + line_start;
+        //     if (!(line_end == 0 || line_end == line_start)) {
+        //         display += ":" + line_end;
+        //     }
+        // }
+
+        var data = {
+            "line_start": line_start,
+            "line_end": line_end,
+            "column_start": column_start,
+            "column_end": column_end
+        };
+
+        return data;
     }
 }
 

@@ -7,18 +7,12 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
-const rustw = require('./rustw');
+
 const utils = require('./utils');
 
 
 function noResults() {
     return <span className="div_search_no_results">No results found</span>;
-}
-
-function loadLink(e) {
-    rustw.load_link.call(e.target);
-    e.preventDefault();
 }
 
 class ResultSet extends React.Component {
@@ -31,25 +25,48 @@ class ResultSet extends React.Component {
         const { input, kind } = this.props;
         let result = [];
         let count = 0;
+        const self = this;
         for (const r of input) {
             let lines = [];
             for (const l of r.lines) {
-                const lineLink = r.file_name + ':' + l.line_start;
                 const lineId = "snippet_line_number_" + kind + "_" + count + "_" + l.line_start;
-                const snippetLink = lineLink + ":" + l.column_start + ":" +  l.line_start + ":" + l.column_end;
                 const snippetId = "snippet_line_" + kind + "_" + count + "_" + l.line_start;
-                lines.push(<div key={kind + "-" + lineLink}>
+                const lineClick = (e) => {
+                    const highlight = {
+                        "line_start": l.line_start,
+                        "line_end": l.line_start,
+                        "column_start": 0,
+                        "column_end": 0
+                    };
+                    self.props.callbacks.getSource(r.file_name, highlight);
+                    e.preventDefault();
+                };
+                const snippetClick = (e) => {
+                    const highlight = {
+                        "line_start": l.line_start,
+                        "line_end": l.line_end,
+                        "column_start": l.column_start,
+                        "column_end": l.column_end
+                    };
+                    self.props.callbacks.getSource(r.file_name, highlight);
+                    e.preventDefault();
+                };
+                lines.push(<div key={kind + "-" + l.line_start}>
                     <span className="div_span_src_number">
-                        <div className="span_src_number" id={lineId} data-link={lineLink} onClick={loadLink}>{l.line_start}</div>
+                        <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
                     </span>
                     <span className="div_span_src">
-                        <div className="span_src" id={snippetId} data-link={snippetLink} onClick={loadLink} dangerouslySetInnerHTML={{__html: l.line}} />
+                        <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: l.line}} />
                     </span>
                     <br />
                 </div>);
             }
+            const onClick = (e) => {
+                self.props.callbacks.getSource(r.file_name, {});
+                e.preventDefault();
+            };
             result.push(<div key={kind + "-" + r.file_name}>
-                <div className="div_search_file_link" data-link={r.file_name} onClick={loadLink}>{r.file_name}</div>
+                <div className="div_search_file_link" onClick={onClick}>{r.file_name}</div>
                 <div className="div_all_span_src">
                     {lines}
                 </div>
@@ -69,7 +86,7 @@ function FindResults(props) {
     } else {
         return <div>
             <div className="div_search_title">Search results:</div>
-                 <ResultSet input={props.results} kind="result"/>
+                 <ResultSet input={props.results} kind="result" callbacks={props.callbacks} />
             </div>;
     }
 }
@@ -80,9 +97,9 @@ function SearchResults(props) {
     } else {
         return <div>
             <div className="div_search_title">Definitions:</div>
-            <ResultSet input={props.defs} kind="def"/>
+            <ResultSet input={props.defs} kind="def" callbacks={props.callbacks} />
             <div className="div_search_title">References:</div>
-            <ResultSet input={props.refs} kind="ref"/>
+            <ResultSet input={props.refs} kind="ref" callbacks={props.callbacks} />
         </div>;
     }
 }
@@ -99,43 +116,4 @@ function highlight_needle(results, tag) {
     }
 }
 
-function findUses(needle) {
-    utils.request('search?id=' + needle,
-        function(json) {
-            var state = {
-                "page": "search",
-                "data": json,
-                "id": needle,
-            };
-            rustw.load_search(state);
-            history.pushState(state, "", utils.make_url("#search=" + needle));
-        },
-        "Error with search request for " + needle);
-}
-
-function findImpls(needle) {
-    utils.request('find?impls=' + needle,
-        function(json) {
-            var state = {
-                "page": "find",
-                "data": json,
-                "kind": "impls",
-                "id": needle,
-            };
-            rustw.load_find(state);
-            history.pushState(state, "", utils.make_url("#impls=" + needle));
-        },
-        "Error with find (impls) request for " + needle);
-}
-
-module.exports = {
-    renderFindResults: function(results, container) {
-        ReactDOM.render(<FindResults results={results}/>, container);
-    },
-
-    renderSearchResults: function(defs, refs, container) {
-        ReactDOM.render(<SearchResults defs={defs} refs={refs}/>, container);
-    },
-
-    findImpls, findUses
-}
+module.exports = { FindResults, SearchResults };

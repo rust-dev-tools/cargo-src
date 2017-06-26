@@ -411,15 +411,15 @@ impl<'a> Handler<'a> {
             }
             (None, Some(id)) => {
                 // Search by id.
-                let id = match u32::from_str(&id) {
+                let id = match u64::from_str(&id) {
                     Ok(l) => l,
-                    Err(_) => {
+                    Err(e) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
                         return;
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.id_search(analysis::Id::new(id as u64)) {
+                match file_cache.id_search(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -439,10 +439,9 @@ impl<'a> Handler<'a> {
                                    _req: Request<'b, 'k>,
                                    mut res: Response<'b, Fresh>,
                                    query: Option<String>) {
-        // TODO
         match parse_query_value(&query, "impls=") {
             Some(id) => {
-                let id = match u32::from_str(&id) {
+                let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
@@ -450,7 +449,7 @@ impl<'a> Handler<'a> {
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.find_impls(analysis::Id::new(id as u64)) {
+                match file_cache.find_impls(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -472,7 +471,7 @@ impl<'a> Handler<'a> {
                                       query: Option<String>) {
         match parse_query_value(&query, "id=") {
             Some(id) => {
-                let id = match u32::from_str(&id) {
+                let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
@@ -480,7 +479,7 @@ impl<'a> Handler<'a> {
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.summary(analysis::Id::new(id as u64)) {
+                match file_cache.summary(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -651,7 +650,6 @@ const SOURCE_REQUEST: &'static str = "src";
 const PLAIN_TEXT: &'static str = "plain_text";
 const CONFIG_REQUEST: &'static str = "config";
 const BUILD_REQUEST: &'static str = "build";
-const TEST_REQUEST: &'static str = "test";
 const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";
@@ -718,17 +716,16 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
         return;
     }
 
-    if path[0] == TEST_REQUEST {
-        handler.handle_test(req, res);
+    if path[0] == BUILD_REQUEST {
+        if handler.config.demo_mode {
+            handler.handle_test(req, res);
+        } else {
+            handler.handle_build(req, res);
+        }
         return;
     }
 
-    if handler.config.demo_mode == false {
-        if path[0] == BUILD_REQUEST {
-            handler.handle_build(req, res);
-            return;
-        }
-
+    if !handler.config.demo_mode {
         if path[0] == BUILD_UPDATE_REQUEST {
             handler.handle_build_updates(req, res);
             return;

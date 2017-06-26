@@ -7,14 +7,13 @@
 // except according to those terms.
 
 import React from 'react';
-const rustw = require('./rustw');
 
 function BreadCrumbs(props) {
     let crumbs = [];
     for (const c in props.path) {
         const id = "breadcrumb_" + c;
         const path = props.path.slice(0, c + 1).join('/');
-        const onClick = (e) => rustw.get_source(path);
+        const onClick = (e) => props.callbacks.getSource(path);
         crumbs.push(<span key={c}>> <span className="link_breadcrumb" id={id} onClick={onClick}>{props.path[c]}</span></span>);
     }
     return <div id="div_dir_path">
