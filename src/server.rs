@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use analysis;
 use build;
 use build::errors::{self, Diagnostic};
 use config::Config;
@@ -418,7 +419,7 @@ impl<'a> Handler<'a> {
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.id_search(id) {
+                match file_cache.id_search(analysis::Id::new(id as u64)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -449,7 +450,7 @@ impl<'a> Handler<'a> {
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.find_impls(id) {
+                match file_cache.find_impls(analysis::Id::new(id as u64)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
@@ -479,7 +480,7 @@ impl<'a> Handler<'a> {
                     }
                 };
                 let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.summary(id) {
+                match file_cache.summary(analysis::Id::new(id as u64)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
