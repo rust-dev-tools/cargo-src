@@ -219,7 +219,6 @@ impl Cache {
         self.ids_search(ids)
     }
 
-    // TODO bucket by files
     pub fn find_impls(&mut self, id: Id) -> Result<FindResult, String> {
         let impls = self.analysis.find_impls(id).map_err(|_| "No impls found".to_owned())?;
         Ok(FindResult {
@@ -261,7 +260,10 @@ impl Cache {
         for span in &raw {
             let file_path = Path::new(&span.file);
             let file_path = file_path.strip_prefix(&self.project_dir).unwrap_or(file_path);
-            let text = self.get_highlighted_line(&file_path, span.range.row_start)?;
+            let text = match self.get_highlighted_line(&file_path, span.range.row_start) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
             let line = LineResult::new(&span, text);
             file_buckets.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
         }

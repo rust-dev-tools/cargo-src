@@ -44,9 +44,6 @@ pub fn reprocess_snippets(key: String,
 
     let mut snippets = ReprocessedSnippets::new(key);
     for d in &errors {
-        // Lock the file_cache on every iteration because this thread should be
-        // low priority, and we're happy to wait if someone else wants access to
-        // the file_cache.
         reprocess_diagnostic(d, None, &file_cache, &mut snippets, &config);
     }
 
@@ -61,6 +58,9 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
                         file_cache: &Mutex<Cache>,
                         result: &mut ReprocessedSnippets,
                         config: &Config) {
+    // Lock the file_cache on every iteration because this thread should be
+    // low priority, and we're happy to wait if someone else wants access to
+    // the file_cache.
     {
         let file_cache = file_cache.lock().unwrap();
         let mut spans = diagnostic.spans.clone();

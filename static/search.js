@@ -10,11 +10,6 @@ import React from 'react';
 
 const utils = require('./utils');
 
-
-function noResults() {
-    return <span className="div_search_no_results">No results found</span>;
-}
-
 class ResultSet extends React.Component {
     componentDidMount() {
         $(".src_link").removeClass("src_link");
@@ -78,6 +73,10 @@ class ResultSet extends React.Component {
             {result}
         </div>;
     }
+}
+
+function noResults() {
+    return <span className="div_search_no_results">No results found</span>;
 }
 
 function FindResults(props) {

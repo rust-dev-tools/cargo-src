@@ -413,7 +413,7 @@ impl<'a> Handler<'a> {
                 // Search by id.
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
-                    Err(e) => {
+                    Err(_) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
                         return;
                     }

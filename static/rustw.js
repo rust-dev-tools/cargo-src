@@ -13,8 +13,3 @@ module.exports = {
         app.renderApp();
     },
 };
-
-// TODO why is updating the errors so slow?
-// TODO links to std lib symbols
-// TODO fix summary
-// TODO pulled data after navigating causes errors

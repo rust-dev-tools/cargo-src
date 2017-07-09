@@ -58,11 +58,11 @@ function LineNumberMenu(props) {
 function RefMenu(props) {
     let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => props.callbacks.getSummary(props.id) }];
 
-    const docUrl = props.target.dataset['doc-url'];
+    const docUrl = props.target.dataset.docLink;
     if (docUrl) {
         items.push({ id: "ref_menu_view_docs", label: "view docs", fn: () => window.open(docUrl, '_blank') });
     }
-    const srcUrl = props.target.dataset['src-url'];
+    const srcUrl = props.target.dataset.srcLink;
     if (srcUrl) {
         items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
     }
@@ -119,8 +119,8 @@ class SourceView extends React.Component {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
             e.preventDefault();
-            var docUrl = e.target.dataset['doc-url'];
 
+            var docUrl = e.target.dataset.docLink;
             if (docUrl) {
                 window.open(docUrl, '_blank');
                 return;
@@ -166,7 +166,8 @@ class SourceView extends React.Component {
         let refMenu = null;
         if (!!this.state.refMenu) {
             const onClose = () => self.setState({ refMenu: null });
-            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} callbacks={this.props.callbacks}/>;
+
+            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} callbacks={this.props.callbacks} />;
         }
 
         return <div id="div_src_view">
