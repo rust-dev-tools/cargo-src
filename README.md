@@ -71,6 +71,24 @@ Currently, rustw has only been tested on Firefox on Linux ([issue 48](https://gi
 If you want to play with cool features like 'jump to definition', see the customisation below.
 
 
+### Troubleshooting
+
+If you get an error like `error while loading shared libraries` while starting
+up rustw you should try the following:
+
+On Linux:
+
+```
+export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+```
+
+On MacOS:
+
+```
+export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
+```
+
+
 ## Customisation
 
 Create a `rustw.toml` file in your project's directory. See [src/config.rs](src/config.rs)
