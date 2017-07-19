@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { connect } from 'react-redux';
+import { BuildState } from './reducers';
 
 const { Menu, MenuHost } = require('./menus');
 const actions = require('./actions');
@@ -33,16 +34,16 @@ const mapStateToProps = (state) => {
     let indicatorStatus = null;
     let buildState = state.build;
     switch (state.build) {
-        case actions.BuildState.BUILDING:
+        case BuildState.BUILDING:
             indicatorStatus = true;
             break;
-        case actions.BuildState.BUILT:
+        case BuildState.BUILT:
             visibleBrowseLink = true;
             break;
-        case actions.BuildState.BUILT_AND_NAVIGATING:
+        case BuildState.BUILT_AND_NAVIGATING:
             visibleBrowseLink = true;
             visibleHomeLink = true;
-            buildState = actions.BuildState.BUILT;
+            buildState = BuildState.BUILT;
             break;
     }
 
@@ -56,7 +57,7 @@ const mapStateToProps = (state) => {
 
 const mapDispatchToProps = (dispatch) => {
     return {
-        clickHomeLink: actions.showBuildResults(),
+        clickHomeLink: () => dispatch(actions.showBuildResults()),
         clickBrowseLink: () => dispatch(actions.getSource(CONFIG.source_directory)),
         clickBuild: () => dispatch(actions.doBuild()),
         getSearch: (needle) => dispatch(actions.getSearch(needle)),
@@ -65,7 +66,7 @@ const mapDispatchToProps = (dispatch) => {
 
 const mergeProps = (stateProps, dispatchProps) => {
     let props = Object.assign({}, stateProps, dispatchProps);
-    if (stateProps.buildState == actions.BuildState.BUILDING) {
+    if (stateProps.buildState == BuildState.BUILDING) {
         props.clickBuild = null;
     }
     return props;
@@ -115,13 +116,13 @@ function BuildButton(props) {
     const state = props.state;
     let label;
     let className = "button";
-    if (state == actions.BuildState.FRESH) {
+    if (state == BuildState.FRESH) {
         label = "build";
         className += " enabled_button";
-    } else if (state == actions.BuildState.BUILDING) {
+    } else if (state == BuildState.BUILDING) {
         label = "building...";
         className += " disabled_button";
-    } else if (state == actions.BuildState.BUILT) {
+    } else if (state == BuildState.BUILT) {
         label = "rebuild";
         if (CONFIG.build_on_load) {
             label += " (F5)";

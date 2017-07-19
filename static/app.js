@@ -11,7 +11,7 @@ import ReactDOM from 'react-dom';
 import { Provider, connect } from 'react-redux';
 import { createStore, applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
-import { rustwReducer } from './reducers';
+import { rustwReducer, Page } from './reducers';
 import * as actions from './actions';
 
 const utils = require('./utils');
@@ -24,7 +24,6 @@ const { SourceViewController } = require('./srcView');
 const { Summary } = require('./summary');
 
 // TODOs in build
-// TODO refactoring in actions/reducers
 
 class RustwApp extends React.Component {
     componentWillMount() {
@@ -50,35 +49,35 @@ class RustwApp extends React.Component {
 
     render() {
         let divMain;
-        switch (this.props.page) {
-            case actions.Page.BUILD_RESULTS:
+        switch (this.props.page.type) {
+            case Page.BUILD_RESULTS:
                 divMain = <ResultsController />;
                 break;
-            case actions.Page.ERR_CODE:
+            case Page.ERR_CODE:
                 divMain = <ErrCodeController />;
                 break;
-            case actions.Page.SEARCH:
-                divMain = <SearchResults defs={this.props.search.defs} refs={this.props.search.refs} />;
+            case Page.SEARCH:
+                divMain = <SearchResults defs={this.props.page.defs} refs={this.props.page.refs} />;
                 break;
-            case actions.Page.FIND:
-                divMain = <FindResults results={this.props.find.results} />;
+            case Page.FIND:
+                divMain = <FindResults results={this.props.page.results} />;
                 break;
-            case actions.Page.SOURCE:
-                divMain = <SourceViewController path={this.props.source.path} lines={this.props.source.lines} highlight={this.props.source.highlight} scrollTo={this.props.source.lineStart} />;
+            case Page.SOURCE:
+                divMain = <SourceViewController path={this.props.page.path} lines={this.props.page.lines} highlight={this.props.page.highlight} scrollTo={this.props.page.lineStart} />;
                 break;
-            case actions.Page.SOURCE_DIR:
-                divMain = <DirView file={this.props.sourceDir.name} files={this.props.sourceDir.files} getSource={this.props.getSource} />;
+            case Page.SOURCE_DIR:
+                divMain = <DirView file={this.props.page.name} files={this.props.page.files} getSource={this.props.getSource} />;
                 break;
-            case actions.Page.LOADING:
+            case Page.LOADING:
                 divMain = "Loading...";
                 break;
-            case actions.Page.SUMMARY:
-                divMain = <Summary breadCrumbs={this.props.summary.breadCrumbs} parent={this.props.summary.parent} signature={this.props.summary.signature} doc_summary={this.props.summary.doc_summary} doc_rest={this.props.summary.doc_rest} children={this.props.summary.children} />;
+            case Page.SUMMARY:
+                divMain = <Summary breadCrumbs={this.props.page.breadCrumbs} parent={this.props.page.parent} signature={this.props.page.signature} doc_summary={this.props.page.doc_summary} doc_rest={this.props.page.doc_rest} children={this.props.page.children} />;
                 break;
-            case actions.Page.INTERNAL_ERROR:
+            case Page.INTERNAL_ERROR:
                 divMain = "Server error?";
                 break;
-            case actions.Page.START:
+            case Page.START:
             default:
                 divMain = null;
         }
@@ -95,11 +94,6 @@ class RustwApp extends React.Component {
 const mapStateToProps = (state) => {
     return {
         page: state.page,
-        search: state.search,
-        sourceDir: state.sourceDir,
-        source: state.source,
-        find: state.find,
-        summary: state.summary,
     }
 }
 

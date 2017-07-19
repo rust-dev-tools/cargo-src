@@ -7,99 +7,130 @@
 // except according to those terms.
 
 import React from 'react';
+import { combineReducers } from 'redux';
 import { OrderedMap } from 'immutable';
-import { Page, Build, BuildState, DO_BUILD, BUILD_COMPLETE, SHOW_BUILD_RESULTS, SHOW_ERROR, SHOW_ERR_CODE,
+import { Build, DO_BUILD, BUILD_COMPLETE, SHOW_BUILD_RESULTS, SHOW_ERROR, SHOW_ERR_CODE,
          SHOW_LOADING, ADD_MESSAGE, SET_ERROR, UPDATE_SNIPPET, UPDATE_CHILD_SNIPPET, TOGGLE_CHILDREN,
          TOGGLE_SPANS, SHOW_SEARCH, SHOW_FIND, SHOW_SOURCE, SHOW_SOURCE_DIR, SHOW_SUMMARY } from './actions';
 
+export const Page = {
+    START: 'START',
+    BUILD_RESULTS: 'BUILD_RESULTS',
+    SOURCE: 'SOURCE',
+    SOURCE_DIR: 'SOURCE_DIR',
+    ERR_CODE: 'ERR_CODE',
+    SEARCH: 'SEARCH',
+    FIND: 'FIND',
+    SUMMARY: 'SUMMARY',
+    LOADING: 'LOADING',
+    INTERNAL_ERROR: 'INTERNAL_ERROR',
+};
+
+export const BuildState = {
+    FRESH: 'FRESH',
+    BUILDING: 'BUILDING',
+    BUILT: 'BUILT',
+    BUILT_AND_NAVIGATING: 'BUILT_AND_NAVIGATING',
+};
 
 const initialState = {
-    page: Page.START,
+    page: { type: Page.START },
     build: BuildState.FRESH,
-    errors: initialErrorsState,
     buildId: 0,
 };
 
-const initialErrorsState = {
+const initialErrors = {
     errors: OrderedMap(),
     messages: [],
 };
 
-// TODO seperate out page and build reducers, then use combineReducers to generate rustwReducer
-export function rustwReducer(state = initialState, action) {
+export const rustwReducer = combineReducers({
+    page,
+    errors,
+    build,
+    buildId,
+});
+
+function page(state = { type: Page.START }, action) {
     switch (action.type) {
         case DO_BUILD:
-            return { ...state, ... {
-                build: BuildState.BUILDING,
-                page: Page.BUILD_RESULTS,
-                buildId: Math.random(),
-                errors: errorsReducer(state.errors, action),
-            }};
-        case BUILD_COMPLETE:
-            return { ...state, ... {
-                build: BuildState.BUILT,
-            }};
         case SHOW_BUILD_RESULTS:
-            return { ...state, ... {
-                page: Page.BUILD_RESULTS,
-            }};
+            return  { type: Page.BUILD_RESULTS };
         case SHOW_ERROR:
-            return { ...state, ... {
-                page: Page.INTERNAL_ERROR,
-            }};
+            return { type: Page.INTERNAL_ERROR };
         case SHOW_LOADING:
-            return { ...state, ... {
-                page: Page.LOADING,
-            }};
+            return { type: Page.LOADING };
         case SHOW_ERR_CODE:
-            return { ...state, ... {
-                page: Page.ERR_CODE,
-                errCode: { code: action.code, explain: action.explain, error: action.error },
-            }};
+            return {
+                type: Page.ERR_CODE,
+                code: action.code,
+                explain: action.explain,
+                error: action.error,
+            };
         case SHOW_SEARCH:
-            return { ...state, ... {
-                page: Page.SEARCH,
-                search: { defs: action.defs, refs: action.refs },
-            }};
+            return {
+                type: Page.SEARCH,
+                defs: action.defs,
+                refs: action.refs,
+            };
         case SHOW_FIND:
-            return { ...state, ... {
-                page: Page.FIND,
-                find: { results: action.results },
-            }};
+            return {
+                type: Page.FIND,
+                results: action.results,
+            };
         case SHOW_SOURCE:
-            return { ...state, ... {
-                page: Page.SOURCE,
-                source: { path: action.path, lines: action.lines, lineStart: action.lineStart, highlight: action.highlight },
-            }};
+            return {
+                type: Page.SOURCE,
+                path: action.path,
+                lines: action.lines,
+                lineStart: action.lineStart,
+                highlight: action.highlight
+            };
         case SHOW_SOURCE_DIR:
-            return { ...state, ... {
-                page: Page.SOURCE_DIR,
-                sourceDir: { name: action.name, files: action.files },
-            }};
+            return {
+                type: Page.SOURCE_DIR,
+                name: action.name,
+                files: action.files,
+            };
         case SHOW_SUMMARY:
-            return { ...state, ... {
-                page: Page.SUMMARY,
-                summary: actions.data,
-            }};
-        case SHOW_SUMMARY:
-        case ADD_MESSAGE:
-        case SET_ERROR:
-        case UPDATE_SNIPPET:
-        case UPDATE_CHILD_SNIPPET:
-        case TOGGLE_CHILDREN:
-        case TOGGLE_SPANS:
-            return { ...state, ... {
-                errors: errorsReducer(state.errors, action),
-            }};
+            return {
+                type: Page.SUMMARY,
+                ...actions.data,
+            };
         default:
             return state;
     }
 }
 
-export function errorsReducer(state = initialErrorsState, action) {
+function build(state = BuildState.FRESH, action) {
     switch (action.type) {
         case DO_BUILD:
-            return initialErrorsState;
+            return BuildState.BUILDING;
+        case BUILD_COMPLETE:
+            return BuildState.BUILT;
+        case SHOW_ERR_CODE:
+        case SHOW_SEARCH:
+        case SHOW_FIND:
+        case SHOW_SOURCE:
+        case SHOW_SOURCE_DIR:
+        case SHOW_SUMMARY:
+            return BuildState.BUILT_AND_NAVIGATING;
+        default:
+            return state;
+    }
+}
+
+function buildId(state = 0, action) {
+    switch (action.type) {
+        case DO_BUILD:
+            return Math.random();
+        default:
+            return state;
+    }
+}
+
+function errors(state = initialErrors, action) {
+    switch (action.type) {
         case ADD_MESSAGE:
             return { ...state, ... {
                 messages: state.messages.concat([action.newMessage]),

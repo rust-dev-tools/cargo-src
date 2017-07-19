@@ -17,12 +17,10 @@ export function runBuild(dispatch) {
         dispatch,
         'build',
         function(json) {
-            // TODO this isn't quite right because results doesn't include the incremental updates, OTOH, they should get over-written anyway
-            // MAIN_PAGE_STATE = { page: "build", results: json }
             dispatch(actions.buildComplete());
             pull_data(json.push_data_key, dispatch);
 
-            // TODO probably not right. Do this before we make the ajax call?
+            // probably not right. Do this before we make the ajax call?
             // history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
         },
         "Error with build request",
@@ -53,7 +51,6 @@ function pull_data(key, dispatch) {
         'pull?key=' + key,
         function (json) {
             // MAIN_PAGE_STATE.snippets = json;
-            // TODO if we've already navigated away from the errors page then this will error
             updateSnippets(dispatch, json);
         },
         "Error pulling data for key " + key,

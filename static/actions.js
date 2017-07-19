@@ -29,27 +29,6 @@ export const SHOW_SOURCE = "SHOW_SOURCE";
 export const SHOW_SOURCE_DIR = "SHOW_SOURCE_DIR";
 export const SHOW_SUMMARY = "SHOW_SUMMARY";
 
-// TODO move to reducers
-// TODO can we use something like a Rust enum, rather than an enum + data.
-export const Page = {
-    START: 'START',
-    BUILD_RESULTS: 'BUILD_RESULTS',
-    SOURCE: 'SOURCE',
-    SOURCE_DIR: 'SOURCE_DIR',
-    ERR_CODE: 'ERR_CODE',
-    SEARCH: 'SEARCH',
-    FIND: 'FIND',
-    SUMMARY: 'SUMMARY',
-    LOADING: 'LOADING',
-    INTERNAL_ERROR: 'INTERNAL_ERROR',
-};
-
-export const BuildState = {
-    FRESH: 'FRESH',
-    BUILDING: 'BUILDING',
-    BUILT: 'BUILT',
-    BUILT_AND_NAVIGATING: 'BUILT_AND_NAVIGATING',
-};
 
 export function startBuild() {
     return { type: DO_BUILD };
@@ -202,7 +181,6 @@ export function getSummary(id) {
             "Error with summary request for " + id);
     };
 }
-
 
 export function showSummary(data) {
     return { type: SHOW_SUMMARY, data };
