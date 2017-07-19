@@ -15,7 +15,7 @@ const utils = require('./utils');
 const { MenuHost, Menu } = require('./menus');
 
 export function Snippet(props) {
-    const spans = props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={props.showSpans} />));
+    const spans = props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={props.showSpans} getSource={props.getSource} />));
     if (!spans || spans.length == 0) {
         return null;
     }
@@ -41,7 +41,7 @@ export function Snippet(props) {
 function SrcLinkMenu(props) {
     const { file_name, line_start, line_end, column_start, column_end } = props;
     const items = [
-        { id: "src_menu_edit", label: "edit", fn: edit, unstable: true },
+        { id: "src_menu_edit", label: "edit", fn: utils.edit, unstable: true },
         { id: "src_menu_view", label: "view file", fn: (target) => {
             const highlight = {
                 "line_start": line_start,
@@ -49,27 +49,10 @@ function SrcLinkMenu(props) {
                 "column_start": column_start,
                 "column_end": column_end
             };
-            // TODO
-            props.callbacks.getSource(file_name, highlight);
+            props.getSource(file_name, highlight);
         } }
     ];
     return <Menu id={"div_src_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
-}
-
-function edit(target) {
-    $.ajax({
-        url: utils.make_url('edit?file=' + target.dataset.link),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        console.log("edit - success");
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with edit request");
-        console.log("error: " + errorThrown + "; status: " + status);
-    });
 }
 
 class SnippetSpan extends MenuHost {
@@ -145,8 +128,7 @@ class SnippetSpan extends MenuHost {
                 "column_start": column_start,
                 "column_end": column_end
             };
-            // TODO
-            self.props.callbacks.getSource(file_name, highlight);
+            self.props.getSource(file_name, highlight);
         };
         return (
             <span className="div_span" id={'div_span_' + id}>

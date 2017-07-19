@@ -20,7 +20,7 @@ class TopBar extends React.Component {
                 <BuildButton state={this.props.buildState} onClick={this.props.clickBuild} />
                 <Options />
                 <BrowseLink visible={this.props.visibleBrowseLink} onClick={this.props.clickBrowseLink} />
-                <SearchBox />
+                <SearchBox getSearch={this.props.getSearch} />
               </div>
               <Indicator status={this.props.indicatorStatus} />
             </div>;
@@ -57,8 +57,9 @@ const mapStateToProps = (state) => {
 const mapDispatchToProps = (dispatch) => {
     return {
         clickHomeLink: actions.showBuildResults(),
-        clickBrowseLink: () => dispatch(actions.viewDir(CONFIG.source_directory)),
+        clickBrowseLink: () => dispatch(actions.getSource(CONFIG.source_directory)),
         clickBuild: () => dispatch(actions.doBuild()),
+        getSearch: (needle) => dispatch(actions.getSearch(needle)),
     }
 };
 
@@ -103,7 +104,7 @@ function BrowseLink(props) {
 function SearchBox(props) {
     const onKeyPress = (e) => {
         if (e.which == 13) {
-            props.callbacks.getSearch(e.currentTarget.value);
+            props.getSearch(e.currentTarget.value);
         }
     };
 

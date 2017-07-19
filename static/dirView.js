@@ -13,7 +13,7 @@ const { BreadCrumbs } = require('./breadCrumbs');
 function DirView(props) {
     let files = [];
     for (const f of props.files) {
-        const onClick = (e) => props.callbacks.getSource(props.file + "/" + f.name);
+        const onClick = (e) => props.getSource(props.file + "/" + f.name);
         if (f.kind == "Directory") {
             files.push(<div className="div_entry" key={f.name}>
                         <span className="div_entry_name div_dir_entry" onClick={onClick}>{f.name}</span>
@@ -25,7 +25,7 @@ function DirView(props) {
         }
     }
     return <div id="div_dir_view">
-        <BreadCrumbs path = {props.file.split('/')} callbacks={props.callbacks} />
+        <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
         <div id="div_dir_contents">
             {files}
         </div>

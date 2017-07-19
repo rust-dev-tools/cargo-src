@@ -7,8 +7,9 @@
 // except according to those terms.
 
 import React from 'react';
+import { connect } from 'react-redux';
+import * as actions from './actions';
 
-const rustw = require('./rustw');
 const utils = require('./utils');
 const { BreadCrumbs } = require('./breadCrumbs');
 const { MenuHost, Menu } = require('./menus');
@@ -45,7 +46,7 @@ function add_ref_functionality(self) {
 // location: { "top": event.pageY, "left": event.pageX }
 function LineNumberMenu(props) {
     let items = [
-        { id: "line_number_menu_edit", label: "edit", fn: edit, unstable: true }
+        { id: "line_number_menu_edit", label: "edit", fn: utils.edit, unstable: true }
     ];
     if (CONFIG.vcs_link) {
         items.push({ id: "line_number_vcs", label: "view in VCS", fn: view_in_vcs });
@@ -56,7 +57,7 @@ function LineNumberMenu(props) {
 // props: location, onClose, target, id
 // location: { "top": event.pageY, "left": event.pageX }
 function RefMenu(props) {
-    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => props.callbacks.getSummary(props.id) }];
+    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => props.getSummary(props.id) }];
 
     const docUrl = props.target.dataset.docLink;
     if (docUrl) {
@@ -67,11 +68,11 @@ function RefMenu(props) {
         items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
     }
 
-    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.callbacks.getUses(props.id) });
+    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.getUses(props.id) });
 
     let impls = props.target.dataset.impls;
     if (impls && impls != "0") {
-        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.callbacks.getImpls(props.id) });
+        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.getImpls(props.id) });
     }
 
     return <Menu id={"div_ref_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
@@ -82,22 +83,6 @@ function view_in_vcs(target) {
     const line_id = target.getAttribute("id");
     const line_number = parseInt(line_id.slice("src_line_number_".length));
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
-}
-
-function edit(target) {
-    $.ajax({
-        url: utils.make_url('edit?file=' + target.dataset.link),
-        type: 'POST',
-        dataType: 'JSON',
-        cache: false
-    })
-    .done(function (json) {
-        console.log("edit - success");
-    })
-    .fail(function (xhr, status, errorThrown) {
-        console.log("Error with edit request");
-        console.log("error: " + errorThrown + "; status: " + status);
-    });
 }
 
 class SourceView extends React.Component {
@@ -114,7 +99,6 @@ class SourceView extends React.Component {
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
         const self = this;
-        const callbacks = this.props.callbacks;
         linkables.click((e) => {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
@@ -130,17 +114,17 @@ class SourceView extends React.Component {
             var file = file_loc[0];
 
             if (file == "search") {
-                callbacks.getUses(file_loc[1]);
+                this.props.getUses(file_loc[1]);
                 return;
             }
 
             if (file == "summary") {
-                callbacks.getSummary(file_loc[1]);
+                this.props.getSummary(file_loc[1]);
                 return;
             }
 
             let data = utils.parseLink(file_loc);
-            callbacks.getSource(file, data);
+            this.props.getSource(file, data);
         });
 
         add_ref_functionality(this);
@@ -167,11 +151,11 @@ class SourceView extends React.Component {
         if (!!this.state.refMenu) {
             const onClose = () => self.setState({ refMenu: null });
 
-            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} callbacks={this.props.callbacks} />;
+            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} getSummary={this.props.getSummary} getUses={this.props.getUses} getImpls={this.props.getImpls} />;
         }
 
         return <div id="div_src_view">
-            <BreadCrumbs path={this.props.path} callbacks={this.props.callbacks} />
+            <BreadCrumbs path={this.props.path} getSource={this.props.getSource} />
             <br />
             <div id="div_src_contents">
                 <span className="div_src_line_numbers">
@@ -185,6 +169,24 @@ class SourceView extends React.Component {
         </div>;
     }
 }
+
+const mapStateToProps = (state, ownProps) => {
+    return ownProps;
+}
+
+const mapDispatchToProps = (dispatch, ownProps) => {
+    return {
+        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
+        getSummary: (id) => dispatch(actions.getSummary(id)),
+        getImpls: (needle) => dispatch(actions.getImpls(needle)),
+        getUses: (needle) => dispatch(actions.getUses(needle)),
+    };
+}
+
+export const SourceViewController = connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(SourceView);
 
 function jumpToLine(line) {
     // Jump to the start line. 100 is a fudge so that the start line is not
@@ -224,8 +226,4 @@ function jumpToLine(line) {
     // right at the top of the window, which makes it easier to see.
     var y = line * $("#src_line_number_1").height() - 100;
     window.scroll(0, y);
-}
-
-module.exports = {
-    SourceView
 }

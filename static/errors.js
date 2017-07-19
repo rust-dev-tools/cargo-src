@@ -104,7 +104,7 @@ export class Error extends React.Component {
             if (this.props.showChildren) {
                 const childList = [];
                 for (let c of _children) {
-                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={c.id} />)
+                    childList.push(<ChildError level={c.level} message={c.message} spans={c.spans} key={c.id} getSource={this.props.getSource} />)
                 }
                 childrenSub = <span className="div_children">{childList}</span>;
             } else {
@@ -131,7 +131,7 @@ export class Error extends React.Component {
         return (
             <div className={'div_diagnostic div_' + level}>
                 <span className={'level_' + level}>{level}</span><span className="err_colon"> {code}:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}} />
-                <Snippet spans={spans} showSpans={this.props.showSpans} hideButtons={this.props.hideButtons} toggleSpans={this.props.toggleSpans} />
+                <Snippet spans={spans} showSpans={this.props.showSpans} hideButtons={this.props.hideButtons} toggleSpans={this.props.toggleSpans} getSource={this.props.getSource} />
 
                {children}
             </div>
@@ -146,7 +146,7 @@ function ChildError(props) {
         <span>
             <span className={'div_diagnostic_nested div_' + level}>
                 <span className={'level_' + level}>{level}</span><span className="err_colon">:</span> <span className="err_msg" dangerouslySetInnerHTML={{__html: message}}></span>
-                <Snippet spans={spans} showSpans={true} hideButtons={true} />
+                <Snippet spans={spans} showSpans="true" hideButtons="true" getSource={props.getSource} />
             </span><br />
         </span>
     );
@@ -162,6 +162,7 @@ const mapDispatchToPropsError = (dispatch, ownProps) => {
         toggleChildren: () => dispatch(actions.toggleChildren(ownProps.id)),
         toggleSpans: () => dispatch(actions.toggleSpans(ownProps.id)),
         showErrCode: (code, explain, error) => dispatch(actions.showErrCode(code, explain, error)),
+        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
     };
 }
 

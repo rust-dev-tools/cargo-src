@@ -9,7 +9,7 @@
 import React from 'react';
 import * as actions from './actions';
 import { makeError } from './errors';
-const utils = require('./utils');
+import * as utils from './utils';
 
 
 export function runBuild(dispatch) {

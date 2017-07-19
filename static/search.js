@@ -7,6 +7,8 @@
 // except according to those terms.
 
 import React from 'react';
+import { connect } from 'react-redux';
+import * as actions from './actions';
 
 const utils = require('./utils');
 
@@ -33,7 +35,7 @@ class ResultSet extends React.Component {
                         "column_start": 0,
                         "column_end": 0
                     };
-                    self.props.callbacks.getSource(r.file_name, highlight);
+                    self.props.getSource(r.file_name, highlight);
                     e.preventDefault();
                 };
                 const snippetClick = (e) => {
@@ -43,7 +45,7 @@ class ResultSet extends React.Component {
                         "column_start": l.column_start,
                         "column_end": l.column_end
                     };
-                    self.props.callbacks.getSource(r.file_name, highlight);
+                    self.props.getSource(r.file_name, highlight);
                     e.preventDefault();
                 };
                 lines.push(<div key={kind + "-" + l.line_start}>
@@ -57,7 +59,7 @@ class ResultSet extends React.Component {
                 </div>);
             }
             const onClick = (e) => {
-                self.props.callbacks.getSource(r.file_name, {});
+                self.props.getSource(r.file_name, {});
                 e.preventDefault();
             };
             result.push(<div key={kind + "-" + r.file_name}>
@@ -75,6 +77,21 @@ class ResultSet extends React.Component {
     }
 }
 
+const mapStateToProps = (state, ownProps) => {
+    return ownProps;
+}
+
+const mapDispatchToProps = (dispatch) => {
+    return {
+        getSource: (file, highlight) => dispatch(actions.getSource(file, highlight)),
+    };
+}
+
+const ResultSetController = connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(ResultSet);
+
 function noResults() {
     return <span className="div_search_no_results">No results found</span>;
 }
@@ -85,7 +102,7 @@ function FindResults(props) {
     } else {
         return <div>
             <div className="div_search_title">Search results:</div>
-                 <ResultSet input={props.results} kind="result" callbacks={props.callbacks} />
+                 <ResultSetController input={props.results} kind="result" />
             </div>;
     }
 }
@@ -96,9 +113,9 @@ function SearchResults(props) {
     } else {
         return <div>
             <div className="div_search_title">Definitions:</div>
-            <ResultSet input={props.defs} kind="def" callbacks={props.callbacks} />
+            <ResultSetController input={props.defs} kind="def"/>
             <div className="div_search_title">References:</div>
-            <ResultSet input={props.refs} kind="ref" callbacks={props.callbacks} />
+            <ResultSetController input={props.refs} kind="ref"/>
         </div>;
     }
 }

@@ -8,14 +8,10 @@
 
 import React from 'react';
 
-module.exports = {
-    Summary
-};
-
 const { RefMenu } = require('./menus');
 const utils = require('./utils');
 
-class Summary extends React.Component {
+export class Summary extends React.Component {
     constructor(props) {
         super(props);
         this.state = { showDocs: false, refMenu: null };

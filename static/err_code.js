@@ -27,7 +27,7 @@ function ErrCode(props) {
         <hr className="separator" />
 
         <div id="div_err_code_error">
-            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true" />
+            <Error {...props.error} showSpans="true" hideCodeLink="true" hideButtons="true" getSource={props.getSource} />
         </div>
     </div>
     );
@@ -37,6 +37,13 @@ const mapStateToProps = (state) => {
     return state.errCode;
 }
 
+const mapDispatchToProps = (dispatch) => {
+    return {
+        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
+    };
+}
+
 export const ErrCodeController = connect(
     mapStateToProps,
+    mapDispatchToProps,
 )(ErrCode);

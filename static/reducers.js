@@ -8,7 +8,9 @@
 
 import React from 'react';
 import { OrderedMap } from 'immutable';
-import { Page, Build, BuildState, DO_BUILD, BUILD_COMPLETE, SHOW_BUILD_RESULTS, SHOW_ERROR, SHOW_ERR_CODE, SHOW_LOADING, ADD_MESSAGE, SET_ERROR, UPDATE_SNIPPET, UPDATE_CHILD_SNIPPET, TOGGLE_CHILDREN, TOGGLE_SPANS } from './actions';
+import { Page, Build, BuildState, DO_BUILD, BUILD_COMPLETE, SHOW_BUILD_RESULTS, SHOW_ERROR, SHOW_ERR_CODE,
+         SHOW_LOADING, ADD_MESSAGE, SET_ERROR, UPDATE_SNIPPET, UPDATE_CHILD_SNIPPET, TOGGLE_CHILDREN,
+         TOGGLE_SPANS, SHOW_SEARCH, SHOW_FIND, SHOW_SOURCE, SHOW_SOURCE_DIR, SHOW_SUMMARY } from './actions';
 
 
 const initialState = {
@@ -54,6 +56,32 @@ export function rustwReducer(state = initialState, action) {
                 page: Page.ERR_CODE,
                 errCode: { code: action.code, explain: action.explain, error: action.error },
             }};
+        case SHOW_SEARCH:
+            return { ...state, ... {
+                page: Page.SEARCH,
+                search: { defs: action.defs, refs: action.refs },
+            }};
+        case SHOW_FIND:
+            return { ...state, ... {
+                page: Page.FIND,
+                find: { results: action.results },
+            }};
+        case SHOW_SOURCE:
+            return { ...state, ... {
+                page: Page.SOURCE,
+                source: { path: action.path, lines: action.lines, lineStart: action.lineStart, highlight: action.highlight },
+            }};
+        case SHOW_SOURCE_DIR:
+            return { ...state, ... {
+                page: Page.SOURCE_DIR,
+                sourceDir: { name: action.name, files: action.files },
+            }};
+        case SHOW_SUMMARY:
+            return { ...state, ... {
+                page: Page.SUMMARY,
+                summary: actions.data,
+            }};
+        case SHOW_SUMMARY:
         case ADD_MESSAGE:
         case SET_ERROR:
         case UPDATE_SNIPPET:
