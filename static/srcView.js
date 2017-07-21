@@ -10,9 +10,9 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-const utils = require('./utils');
-const { BreadCrumbs } = require('./breadCrumbs');
-const { MenuHost, Menu } = require('./menus');
+import utils from './utils';
+import { BreadCrumbs } from './breadCrumbs';
+import { MenuHost, Menu } from './menus';
 
 
 // Menus, highlighting on mouseover.

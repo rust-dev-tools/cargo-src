@@ -96,7 +96,7 @@ function noResults() {
     return <span className="div_search_no_results">No results found</span>;
 }
 
-function FindResults(props) {
+export function FindResults(props) {
     if (!props.results) {
         return noResults();
     } else {
@@ -107,7 +107,7 @@ function FindResults(props) {
     }
 }
 
-function SearchResults(props) {
+export function SearchResults(props) {
     if (!props.defs) {
         return noResults();
     } else {
@@ -131,5 +131,3 @@ function highlight_needle(results, tag) {
         }
     }
 }
-
-module.exports = { FindResults, SearchResults };

@@ -10,9 +10,9 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-const { Snippet } = require('./snippet');
-const { HideButton } = require('./hideButton');
-const utils = require('./utils');
+import { Snippet } from './snippet';
+import { HideButton } from './hideButton';
+import utils from './utils';
 
 
 class Results extends React.Component {

@@ -10,8 +10,8 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { BuildState } from './reducers';
 
-const { Menu, MenuHost } = require('./menus');
-const actions = require('./actions');
+import { Menu, MenuHost } from './menus';
+import actions from './actions';
 
 class TopBar extends React.Component {
     render() {

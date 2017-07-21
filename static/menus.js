@@ -10,7 +10,7 @@ import React from 'react';
 
 // props: { id, items: [{id, label, fn, unstable}], location, onClose, target }
 //   fn: (target: Element, location) -> ()
-class Menu extends React.Component {
+export class Menu extends React.Component {
     componentDidUpdate() {
         this.didRender();
     }
@@ -61,7 +61,7 @@ class Menu extends React.Component {
     }
 }
 
-class MenuHost extends React.Component {
+export class MenuHost extends React.Component {
     constructor(props) {
         super(props);
         this.state = { menuOpen: null };
@@ -94,5 +94,3 @@ class MenuHost extends React.Component {
         );
     }
 }
-
-module.exports = { MenuHost, Menu };

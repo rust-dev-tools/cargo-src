@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-function HideButton(props) {
+export function HideButton(props) {
     let text;
     if (props.hidden) {
         text = '+';
@@ -16,8 +16,4 @@ function HideButton(props) {
         text = '-';
     }
     return <span className="small_button" onClick={props.onClick}>{text}</span>
-}
-
-module.exports = {
-    HideButton
 }

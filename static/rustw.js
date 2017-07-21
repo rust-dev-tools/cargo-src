@@ -6,10 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const app = require('./app');
+import app from './app';
 
-module.exports = {
-    renderApp: function() {
-        app.renderApp();
-    },
-};
+export function renderApp() {
+    app.renderApp();
+}

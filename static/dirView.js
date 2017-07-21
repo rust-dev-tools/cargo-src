@@ -8,9 +8,9 @@
 
 import React from 'react';
 
-const { BreadCrumbs } = require('./breadCrumbs');
+import { BreadCrumbs } from './breadCrumbs';
 
-function DirView(props) {
+export function DirView(props) {
     let files = [];
     for (const f of props.files) {
         const onClick = (e) => props.getSource(props.file + "/" + f.name);
@@ -30,8 +30,4 @@ function DirView(props) {
             {files}
         </div>
     </div>;
-}
-
-module.exports = {
-    DirView
 }

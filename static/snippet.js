@@ -10,9 +10,9 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-const { HideButton } = require('./hideButton');
-const utils = require('./utils');
-const { MenuHost, Menu } = require('./menus');
+import { HideButton } from './hideButton';
+import utils from './utils';
+import { MenuHost, Menu } from './menus';
 
 export function Snippet(props) {
     const spans = props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={props.showSpans} getSource={props.getSource} />));

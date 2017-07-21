@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-function BreadCrumbs(props) {
+export function BreadCrumbs(props) {
     let crumbs = [];
     for (const c in props.path) {
         const id = "breadcrumb_" + c;
@@ -19,8 +19,4 @@ function BreadCrumbs(props) {
     return <div id="div_dir_path">
         {crumbs}
     </div>;
-}
-
-module.exports = {
-    BreadCrumbs: BreadCrumbs
 }

@@ -8,8 +8,8 @@
 
 import React from 'react';
 
-const { RefMenu } = require('./menus');
-const utils = require('./utils');
+import { RefMenu } from './menus';
+import utils from './utils';
 
 export class Summary extends React.Component {
     constructor(props) {
