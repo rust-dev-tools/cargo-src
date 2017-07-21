@@ -20,12 +20,11 @@ export function DirView(props) {
         files.push(<div className="div_entry" key={f.name}>
                         <span className={className} onClick={onClick}>{f.name}</span>
                     </div>);
-        }
     }
     return <div id="div_dir_view">
-        <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
-        <div id="div_dir_contents">
-            {files}
-        </div>
-    </div>;
+            <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
+            <div id="div_dir_contents">
+                {files}
+            </div>
+        </div>;
 }
