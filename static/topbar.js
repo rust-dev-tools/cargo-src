@@ -11,7 +11,7 @@ import { connect } from 'react-redux';
 import { BuildState } from './reducers';
 
 import { Menu, MenuHost } from './menus';
-import actions from './actions';
+import * as actions from './actions';
 
 class TopBar extends React.Component {
     render() {

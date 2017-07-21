@@ -14,7 +14,7 @@ import thunk from 'redux-thunk';
 import { rustwReducer, Page } from './reducers';
 import * as actions from './actions';
 
-import utils from './utils';
+import * as utils from './utils';
 import { TopBarController } from './topbar';
 import { ResultsController, Error } from "./errors";
 import { ErrCodeController } from "./err_code";

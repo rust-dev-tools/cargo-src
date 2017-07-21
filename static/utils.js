@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-import actions from './actions';
+import * as actions from './actions';
 
 export function make_url(suffix) {
     return '/' + CONFIG.demo_mode_root_path + suffix;

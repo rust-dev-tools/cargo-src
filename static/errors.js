@@ -12,7 +12,7 @@ import * as actions from './actions';
 
 import { Snippet } from './snippet';
 import { HideButton } from './hideButton';
-import utils from './utils';
+import * as utils from './utils';
 
 
 class Results extends React.Component {

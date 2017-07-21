@@ -10,7 +10,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-import utils from './utils';
+import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
 import { MenuHost, Menu } from './menus';
 
