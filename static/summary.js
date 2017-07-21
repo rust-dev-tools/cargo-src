@@ -9,7 +9,7 @@
 import React from 'react';
 
 import { RefMenu } from './menus';
-import utils from './utils';
+import * as utils from './utils';
 
 export class Summary extends React.Component {
     constructor(props) {

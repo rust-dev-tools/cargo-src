@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-import app from './app';
+import { renderApp as render } from './app';
 
 export function renderApp() {
-    app.renderApp();
+    render();
 }

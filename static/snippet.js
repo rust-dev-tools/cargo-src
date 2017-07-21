@@ -11,7 +11,7 @@ import { connect } from 'react-redux';
 import * as actions from './actions';
 
 import { HideButton } from './hideButton';
-import utils from './utils';
+import * as utils from './utils';
 import { MenuHost, Menu } from './menus';
 
 export function Snippet(props) {
