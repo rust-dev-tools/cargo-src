@@ -71,13 +71,13 @@ export class MenuHost extends React.Component {
     render() {
         let menu = null;
         if (!!this.state.menuOpen) {
-            // TODO[ES6]: remove, unnecessary if arrow funciton have been used
+            // TODO[ES6]: remove, unnecessary if arrow function has been used
             const self = this;
             const onClose = () => self.setState({ menuOpen: null});
             menu = React.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target, callbacks: this.props.callbacks });
         }
 
-        // TODO[ES6]: remove, unnecessary if arrow funciton have been used
+        // TODO[ES6]: remove, unnecessary if arrow function has been used
         const self = this;
         let contextMenu = (ev) => {
             self.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});

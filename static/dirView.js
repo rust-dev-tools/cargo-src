@@ -22,9 +22,9 @@ export function DirView(props) {
                     </div>);
     }
     return <div id="div_dir_view">
-            <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
-            <div id="div_dir_contents">
-                {files}
-            </div>
-        </div>;
+        <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
+        <div id="div_dir_contents">
+            {files}
+        </div>
+    </div>;
 }
