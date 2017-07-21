@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const actions = require('./actions');
+import actions from './actions';
 
 export function make_url(suffix) {
     return '/' + CONFIG.demo_mode_root_path + suffix;
@@ -41,7 +41,7 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
         // First line
         var lhs = (highlight.column_start - 1);
         var rhs = 0;
-        if (highlight.line_end == highlight.line_start && highlight.column_end > 0) {
+        if (highlight.line_end === highlight.line_start && highlight.column_end > 0) {
             // If we're only highlighting one line, then the highlight must stop
             // before the end of the line.
             rhs = (highlight.column_end - 1);
@@ -84,15 +84,15 @@ export function request(dispatch, urlStr, success, errStr, suppressMessages) {
 }
 
 export function parseLink(file_loc) {
-    var line_start = parseInt(file_loc[1], 10);
-    var column_start = parseInt(file_loc[2], 10);
-    var line_end = parseInt(file_loc[3], 10);
-    var column_end = parseInt(file_loc[4], 10);
+    let line_start = parseInt(file_loc[1], 10);
+    let column_start = parseInt(file_loc[2], 10);
+    let line_end = parseInt(file_loc[3], 10);
+    let column_end = parseInt(file_loc[4], 10);
 
-    if (line_start == 0 || isNaN(line_start)) {
+    if (line_start === 0 || isNaN(line_start)) {
         line_start = 0;
         line_end = 0;
-    } else if (line_end == 0 || isNaN(line_end)) {
+    } else if (line_end === 0 || isNaN(line_end)) {
         line_end = line_start;
     }
 
@@ -146,7 +146,7 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
 
     left *= CHAR_WIDTH;
     right *= CHAR_WIDTH;
-    if (right == 0) {
+    if (right === 0) {
         right = line_div.width();
     }
 

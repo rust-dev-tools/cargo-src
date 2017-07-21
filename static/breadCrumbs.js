@@ -8,7 +8,8 @@
 
 import React from 'react';
 
-function BreadCrumbs(props) {
+export function BreadCrumbs(props) {
+    // TODO[ES6]: use props.path.map
     let crumbs = [];
     for (const c in props.path) {
         const id = "breadcrumb_" + c;
@@ -19,8 +20,4 @@ function BreadCrumbs(props) {
     return <div id="div_dir_path">
         {crumbs}
     </div>;
-}
-
-module.exports = {
-    BreadCrumbs: BreadCrumbs
 }

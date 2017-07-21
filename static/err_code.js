@@ -10,7 +10,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-const { Error } = require('./errors');
+import { Error } from './errors';
 
 function ErrCode(props) {
     let explain;
@@ -33,17 +33,12 @@ function ErrCode(props) {
     );
 }
 
-const mapStateToProps = (state) => {
+export const mapStateToProps = (state) => {
     return state.errCode;
 }
 
-const mapDispatchToProps = (dispatch) => {
+export const mapDispatchToProps = (dispatch) => {
     return {
         getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
     };
 }
-
-export const ErrCodeController = connect(
-    mapStateToProps,
-    mapDispatchToProps,
-)(ErrCode);

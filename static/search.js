@@ -23,9 +23,12 @@ class ResultSet extends React.Component {
         let result = [];
         let count = 0;
         const self = this;
+        // TODO[ES6]: use input.map
         for (const r of input) {
             let lines = [];
+            // TODO[ES6]: use r.lines
             for (const l of r.lines) {
+                // TODO[ES6]: use string interpolation
                 const lineId = "snippet_line_number_" + kind + "_" + count + "_" + l.line_start;
                 const snippetId = "snippet_line_" + kind + "_" + count + "_" + l.line_start;
                 const lineClick = (e) => {
@@ -96,18 +99,18 @@ function noResults() {
     return <span className="div_search_no_results">No results found</span>;
 }
 
-function FindResults(props) {
+export function FindResults(props) {
     if (!props.results) {
         return noResults();
     } else {
-        return <div>
-            <div className="div_search_title">Search results:</div>
-                 <ResultSetController input={props.results} kind="result" />
-            </div>;
+        return(<div>
+                <div className="div_search_title">Search results:</div>
+                <ResultSetController input={props.results} kind="result" />
+            </div>);
     }
 }
 
-function SearchResults(props) {
+export function SearchResults(props) {
     if (!props.defs) {
         return noResults();
     } else {
@@ -124,6 +127,7 @@ function highlight_needle(results, tag) {
     for (const i in results) {
         for (const line of results[i].lines) {
             line.line_end = line.line_start;
+            // TODO[ES6]: use string interpolation
             utils.highlight_spans(line,
                                   null,
                                   "snippet_line_" + tag + "_" + i + "_",
@@ -131,5 +135,3 @@ function highlight_needle(results, tag) {
         }
     }
 }
-
-module.exports = { FindResults, SearchResults };

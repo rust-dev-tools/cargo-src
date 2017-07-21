@@ -14,14 +14,14 @@ import thunk from 'redux-thunk';
 import { rustwReducer, Page } from './reducers';
 import * as actions from './actions';
 
-const utils = require('./utils');
-const { TopBarController } = require('./topbar');
-const { ResultsController, Error } = require("./errors");
-const { ErrCodeController } = require("./err_code");
-const { FindResults, SearchResults } = require("./search");
-const { DirView } = require('./dirView');
-const { SourceViewController } = require('./srcView');
-const { Summary } = require('./summary');
+import utils from './utils';
+import { TopBarController } from './topbar';
+import { ResultsController, Error } from "./errors";
+import { ErrCodeController } from "./err_code";
+import { FindResults, SearchResults } from "./search";
+import { DirView } from './dirView';
+import { SourceViewController } from './srcView';
+import { Summary } from './summary';
 
 // TODOs in build
 
@@ -110,13 +110,11 @@ const AppController = connect(
 
 let store = createStore(rustwReducer, applyMiddleware(thunk));
 
-module.exports = {
-    renderApp: function() {
-        ReactDOM.render(
-            <Provider store={store}>
-                <AppController />
-            </Provider>,
-            document.getElementById('container')
-        );
-    }
+export function renderApp() {
+    ReactDOM.render(
+        <Provider store={store}>
+            <AppController />
+        </Provider>,
+        document.getElementById('container')
+    );
 }

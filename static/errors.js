@@ -10,9 +10,9 @@ import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
 
-const { Snippet } = require('./snippet');
-const { HideButton } = require('./hideButton');
-const utils = require('./utils');
+import { Snippet } from './snippet';
+import { HideButton } from './hideButton';
+import utils from './utils';
 
 
 class Results extends React.Component {
@@ -80,6 +80,7 @@ function demoMsg() {
 }
 
 function Messages(props) {
+    // TODO[ES6]: use props.messages.map
     let msgs = [];
     for (const m of props.messages) {
         msgs.push(<pre key={m}>{m}</pre>);

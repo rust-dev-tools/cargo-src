@@ -8,21 +8,18 @@
 
 import React from 'react';
 
-const { BreadCrumbs } = require('./breadCrumbs');
+import { BreadCrumbs } from './breadCrumbs';
 
-function DirView(props) {
+export function DirView(props) {
+    // TODO[ES6]: use props.map
     let files = [];
     for (const f of props.files) {
+        // TODO[ES6]: use string interpolation
         const onClick = (e) => props.getSource(props.file + "/" + f.name);
-        if (f.kind == "Directory") {
-            files.push(<div className="div_entry" key={f.name}>
-                        <span className="div_entry_name div_dir_entry" onClick={onClick}>{f.name}</span>
+        const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';
+        files.push(<div className="div_entry" key={f.name}>
+                        <span className={className} onClick={onClick}>{f.name}</span>
                     </div>);
-        } else {
-            files.push(<div className="div_entry" key={f.name}>
-                        <span className="div_entry_name div_file_entry" onClick={onClick}>{f.name}</span>
-                    </div>);
-        }
     }
     return <div id="div_dir_view">
         <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
@@ -30,8 +27,4 @@ function DirView(props) {
             {files}
         </div>
     </div>;
-}
-
-module.exports = {
-    DirView
 }
