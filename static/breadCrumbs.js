@@ -9,6 +9,7 @@
 import React from 'react';
 
 export function BreadCrumbs(props) {
+    // TODO[ES6]: use props.path.map
     let crumbs = [];
     for (const c in props.path) {
         const id = "breadcrumb_" + c;

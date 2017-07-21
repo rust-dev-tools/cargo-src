@@ -51,6 +51,7 @@ export class Summary extends React.Component {
             // rustw.load_link.call(e.target);
             e.preventDefault();
         };
+        // TODO[ES6]: use this.props.breadCrumbs.map
         let breadCrumbs = [];
         for (const bc in this.props.breadCrumbs) {
             breadCrumbs.push(<span>{bc} :: </span>);
@@ -63,6 +64,7 @@ export class Summary extends React.Component {
         let docExpandButton = null;
         let docsRest = null;
         if (this.props.doc_rest) {
+            // TODO[ES6]: seems to be unnecessary with arrow funcitons
             const self = this;
             if (this.state.showDocs) {
                 docExpandButton = <span className="small_button" id="expand_docs" onClick={() => self.setState({ showDocs: false })}>-</span>;
@@ -72,6 +74,7 @@ export class Summary extends React.Component {
             }
         }
 
+        // TODO[ES6]: use this.props.children.map
         let children = [];
         for (const c of this.props.children) {
             children.push(<div className="div_summary_sub" id={"div_summary_sub_" + c.id} key={c.id}>
@@ -83,6 +86,7 @@ export class Summary extends React.Component {
 
         let refMenu = null;
         if (!!this.state.refMenu) {
+            // TODO[ES6]: seems to be unnecessary with arrow funcitons
             const self = this;
             const onClose = () => self.setState({ refMenu: null });
             refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;            

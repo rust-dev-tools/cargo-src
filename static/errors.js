@@ -80,6 +80,7 @@ function demoMsg() {
 }
 
 function Messages(props) {
+    // TODO[ES6]: use props.messages.map
     let msgs = [];
     for (const m of props.messages) {
         msgs.push(<pre key={m}>{m}</pre>);

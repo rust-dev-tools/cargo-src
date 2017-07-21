@@ -37,6 +37,7 @@ export class Menu extends React.Component {
             event.stopPropagation();
         };
 
+        // TODO[ES6]: use this.props.items.map
         let items = [];
         for (const i of this.props.items) {
             if (!i.unstable || CONFIG.unstable_features) {
@@ -48,7 +49,7 @@ export class Menu extends React.Component {
                 items.push(<div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>);
             }
         }
-        if (items == 0) {
+        if (items.length === 0) {
             this.isEmpty = true;
             return null;
         }
@@ -70,11 +71,13 @@ export class MenuHost extends React.Component {
     render() {
         let menu = null;
         if (!!this.state.menuOpen) {
+            // TODO[ES6]: remove, unnecessary if arrow funciton have been used
             const self = this;
             const onClose = () => self.setState({ menuOpen: null});
             menu = React.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target, callbacks: this.props.callbacks });
         }
 
+        // TODO[ES6]: remove, unnecessary if arrow funciton have been used
         const self = this;
         let contextMenu = (ev) => {
             self.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});

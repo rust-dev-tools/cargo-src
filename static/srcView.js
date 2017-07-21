@@ -20,6 +20,7 @@ function add_ref_functionality(self) {
     for (const el of $("#div_src_view").find(".class_id")) {
         const element = $(el);
         const classes = el.className.split(' ');
+        // TODO[ES6]: use classes.find() and then execute following code
         for (const c of classes) {
             if (c.startsWith('class_id_')) {
                 element.hover(function() {
@@ -71,6 +72,7 @@ function RefMenu(props) {
     items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.getUses(props.id) });
 
     let impls = props.target.dataset.impls;
+    // XXX non strict comparison
     if (impls && impls != "0") {
         items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.getImpls(props.id) });
     }
@@ -98,6 +100,7 @@ class SourceView extends React.Component {
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
+        // TODO[ES6]: seems to be unnecessary with arrow function
         const self = this;
         linkables.click((e) => {
             // The data for what to do on-click is encoded in the data-link attribute.
@@ -113,12 +116,12 @@ class SourceView extends React.Component {
             var file_loc = e.target.dataset.link.split(':');
             var file = file_loc[0];
 
-            if (file == "search") {
+            if (file === "search") {
                 this.props.getUses(file_loc[1]);
                 return;
             }
 
-            if (file == "summary") {
+            if (file === "summary") {
                 this.props.getSummary(file_loc[1]);
                 return;
             }
@@ -141,6 +144,7 @@ class SourceView extends React.Component {
         let lines = []
         let count = 0;
 
+        // TODO[ES6]: use this.props.lines.map
         for (const l of this.props.lines) {
             count += 1;
             numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
@@ -211,12 +215,7 @@ class LineNumber extends MenuHost {
 }
 
 function Line(props) {
-    let line;
-    if (!props.line) {
-        line = "&nbsp;"
-    } else {
-        line = props.line;
-    }
+    const line = !props.line ? '&nbsp' : props.line;
     const lineId = "src_line_" + props.count;
     return <div className="div_src_line" id={lineId} dangerouslySetInnerHTML={{__html: line}} />;
 }

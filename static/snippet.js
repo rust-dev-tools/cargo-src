@@ -16,7 +16,7 @@ import { MenuHost, Menu } from './menus';
 
 export function Snippet(props) {
     const spans = props.spans.map((sp) => (<SnippetSpan {...sp} key={sp.id} showBlock={props.showSpans} getSource={props.getSource} />));
-    if (!spans || spans.length == 0) {
+    if (!spans || spans.length === 0) {
         return null;
     }
     let button = null;
@@ -75,9 +75,10 @@ class SnippetSpan extends MenuHost {
         if (showBlock && highlights) {
             const { line_start, line_end, column_start, column_end } = this.props;
 
+            // TODO[ES6]: use highlights.forEach
             for (const h of highlights) {
                 let css_class = "selected_secondary";
-                if (JSON.stringify(h[0]) == JSON.stringify({ line_start, line_end, column_start, column_end })) {
+                if (JSON.stringify(h[0]) === JSON.stringify({ line_start, line_end, column_start, column_end })) {
                     css_class = "selected";
                 }
                 utils.highlight_spans(h[0],
@@ -120,6 +121,7 @@ class SnippetSpan extends MenuHost {
                 </div>;
         }
 
+        // TODO[ES6]: seems to be unnecessary
         const self = this;
         const onClick = (ev) => {
             var highlight = {
@@ -146,6 +148,7 @@ function SnippetBlock(props) {
     let { line_start: line_number, text, id } = props;
     const numbers = [];
     const lines = [];
+    // TODO[ES6]: use text.map
     for (let line of text) {
         numbers.push(<div className="span_src_number" id={'snippet_line_number_' + id + '_' + line_number} key={'number_' + line_number}>{line_number}</div>);
         let text = "&nbsp;";

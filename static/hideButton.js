@@ -9,11 +9,6 @@
 import React from 'react';
 
 export function HideButton(props) {
-    let text;
-    if (props.hidden) {
-        text = '+';
-    } else {
-        text = '-';
-    }
+    const text = props.hidden ? '+' : '-';
     return <span className="small_button" onClick={props.onClick}>{text}</span>
 }

@@ -63,6 +63,7 @@ function updateSnippets(dispatch, data) {
         return;
     }
 
+    // // TODO[ES6]: use data.snippets.forEach
     for (let s of data.snippets) {
         if (s.parent_id) {
             dispatch(actions.updateChildSnippet(s.parent_id, s));

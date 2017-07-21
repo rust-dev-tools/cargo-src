@@ -66,7 +66,7 @@ const mapDispatchToProps = (dispatch) => {
 
 const mergeProps = (stateProps, dispatchProps) => {
     let props = Object.assign({}, stateProps, dispatchProps);
-    if (stateProps.buildState == BuildState.BUILDING) {
+    if (stateProps.buildState === BuildState.BUILDING) {
         props.clickBuild = null;
     }
     return props;
@@ -103,8 +103,9 @@ function BrowseLink(props) {
 }
 
 function SearchBox(props) {
+    const enterKeyCode = 13;
     const onKeyPress = (e) => {
-        if (e.which == 13) {
+        if (e.which === enterKeyCode) {
             props.getSearch(e.currentTarget.value);
         }
     };
@@ -116,13 +117,13 @@ function BuildButton(props) {
     const state = props.state;
     let label;
     let className = "button";
-    if (state == BuildState.FRESH) {
+    if (state === BuildState.FRESH) {
         label = "build";
         className += " enabled_button";
-    } else if (state == BuildState.BUILDING) {
+    } else if (state === BuildState.BUILDING) {
         label = "building...";
         className += " disabled_button";
-    } else if (state == BuildState.BUILT) {
+    } else if (state === BuildState.BUILT) {
         label = "rebuild";
         if (CONFIG.build_on_load) {
             label += " (F5)";
