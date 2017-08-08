@@ -12,8 +12,6 @@ use std::path::{Path, PathBuf};
 use std::str;
 
 use analysis::{AnalysisHost, Target, Id};
-use rustdoc::html::markdown;
-use rustdoc::html::markdown::RenderType;
 use span;
 use vfs::{Vfs, FileContents};
 
