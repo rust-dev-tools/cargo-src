@@ -22,7 +22,7 @@ use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::{CodeMap, Loc, FilePathMapping};
 
 use analysis::AnalysisHost;
-use analysis::raw::DefKind;
+use analysis::DefKind;
 
 type Span = span::Span<span::ZeroIndexed>;
 
