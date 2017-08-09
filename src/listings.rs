@@ -38,9 +38,15 @@ impl DirectoryListing {
                 let name = entry.file_name().to_str().unwrap().to_owned();
                 if let Ok(file_type) = entry.file_type() {
                     if file_type.is_dir() {
-                        files.push(Listing { kind: ListingKind::Directory, name: name });
+                        files.push(Listing {
+                            kind: ListingKind::Directory,
+                            name: name,
+                        });
                     } else if file_type.is_file() {
-                        files.push(Listing { kind: ListingKind::File, name: name });
+                        files.push(Listing {
+                            kind: ListingKind::File,
+                            name: name,
+                        });
                     }
                 }
             }
@@ -49,7 +55,9 @@ impl DirectoryListing {
         files.sort();
 
         Ok(DirectoryListing {
-            path: path.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
+            path: path.components()
+                .map(|c| c.as_os_str().to_str().unwrap().to_owned())
+                .collect(),
             files: files,
         })
     }

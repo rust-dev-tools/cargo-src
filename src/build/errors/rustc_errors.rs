@@ -77,9 +77,7 @@ pub struct LoweringContext {
 
 impl LoweringContext {
     pub fn new() -> LoweringContext {
-        LoweringContext {
-            id: 0,
-        }
+        LoweringContext { id: 0 }
     }
 
     fn next_id(&mut self) -> u32 {
@@ -117,7 +115,9 @@ impl DiagnosticSpan {
         // TODO we should make plain_text ourselves straight from the files,
         // then when we save after quick edit, we can check the time on the file
         // cache to check the file wasn't modified.
-        let mut plain_text = String::with_capacity(self.text.len() + self.text.iter().fold(0, |a, l| a + l.text.len()));
+        let mut plain_text = String::with_capacity(
+            self.text.len() + self.text.iter().fold(0, |a, l| a + l.text.len()),
+        );
         for l in &self.text {
             plain_text.push_str(&l.text);
             plain_text.push('\n');
@@ -217,30 +217,28 @@ fn codify_message(source: &str) -> String {
         let mut upgrade_url = false;
 
         match state {
-            State::Issue(ref mut buf) => {
-                if c.is_digit(10) {
-                    buf.push(c);
-                } else {
-                    result.push_str("<a class=\"issue_link\" href=\"https://github.com/rust-lang/rust/issues/");
-                    result.push_str(buf);
-                    result.push_str("\" target=\"_blank\">#");
-                    result.push_str(buf);
-                    result.push_str("</a>");
-                    push_char(&mut result, c);
-                    reset_state = true;
-                }
-            }
-            State::NewHash => {
-                if c == '[' {
-                    state = State::Attr(String::new());
-                } else if c.is_digit(10) {
-                    state = State::Issue(c.to_string());
-                } else {
-                    result.push('#');
-                    push_char(&mut result, c);
-                    reset_state = true;
-                }
-            }
+            State::Issue(ref mut buf) => if c.is_digit(10) {
+                buf.push(c);
+            } else {
+                result.push_str(
+                    "<a class=\"issue_link\" href=\"https://github.com/rust-lang/rust/issues/",
+                );
+                result.push_str(buf);
+                result.push_str("\" target=\"_blank\">#");
+                result.push_str(buf);
+                result.push_str("</a>");
+                push_char(&mut result, c);
+                reset_state = true;
+            },
+            State::NewHash => if c == '[' {
+                state = State::Attr(String::new());
+            } else if c.is_digit(10) {
+                state = State::Issue(c.to_string());
+            } else {
+                result.push('#');
+                push_char(&mut result, c);
+                reset_state = true;
+            },
             State::MaybeUrl(ref mut buf) => {
                 if c == '>' {
                     // Wasn't a URL afterall.
@@ -256,47 +254,39 @@ fn codify_message(source: &str) -> String {
                     }
                 }
             }
-            State::Url(ref mut buf) => {
-                if c == '>' {
-                    result.push_str("&lt;<a class=\"link\" href=\"");
-                    result.push_str(buf);
-                    result.push_str("\" target=\"_blank\">");
-                    result.push_str(buf);
-                    result.push_str("</a>&gt;");
-                    reset_state = true;
-                } else {
-                    buf.push(c);
-                }
-            }
-            State::Backtick(ref mut buf) => {
-                if c == '`' {
-                    result.push_str("`<code class=\"code\">");
-                    result.push_str(&buf);
-                    result.push_str("</code>`");
-                    reset_state = true;
-                } else {
-                    push_char(buf, c);
-                }
-            }
-            State::Attr(ref mut buf) => {
-                if c == ']' {
-                    result.push_str("<code class=\"attr\">#[");
-                    result.push_str(&buf);
-                    result.push_str("]</code>");
-                    reset_state = true;
-                } else {
-                    push_char(buf, c);
-                }
-            }
-            State::Outer => {
-                match c {
-                    '`' => state = State::Backtick(String::new()),
-                    '#' => state = State::NewHash,
-                    '<' => state = State::MaybeUrl(String::new()),
-                    '[' => state = State::Attr(String::new()),
-                    _ => push_char(&mut result, c),
-                }
-            }
+            State::Url(ref mut buf) => if c == '>' {
+                result.push_str("&lt;<a class=\"link\" href=\"");
+                result.push_str(buf);
+                result.push_str("\" target=\"_blank\">");
+                result.push_str(buf);
+                result.push_str("</a>&gt;");
+                reset_state = true;
+            } else {
+                buf.push(c);
+            },
+            State::Backtick(ref mut buf) => if c == '`' {
+                result.push_str("`<code class=\"code\">");
+                result.push_str(&buf);
+                result.push_str("</code>`");
+                reset_state = true;
+            } else {
+                push_char(buf, c);
+            },
+            State::Attr(ref mut buf) => if c == ']' {
+                result.push_str("<code class=\"attr\">#[");
+                result.push_str(&buf);
+                result.push_str("]</code>");
+                reset_state = true;
+            } else {
+                push_char(buf, c);
+            },
+            State::Outer => match c {
+                '`' => state = State::Backtick(String::new()),
+                '#' => state = State::NewHash,
+                '<' => state = State::MaybeUrl(String::new()),
+                '[' => state = State::Attr(String::new()),
+                _ => push_char(&mut result, c),
+            },
         }
 
         if reset_state {
@@ -324,7 +314,7 @@ fn codify_message(source: &str) -> String {
             result.push_str(buf);
             result.push_str("</a>");
         }
-        State::Url(ref buf) | State::MaybeUrl(ref buf)=> {
+        State::Url(ref buf) | State::MaybeUrl(ref buf) => {
             result.push_str("&lt;");
             result.push_str(&buf);
         }
@@ -361,7 +351,9 @@ mod test {
     fn test_codify_message_backtick() {
         let input = "foo `bar` baz `qux`".to_owned();
         let result = codify_message(&input);
-        assert!(result == "foo `<code class=\"code\">bar</code>` baz `<code class=\"code\">qux</code>`");
+        assert!(
+            result == "foo `<code class=\"code\">bar</code>` baz `<code class=\"code\">qux</code>`"
+        );
 
         let input = "foo `bar baz".to_owned();
         let result = codify_message(&input);
@@ -372,7 +364,9 @@ mod test {
     fn test_codify_message_attr() {
         let input = "foo #[foo] `qux` #[bar] baz".to_owned();
         let result = codify_message(&input);
-        assert!(result == "foo <code class=\"attr\">#[foo]</code> `<code class=\"code\">qux</code>` <code class=\"attr\">#[bar]</code> baz");
+        assert!(
+            result == "foo <code class=\"attr\">#[foo]</code> `<code class=\"code\">qux</code>` <code class=\"attr\">#[bar]</code> baz"
+        );
 
         let input = "foo #[foo]".to_owned();
         let result = codify_message(&input);
@@ -391,14 +385,18 @@ mod test {
     fn test_codify_message_issue_ref() {
         let input = "foo #123 bar".to_owned();
         let result = codify_message(&input);
-        assert!(result == "foo <a class=\"issue_link\" href=\"https://github.com/rust-lang/rust/issues/123\" target=\"_blank\">#123</a> bar");
+        assert!(
+            result == "foo <a class=\"issue_link\" href=\"https://github.com/rust-lang/rust/issues/123\" target=\"_blank\">#123</a> bar"
+        );
     }
 
     #[test]
     fn test_codify_message_url() {
         let input = "foo <http://bar.com> baz".to_owned();
         let result = codify_message(&input);
-        assert!(result == "foo &lt;<a class=\"link\" href=\"http://bar.com\" target=\"_blank\">http://bar.com</a>&gt; baz");
+        assert!(
+            result == "foo &lt;<a class=\"link\" href=\"http://bar.com\" target=\"_blank\">http://bar.com</a>&gt; baz"
+        );
 
         let input = "foo <http://bar.c".to_owned();
         let result = codify_message(&input);

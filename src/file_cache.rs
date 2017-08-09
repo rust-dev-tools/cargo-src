@@ -11,9 +11,9 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::str;
 
-use analysis::{AnalysisHost, Target, Id};
+use analysis::{AnalysisHost, Id, Target};
 use span;
-use vfs::{Vfs, FileContents};
+use vfs::{FileContents, Vfs};
 
 use super::highlight;
 
@@ -124,7 +124,7 @@ impl Cache {
         match self.files.load_file(path) {
             Ok(FileContents::Text(s)) => Ok(s),
             Ok(FileContents::Binary(_)) => Err(::vfs::Error::BadFileKind.into()),
-            Err(e) => Err(e.into())
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -132,11 +132,16 @@ impl Cache {
         match self.files.load_file(path) {
             Ok(FileContents::Text(s)) => Ok(s.into_bytes()),
             Ok(FileContents::Binary(b)) => Ok(b),
-            Err(e) => Err(e.into())
+            Err(e) => Err(e.into()),
         }
     }
 
-    pub fn get_lines(&self, path: &Path, line_start: span::Row<span::ZeroIndexed>, line_end: span::Row<span::ZeroIndexed>) -> Result<String, String> {
+    pub fn get_lines(
+        &self,
+        path: &Path,
+        line_start: span::Row<span::ZeroIndexed>,
+        line_end: span::Row<span::ZeroIndexed>,
+    ) -> Result<String, String> {
         vfs_err!(self.files.load_file(path))?;
         vfs_err!(self.files.load_lines(path, line_start, line_end))
     }
@@ -153,7 +158,10 @@ impl Cache {
     // TODO handle non-rs files by returning plain text lines
     pub fn get_highlighted(&self, path: &Path) -> Result<Vec<String>, String> {
         vfs_err!(self.files.load_file(path))?;
-        vfs_err!(self.files.ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
+        vfs_err!(
+            self.files
+                .ensure_user_data(path, |_| Ok(VfsUserData::new()))
+        )?;
         vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
             let text = match text {
@@ -161,10 +169,12 @@ impl Cache {
                 None => return Err(::vfs::Error::BadFileKind),
             };
             if u.highlighted_lines.is_empty() {
-                let highlighted = highlight::highlight(&self.analysis,
-                                                       &self.project_dir,
-                                                       path.to_str().unwrap().to_owned(),
-                                                       text.to_owned());
+                let highlighted = highlight::highlight(
+                    &self.analysis,
+                    &self.project_dir,
+                    path.to_str().unwrap().to_owned(),
+                    text.to_owned(),
+                );
 
                 let mut highlighted_lines = vec![];
                 for line in highlighted.lines() {
@@ -180,7 +190,11 @@ impl Cache {
         }))
     }
 
-    pub fn get_highlighted_line(&self, file_name: &Path, line: span::Row<span::ZeroIndexed>) -> Result<String, String> {
+    pub fn get_highlighted_line(
+        &self,
+        file_name: &Path,
+        line: span::Row<span::ZeroIndexed>,
+    ) -> Result<String, String> {
         let lines = self.get_highlighted(Path::new(file_name))?;
         Ok(lines[line.0 as usize].clone())
     }
@@ -191,9 +205,11 @@ impl Cache {
         self.files.clear();
 
         info!("Processing analysis...");
-        // TODO if this is a test run, we should mock the analysis, rather than trying to read it in.
+        // TODO if this is a test run, we should mock the analysis, rather than trying to read it in
         self.project_dir = env::current_dir().unwrap();
-        self.analysis.reload(&self.project_dir, &self.project_dir).unwrap();
+        self.analysis
+            .reload(&self.project_dir, &self.project_dir)
+            .unwrap();
         info!("done");
     }
 
@@ -218,7 +234,9 @@ impl Cache {
     }
 
     pub fn find_impls(&mut self, id: Id) -> Result<FindResult, String> {
-        let impls = self.analysis.find_impls(id).map_err(|_| "No impls found".to_owned())?;
+        let impls = self.analysis
+            .find_impls(id)
+            .map_err(|_| "No impls found".to_owned())?;
         Ok(FindResult {
             results: self.make_search_results(impls)?,
         })
@@ -257,13 +275,18 @@ impl Cache {
 
         for span in &raw {
             let file_path = Path::new(&span.file);
-            let file_path = file_path.strip_prefix(&self.project_dir).unwrap_or(file_path);
+            let file_path = file_path
+                .strip_prefix(&self.project_dir)
+                .unwrap_or(file_path);
             let text = match self.get_highlighted_line(&file_path, span.range.row_start) {
                 Ok(t) => t,
                 Err(_) => continue,
             };
             let line = LineResult::new(&span, text);
-            file_buckets.entry(file_path.display().to_string()).or_insert_with(|| vec![]).push(line);
+            file_buckets
+                .entry(file_path.display().to_string())
+                .or_insert_with(|| vec![])
+                .push(line);
         }
 
         let mut result = vec![];

@@ -31,12 +31,14 @@ pub fn make_key() -> String {
 // a new, syntax highlighted snippet.
 // This function should be run in its own thread, the result is posted to
 // pending_push_data.
-pub fn reprocess_snippets(key: String,
-                          errors: Vec<Diagnostic>,
-                          pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-                          use_analysis: bool,
-                          file_cache: Arc<Mutex<Cache>>,
-                          config: Arc<Config>) {
+pub fn reprocess_snippets(
+    key: String,
+    errors: Vec<Diagnostic>,
+    pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
+    use_analysis: bool,
+    file_cache: Arc<Mutex<Cache>>,
+    config: Arc<Config>,
+) {
     if use_analysis {
         let mut file_cache = file_cache.lock().unwrap();
         file_cache.update_analysis();
@@ -53,11 +55,13 @@ pub fn reprocess_snippets(key: String,
     *entry = Some(serde_json::to_string(&snippets).unwrap());
 }
 
-fn reprocess_diagnostic(diagnostic: &Diagnostic,
-                        parent_id: Option<u32>,
-                        file_cache: &Mutex<Cache>,
-                        result: &mut ReprocessedSnippets,
-                        config: &Config) {
+fn reprocess_diagnostic(
+    diagnostic: &Diagnostic,
+    parent_id: Option<u32>,
+    file_cache: &Mutex<Cache>,
+    result: &mut ReprocessedSnippets,
+    config: &Config,
+) {
     // Lock the file_cache on every iteration because this thread should be
     // low priority, and we're happy to wait if someone else wants access to
     // the file_cache.
@@ -110,16 +114,26 @@ fn reprocess_diagnostic(diagnostic: &Diagnostic,
             }
             let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
 
-            let snippet = Snippet::new(parent_id,
-                                       diagnostic.id,
-                                       sg.iter().map(|s| s.id).collect(),
-                                       text,
-                                       first.file_name.to_owned(),
-                                       line_start + 1,
-                                       line_end,
-                                       sg.iter().map(|s| (Highlight::from_diagnostic_span(s), s.label.clone())).collect(),
-                                       file_cache.get_lines(path, span::Row::new_zero_indexed(line_start as u32), span::Row::new_zero_indexed(line_end as u32)).unwrap(),
-                                       primary_span);
+            let snippet = Snippet::new(
+                parent_id,
+                diagnostic.id,
+                sg.iter().map(|s| s.id).collect(),
+                text,
+                first.file_name.to_owned(),
+                line_start + 1,
+                line_end,
+                sg.iter()
+                    .map(|s| (Highlight::from_diagnostic_span(s), s.label.clone()))
+                    .collect(),
+                file_cache
+                    .get_lines(
+                        path,
+                        span::Row::new_zero_indexed(line_start as u32),
+                        span::Row::new_zero_indexed(line_end as u32),
+                    )
+                    .unwrap(),
+                primary_span,
+            );
             result.snippets.push(snippet);
         }
     }

@@ -116,20 +116,24 @@ struct Handler<'a> {
 }
 
 impl<'a> Handler<'a> {
-    fn handle_error<'b: 'a, 'k: 'a>(&self,
-                                    _req: Request<'b, 'k>,
-                                    mut res: Response<'b, Fresh>,
-                                    status: StatusCode,
-                                    msg: String) {
+    fn handle_error<'b: 'a, 'k: 'a>(
+        &self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        status: StatusCode,
+        msg: String,
+    ) {
         debug!("ERROR: {} ({})", msg, status);
 
         *res.status_mut() = status;
         res.send(msg.as_bytes()).unwrap();
     }
 
-    fn handle_index<'b: 'a, 'k: 'a>(&mut self,
-                                    _req: Request<'b, 'k>,
-                                    mut res: Response<'b, Fresh>) {
+    fn handle_index<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+    ) {
         let mut path_buf = static_path();
         path_buf.push("index.html");
 
@@ -146,10 +150,12 @@ impl<'a> Handler<'a> {
         self.handle_error(_req, res, StatusCode::InternalServerError, msg);
     }
 
-    fn handle_static<'b: 'a, 'k: 'a>(&mut self,
-                                     req: Request<'b, 'k>,
-                                     mut res: Response<'b, Fresh>,
-                                     path: &[String]) {
+    fn handle_static<'b: 'a, 'k: 'a>(
+        &mut self,
+        req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        path: &[String],
+    ) {
         let mut path_buf = static_path();
         for p in path {
             path_buf.push(p);
@@ -166,7 +172,12 @@ impl<'a> Handler<'a> {
         let file_cache = self.file_cache.lock().unwrap();
         let file_contents = file_cache.get_bytes(&path_buf);
         if let Ok(bytes) = file_contents {
-            trace!("handle_static: serving `{}`. {} bytes, {}", path_buf.to_str().unwrap(), bytes.len(), content_type);
+            trace!(
+                "handle_static: serving `{}`. {} bytes, {}",
+                path_buf.to_str().unwrap(),
+                bytes.len(),
+                content_type
+            );
             res.headers_mut().set(content_type);
             res.send(&bytes).unwrap();
             return;
@@ -176,18 +187,24 @@ impl<'a> Handler<'a> {
         self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
     }
 
-    fn handle_src<'b: 'a, 'k: 'a>(&mut self,
-                                  _req: Request<'b, 'k>,
-                                  mut res: Response<'b, Fresh>,
-                                  mut path: &[String]) {
+    fn handle_src<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        mut path: &[String],
+    ) {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
             // hey, FIXME).
             if p.contains("..") || p == "/" {
-                self.handle_error(_req, res, StatusCode::InternalServerError,
-                                  "Bad path, found `..`".to_owned());
-                return
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "Bad path, found `..`".to_owned(),
+                );
+                return;
             }
         }
 
@@ -205,7 +222,11 @@ impl<'a> Handler<'a> {
             match DirectoryListing::from_path(&path_buf) {
                 Ok(listing) => {
                     res.headers_mut().set(ContentType::json());
-                    res.send(serde_json::to_string(&SourceResult::Directory(listing)).unwrap().as_bytes()).unwrap();
+                    res.send(
+                        serde_json::to_string(&SourceResult::Directory(listing))
+                            .unwrap()
+                            .as_bytes(),
+                    ).unwrap();
                 }
                 Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
             }
@@ -215,28 +236,32 @@ impl<'a> Handler<'a> {
                 Ok(ref lines) => {
                     res.headers_mut().set(ContentType::json());
                     let result = SourceResult::Source {
-                        path: path_buf.components().map(|c| c.as_os_str().to_str().unwrap().to_owned()).collect(),
+                        path: path_buf
+                            .components()
+                            .map(|c| c.as_os_str().to_str().unwrap().to_owned())
+                            .collect(),
                         lines: lines,
                     };
-                    res.send(serde_json::to_string(&result).unwrap().as_bytes()).unwrap();
+                    res.send(serde_json::to_string(&result).unwrap().as_bytes())
+                        .unwrap();
                 }
                 Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
             }
         }
     }
 
-    fn handle_config<'b: 'a, 'k: 'a>(&mut self,
-                                     _req: Request<'b, 'k>,
-                                     mut res: Response<'b, Fresh>) {
+    fn handle_config<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+    ) {
         let text = serde_json::to_string(&**self.config).unwrap();
 
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();
     }
 
-    fn handle_test<'b: 'a, 'k: 'a>(&mut self,
-                                   _req: Request<'b, 'k>,
-                                   mut res: Response<'b, Fresh>) {
+    fn handle_test<'b: 'a, 'k: 'a>(&mut self, _req: Request<'b, 'k>, mut res: Response<'b, Fresh>) {
         let build_result = build::BuildResult::test_result();
         let result = self.make_build_result(&build_result);
         let text = serde_json::to_string(&result).unwrap();
@@ -247,10 +272,15 @@ impl<'a> Handler<'a> {
         self.process_push_data(result);
     }
 
-    fn handle_build<'b: 'a, 'k: 'a>(&mut self,
-                                    _req: Request<'b, 'k>,
-                                    mut res: Response<'b, Fresh>) {
-        assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
+    fn handle_build<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+    ) {
+        assert!(
+            !self.config.demo_mode,
+            "Build shouldn't happen in demo mode"
+        );
 
         {
             let mut file_cache = self.file_cache.lock().unwrap();
@@ -271,11 +301,17 @@ impl<'a> Handler<'a> {
         *build_update_handler = None;
     }
 
-    fn handle_build_updates<'b: 'a, 'k: 'a>(&mut self,
-                                            _req: Request<'b, 'k>,
-                                            mut res: Response<'b, Fresh>) {
-        assert!(!self.config.demo_mode, "Build shouldn't happen in demo mode");
-        res.headers_mut().set(ContentType("text/event-stream".parse().unwrap()));
+    fn handle_build_updates<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+    ) {
+        assert!(
+            !self.config.demo_mode,
+            "Build shouldn't happen in demo mode"
+        );
+        res.headers_mut()
+            .set(ContentType("text/event-stream".parse().unwrap()));
 
         {
             let mut build_update_handler = self.build_update_handler.lock().unwrap();
@@ -294,7 +330,9 @@ impl<'a> Handler<'a> {
             thread::park();
 
             let mut build_update_handler = self.build_update_handler.lock().unwrap();
-            let build_update_handler = build_update_handler.as_mut().expect("No build_update_handler");
+            let build_update_handler = build_update_handler
+                .as_mut()
+                .expect("No build_update_handler");
             let msgs = &build_update_handler.updates[build_update_handler.seen..];
             build_update_handler.seen = build_update_handler.updates.len();
             for msg in msgs {
@@ -302,13 +340,15 @@ impl<'a> Handler<'a> {
                 match parsed {
                     errors::ParsedError::Diagnostic(d) => {
                         let text = serde_json::to_string(&d).unwrap();
-                        res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes()).unwrap();
+                        res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes())
+                            .unwrap();
                         res.flush().unwrap();
                         build_update_handler.diagnostics.push(d);
                     }
                     errors::ParsedError::Message(s) => {
                         let text = serde_json::to_string(&s).unwrap();
-                        res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes()).unwrap();
+                        res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes())
+                            .unwrap();
                         res.flush().unwrap();
                     }
                     errors::ParsedError::Error => {}
@@ -347,14 +387,25 @@ impl<'a> Handler<'a> {
             let file_cache = self.file_cache.clone();
             let config = self.config.clone();
             let use_analysis = self.config.save_analysis;
-            thread::spawn(move || reprocess::reprocess_snippets(key, errors, pending_push_data, use_analysis, file_cache, config));
+            thread::spawn(move || {
+                reprocess::reprocess_snippets(
+                    key,
+                    errors,
+                    pending_push_data,
+                    use_analysis,
+                    file_cache,
+                    config,
+                )
+            });
         }
     }
 
-    fn handle_edit<'b: 'a, 'k: 'a>(&mut self,
-                                   _req: Request<'b, 'k>,
-                                   mut res: Response<'b, Fresh>,
-                                   query: Option<String>) {
+    fn handle_edit<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
         assert!(self.config.unstable_features, "Edit is unstable");
 
@@ -365,9 +416,10 @@ impl<'a> Handler<'a> {
 
                 let cmd_line = &self.config.edit_command;
                 if !cmd_line.is_empty() {
-                    let cmd_line = cmd_line.replace("$file", &args[0])
-                                           .replace("$line", &args[1])
-                                           .replace("$col", &args[2]);
+                    let cmd_line = cmd_line
+                        .replace("$file", &args[0])
+                        .replace("$line", &args[1])
+                        .replace("$col", &args[2]);
 
                     let mut splits = cmd_line.split(' ');
 
@@ -386,23 +438,34 @@ impl<'a> Handler<'a> {
                 res.send("{}".as_bytes()).unwrap();
             }
             None => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad query string: {:?}", query));
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    format!("Bad query string: {:?}", query),
+                );
             }
         }
     }
 
-    fn handle_search<'b: 'a, 'k: 'a>(&mut self,
-                                     _req: Request<'b, 'k>,
-                                     mut res: Response<'b, Fresh>,
-                                     query: Option<String>) {
-        match (parse_query_value(&query, "needle="), parse_query_value(&query, "id=")) {
+    fn handle_search<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
+        match (
+            parse_query_value(&query, "needle="),
+            parse_query_value(&query, "id="),
+        ) {
             (Some(needle), None) => {
                 // Identifier search.
                 let mut file_cache = self.file_cache.lock().unwrap();
                 match file_cache.ident_search(&needle) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
+                            .unwrap();
                     }
                     Err(s) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, s);
@@ -414,7 +477,12 @@ impl<'a> Handler<'a> {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
+                        self.handle_error(
+                            _req,
+                            res,
+                            StatusCode::InternalServerError,
+                            format!("Bad id: {}", id),
+                        );
                         return;
                     }
                 };
@@ -422,7 +490,8 @@ impl<'a> Handler<'a> {
                 match file_cache.id_search(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
+                            .unwrap();
                     }
                     Err(s) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, s);
@@ -430,21 +499,33 @@ impl<'a> Handler<'a> {
                 }
             }
             _ => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad search string".to_owned());
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "Bad search string".to_owned(),
+                );
             }
         }
     }
 
-    fn handle_find<'b: 'a, 'k: 'a>(&mut self,
-                                   _req: Request<'b, 'k>,
-                                   mut res: Response<'b, Fresh>,
-                                   query: Option<String>) {
+    fn handle_find<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
         match parse_query_value(&query, "impls=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
+                        self.handle_error(
+                            _req,
+                            res,
+                            StatusCode::InternalServerError,
+                            format!("Bad id: {}", id),
+                        );
                         return;
                     }
                 };
@@ -452,7 +533,8 @@ impl<'a> Handler<'a> {
                 match file_cache.find_impls(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
+                            .unwrap();
                     }
                     Err(s) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, s);
@@ -460,21 +542,33 @@ impl<'a> Handler<'a> {
                 }
             }
             _ => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "Unknown argument to find".to_owned());
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "Unknown argument to find".to_owned(),
+                );
             }
         }
     }
 
-    fn handle_summary<'b: 'a, 'k: 'a>(&mut self,
-                                      _req: Request<'b, 'k>,
-                                      mut res: Response<'b, Fresh>,
-                                      query: Option<String>) {
+    fn handle_summary<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
         match parse_query_value(&query, "id=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad id: {}", id));
+                        self.handle_error(
+                            _req,
+                            res,
+                            StatusCode::InternalServerError,
+                            format!("Bad id: {}", id),
+                        );
                         return;
                     }
                 };
@@ -482,7 +576,8 @@ impl<'a> Handler<'a> {
                 match file_cache.summary(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes()).unwrap();
+                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
+                            .unwrap();
                     }
                     Err(s) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, s);
@@ -490,21 +585,36 @@ impl<'a> Handler<'a> {
                 }
             }
             None => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "No id for summary".to_owned());
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "No id for summary".to_owned(),
+                );
             }
         }
     }
 
-    fn handle_plain_text<'b: 'a, 'k: 'a>(&mut self,
-                                         _req: Request<'b, 'k>,
-                                         mut res: Response<'b, Fresh>,
-                                         query: Option<String>) {
-        match (parse_query_value(&query, "file="), parse_query_value(&query, "line=")) {
+    fn handle_plain_text<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
+        match (
+            parse_query_value(&query, "file="),
+            parse_query_value(&query, "line="),
+        ) {
             (Some(file_name), Some(line)) => {
                 let line = match usize::from_str(&line) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, format!("Bad line number: {}", line));
+                        self.handle_error(
+                            _req,
+                            res,
+                            StatusCode::InternalServerError,
+                            format!("Bad line number: {}", line),
+                        );
                         return;
                     }
                 };
@@ -514,7 +624,11 @@ impl<'a> Handler<'a> {
                 let line_start = line.saturating_sub(3);
                 let line_end = line + 2;
 
-                match file_cache.get_lines(&Path::new(&file_name), span::Row::new_zero_indexed(line_start as u32), span::Row::new_zero_indexed(line_end as u32)) {
+                match file_cache.get_lines(
+                    &Path::new(&file_name),
+                    span::Row::new_zero_indexed(line_start as u32),
+                    span::Row::new_zero_indexed(line_end as u32),
+                ) {
                     Ok(ref lines) => {
                         res.headers_mut().set(ContentType::json());
                         let result = TextResult {
@@ -523,7 +637,8 @@ impl<'a> Handler<'a> {
                             line_start: line_start + 1,
                             line_end: line_end,
                         };
-                        res.send(serde_json::to_string(&result).unwrap().as_bytes()).unwrap();
+                        res.send(serde_json::to_string(&result).unwrap().as_bytes())
+                            .unwrap();
                     }
                     Err(msg) => {
                         self.handle_error(_req, res, StatusCode::InternalServerError, msg);
@@ -531,15 +646,22 @@ impl<'a> Handler<'a> {
                 }
             }
             _ => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "Bad query string".to_owned(),
+                );
             }
         }
     }
 
-    fn handle_pull<'b: 'a, 'k: 'a>(&mut self,
-                                   _req: Request<'b, 'k>,
-                                   mut res: Response<'b, Fresh>,
-                                   query: Option<String>) {
+    fn handle_pull<'b: 'a, 'k: 'a>(
+        &mut self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+        query: Option<String>,
+    ) {
         match parse_query_value(&query, "key=") {
             Some(key) => {
                 res.headers_mut().set(ContentType::json());
@@ -567,7 +689,12 @@ impl<'a> Handler<'a> {
                 }
             }
             None => {
-                self.handle_error(_req, res, StatusCode::InternalServerError, "Bad query string".to_owned());
+                self.handle_error(
+                    _req,
+                    res,
+                    StatusCode::InternalServerError,
+                    "Bad query string".to_owned(),
+                );
             }
         }
     }
@@ -575,7 +702,7 @@ impl<'a> Handler<'a> {
 
 #[derive(Serialize, Debug)]
 pub enum SourceResult<'a> {
-    Source{
+    Source {
         path: Vec<String>,
         lines: &'a [String],
     },
@@ -620,11 +747,13 @@ fn static_path() -> PathBuf {
 
 pub fn parse_location_string(input: &str) -> [String; 5] {
     let mut args = input.split(':').map(|s| s.to_owned());
-    [args.next().unwrap(),
-     args.next().unwrap_or(String::new()),
-     args.next().unwrap_or(String::new()),
-     args.next().unwrap_or(String::new()),
-     args.next().unwrap_or(String::new())]
+    [
+        args.next().unwrap(),
+        args.next().unwrap_or(String::new()),
+        args.next().unwrap_or(String::new()),
+        args.next().unwrap_or(String::new()),
+        args.next().unwrap_or(String::new()),
+    ]
 }
 
 // key should include `=` suffix.
@@ -657,10 +786,12 @@ const FIND_REQUEST: &'static str = "find";
 const SUMMARY_REQUEST: &'static str = "summary";
 const BUILD_UPDATE_REQUEST: &'static str = "build_updates";
 
-fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
-                             handler: &'a mut Handler<'a>,
-                             req: Request<'b, 'k>,
-                             res: Response<'b, Fresh>) {
+fn route<'a, 'b: 'a, 'k: 'a>(
+    uri_path: &str,
+    handler: &'a mut Handler<'a>,
+    req: Request<'b, 'k>,
+    res: Response<'b, Fresh>,
+) {
     let (path, query, _) = parse_path(uri_path).unwrap();
 
     trace!("route: path: {:?}, query: {:?}", path, query);
@@ -737,5 +868,10 @@ fn route<'a, 'b: 'a, 'k: 'a>(uri_path: &str,
         }
     }
 
-    handler.handle_error(req, res, StatusCode::NotFound, format!("Unexpected path: `/{}`", path.join("/")));
+    handler.handle_error(
+        req,
+        res,
+        StatusCode::NotFound,
+        format!("Unexpected path: `/{}`", path.join("/")),
+    );
 }

@@ -115,7 +115,8 @@ macro_rules! create_config {
 
 create_config! {
     build_command: String, "cargo check".to_owned(), false, "command to call to build";
-    edit_command: String, String::new(), false, "command to call to edit; can use $file, $line, and $col.";
+    edit_command: String, String::new(), false,
+        "command to call to edit; can use $file, $line, and $col.";
     unstable_features: bool, false, false, "Enable unstable features";
     port: usize, 7878, false, "port to run rustw on";
     demo_mode: bool, false, true, "run in demo mode";

@@ -11,7 +11,7 @@ pub mod errors;
 use config::Config;
 use server::BuildUpdateHandler;
 
-use std::io::{Read, BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
@@ -28,7 +28,10 @@ pub struct BuildResult {
 }
 
 impl Builder {
-    pub fn from_config(config: Arc<Config>, build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>) -> Builder {
+    pub fn from_config(
+        config: Arc<Config>,
+        build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>,
+    ) -> Builder {
         Builder {
             config: config,
             build_update_handler: build_update_handler,
@@ -105,7 +108,11 @@ impl Builder {
             }
             Err(e) => {
                 // TODO could handle this error more nicely.
-                debug!("build error: `{}`; command: `{}`", e, self.config.build_command);
+                debug!(
+                    "build error: `{}`; command: `{}`",
+                    e,
+                    self.config.build_command
+                );
                 return Err(());
             }
         };

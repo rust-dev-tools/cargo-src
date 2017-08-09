@@ -56,5 +56,8 @@ pub fn run_server(ip: Option<String>) {
 
     let ip = ip.unwrap_or("127.0.0.1".to_owned());
     println!("server running on http://{}:{}", ip, port);
-    Server::http(&*format!("{}:{}", ip, port)).unwrap().handle(server).unwrap();
+    Server::http(&*format!("{}:{}", ip, port))
+        .unwrap()
+        .handle(server)
+        .unwrap();
 }

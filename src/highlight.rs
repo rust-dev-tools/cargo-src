@@ -15,18 +15,23 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Instant;
 
-use rustdoc_highlight::{self as highlight, Classifier, Class};
+use rustdoc_highlight::{self as highlight, Class, Classifier};
 use span;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
-use syntax::codemap::{CodeMap, Loc, FilePathMapping};
+use syntax::codemap::{CodeMap, FilePathMapping, Loc};
 
 use analysis::AnalysisHost;
 use analysis::DefKind;
 
 type Span = span::Span<span::ZeroIndexed>;
 
-pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_name: String, file_text: String) -> String {
+pub fn highlight<'a>(
+    analysis: &'a AnalysisHost,
+    project_path: &'a Path,
+    file_name: String,
+    file_text: String,
+) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
@@ -39,12 +44,20 @@ pub fn highlight<'a>(analysis: &'a AnalysisHost, project_path: &'a Path, file_na
     classifier.write_source(&mut out).unwrap();
 
     let time = t_start.elapsed();
-    info!("Highlighting {} in {:.3}s", file_name, time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0);
+    info!(
+        "Highlighting {} in {:.3}s",
+        file_name,
+        time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0
+    );
 
     String::from_utf8_lossy(&out.buf).into_owned()
 }
 
-pub fn custom_highlight<H: highlight::Writer + GetBuf>(file_name: String, file_text: String, highlighter: &mut H) -> String {
+pub fn custom_highlight<H: highlight::Writer + GetBuf>(
+    file_name: String,
+    file_text: String,
+    highlighter: &mut H,
+) -> String {
     debug!("custom_highlight `{}` in `{}`", file_text, file_name);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
@@ -64,7 +77,11 @@ struct Highlighter<'a> {
 }
 
 impl<'a> Highlighter<'a> {
-    fn new(analysis: &'a AnalysisHost, project_path: &'a Path, codemap: &'a CodeMap) -> Highlighter<'a> {
+    fn new(
+        analysis: &'a AnalysisHost,
+        project_path: &'a Path,
+        codemap: &'a CodeMap,
+    ) -> Highlighter<'a> {
         Highlighter {
             buf: vec![],
             analysis: analysis,
@@ -75,34 +92,38 @@ impl<'a> Highlighter<'a> {
     }
 
     fn get_link(&self, span: &Span) -> Option<String> {
-        self.analysis.goto_def(span).ok().and_then(|def_span| {
-            if span == &def_span {
+        self.analysis
+            .goto_def(span)
+            .ok()
+            .and_then(|def_span| if span == &def_span {
                 None
             } else {
                 Some(loc_for_span(&def_span, self.project_path))
-            }
-        })
+            })
     }
 
     fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
-        let file_path = self.path_cache.entry(lo.file.name.clone()).or_insert_with(|| {
-            Path::new(&lo.file.name).canonicalize().unwrap()
-        });
-        Span::new(span::Row::new_one_indexed(lo.line as u32).zero_indexed(),
-                  span::Row::new_one_indexed(hi.line as u32).zero_indexed(),
-                  span::Column::new_zero_indexed(lo.col.0 as u32),
-                  span::Column::new_zero_indexed(hi.col.0 as u32),
-                  file_path.clone())
+        let file_path = self.path_cache
+            .entry(lo.file.name.clone())
+            .or_insert_with(|| Path::new(&lo.file.name).canonicalize().unwrap());
+        Span::new(
+            span::Row::new_one_indexed(lo.line as u32).zero_indexed(),
+            span::Row::new_one_indexed(hi.line as u32).zero_indexed(),
+            span::Column::new_zero_indexed(lo.col.0 as u32),
+            span::Column::new_zero_indexed(hi.col.0 as u32),
+            file_path.clone(),
+        )
     }
 }
 
-pub fn write_span(buf: &mut Vec<u8>,
-                  klass: Class,
-                  extra_class: Option<String>,
-                  text: String,
-                  src_link: bool,
-                  extra: HashMap<String, String>)
-                  -> io::Result<()> {
+pub fn write_span(
+    buf: &mut Vec<u8>,
+    klass: Class,
+    extra_class: Option<String>,
+    text: String,
+    src_link: bool,
+    extra: HashMap<String, String>,
+) -> io::Result<()> {
     write!(buf, "<span class='{}", klass.rustdoc_class())?;
     if let Some(s) = extra_class {
         write!(buf, " {}", s)?;
@@ -139,17 +160,20 @@ fn push_char(buf: &mut Vec<u8>, c: char) -> io::Result<()> {
 }
 
 fn loc_for_span(span: &Span, project_path: &Path) -> String {
-    let file_name = Path::new(&span.file).strip_prefix(project_path)
-                                         .ok()
-                                         .unwrap_or(&span.file)
-                                         .to_str()
-                                         .unwrap();
-    format!("{}:{}:{}:{}:{}",
-            file_name,
-            span.range.row_start.one_indexed().0,
-            span.range.col_start.one_indexed().0,
-            span.range.row_end.one_indexed().0,
-            span.range.col_end.one_indexed().0)
+    let file_name = Path::new(&span.file)
+        .strip_prefix(project_path)
+        .ok()
+        .unwrap_or(&span.file)
+        .to_str()
+        .unwrap();
+    format!(
+        "{}:{}:{}:{}:{}",
+        file_name,
+        span.range.row_start.one_indexed().0,
+        span.range.col_start.one_indexed().0,
+        span.range.row_end.one_indexed().0,
+        span.range.col_end.one_indexed().0
+    )
 }
 
 
@@ -170,7 +194,12 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         write!(self.buf, "</span>")
     }
 
-    fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
+    fn string<T: Display>(
+        &mut self,
+        text: T,
+        klass: Class,
+        tas: Option<&TokenAndSpan>,
+    ) -> io::Result<()> {
         let text = text.to_string();
 
         match klass {
@@ -180,10 +209,16 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo);
                         let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        // FIXME should be able to get all this info with a single query of analysis.
+                        // FIXME should be able to get all this info with a single query of analysis
                         let span = &self.span_from_locs(&lo, &hi);
-                        let ty = self.analysis.show_type(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
-                        let docs = self.analysis.docs(span).ok().and_then(|s| if s.is_empty() { None } else { Some(s) });
+                        let ty = self.analysis
+                            .show_type(span)
+                            .ok()
+                            .and_then(|s| if s.is_empty() { None } else { Some(s) });
+                        let docs = self.analysis
+                            .docs(span)
+                            .ok()
+                            .and_then(|s| if s.is_empty() { None } else { Some(s) });
                         let title = match (ty, docs) {
                             (Some(t), Some(d)) => Some(format!("{}\n\n{}", t, d)),
                             (Some(t), _) => Some(t),
@@ -203,9 +238,13 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
                                 let impls = match self.analysis.get_def(id) {
                                     Ok(def) => match def.kind {
-                                        DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::Trait => {
-                                            self.analysis.find_impls(id).map(|v| v.len()).unwrap_or(0)
-                                        }
+                                        DefKind::Enum |
+                                        DefKind::Struct |
+                                        DefKind::Union |
+                                        DefKind::Trait => self.analysis
+                                            .find_impls(id)
+                                            .map(|v| v.len())
+                                            .unwrap_or(0),
                                         _ => 0,
                                     },
                                     Err(_) => 0,
@@ -225,32 +264,42 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         maybe_insert!(extra, "data-src-link", src_link);
                         extra.insert("data-impls".to_owned(), impls.to_string());
 
-                        write_span(&mut self.buf,
-                                   Class::Ident,
-                                   css_class,
-                                   text,
-                                   has_link,
-                                   extra)
+                        write_span(
+                            &mut self.buf,
+                            Class::Ident,
+                            css_class,
+                            text,
+                            has_link,
+                            extra,
+                        )
                     }
-                    None => write_span(&mut self.buf, Class::Ident, None, text, false, HashMap::new()),
+                    None => write_span(
+                        &mut self.buf,
+                        Class::Ident,
+                        None,
+                        text,
+                        false,
+                        HashMap::new(),
+                    ),
                 }
             }
-            Class::RefKeyWord if text == "*" => {
-                match tas {
-                    Some(t) => {
-                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
-                        let span = &self.span_from_locs(&lo, &hi);
-                        let mut extra = HashMap::new();
-                        extra.insert("data-location".to_owned(), format!("{}:{}", lo.line, lo.col.0 + 1));
-                        maybe_insert!(extra, "title", self.analysis.show_type(span).ok());
-                        let css_class = Some(" glob".to_owned());
+            Class::RefKeyWord if text == "*" => match tas {
+                Some(t) => {
+                    let lo = self.codemap.lookup_char_pos(t.sp.lo);
+                    let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                    let span = &self.span_from_locs(&lo, &hi);
+                    let mut extra = HashMap::new();
+                    extra.insert(
+                        "data-location".to_owned(),
+                        format!("{}:{}", lo.line, lo.col.0 + 1),
+                    );
+                    maybe_insert!(extra, "title", self.analysis.show_type(span).ok());
+                    let css_class = Some(" glob".to_owned());
 
-                        write_span(&mut self.buf, Class::Op, css_class, text, false, extra)
-                    }
-                    None => write_span(&mut self.buf, Class::Op, None, text, false, HashMap::new()),
+                    write_span(&mut self.buf, Class::Op, css_class, text, false, extra)
                 }
-            }
+                None => write_span(&mut self.buf, Class::Op, None, text, false, HashMap::new()),
+            },
             klass => write_span(&mut self.buf, klass, None, text, false, HashMap::new()),
         }
     }
@@ -277,7 +326,7 @@ pub trait GetBuf {
 impl GetBuf for BasicHighlighter {
     fn get_buf(&self) -> &[u8] {
         &self.buf
-    }    
+    }
 }
 
 impl BasicHighlighter {
@@ -288,7 +337,14 @@ impl BasicHighlighter {
         }
     }
 
-    pub fn span(&mut self, start: u32, end: u32, klass: String, id: String, def_span: Option<Span>) {
+    pub fn span(
+        &mut self,
+        start: u32,
+        end: u32,
+        klass: String,
+        id: String,
+        def_span: Option<Span>,
+    ) {
         self.spans.push(SpanSpan {
             start_byte: start,
             end_byte: end,
@@ -308,7 +364,12 @@ impl highlight::Writer for BasicHighlighter {
         write!(self.buf, "</span>")
     }
 
-    fn string<T: Display>(&mut self, text: T, klass: Class, tas: Option<&TokenAndSpan>) -> io::Result<()> {
+    fn string<T: Display>(
+        &mut self,
+        text: T,
+        klass: Class,
+        tas: Option<&TokenAndSpan>,
+    ) -> io::Result<()> {
         let text = text.to_string();
 
         let mut extra_class = None;
@@ -321,7 +382,9 @@ impl highlight::Writer for BasicHighlighter {
                 if s.start_byte == lo && s.end_byte == hi {
                     extra_class = Some(s.klass.clone());
                     id = Some(s.id.clone());
-                    link = s.def_span.as_ref().map(|sp| loc_for_span(sp, &Path::new("")));
+                    link = s.def_span
+                        .as_ref()
+                        .map(|sp| loc_for_span(sp, &Path::new("")));
                 }
             }
         }

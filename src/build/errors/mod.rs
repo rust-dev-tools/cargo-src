@@ -8,7 +8,7 @@
 
 use serde_json;
 
-use std::cmp::{Ordering, Ord, PartialOrd};
+use std::cmp::{Ord, Ordering, PartialOrd};
 
 pub use self::rustc_errors::LoweringContext;
 
@@ -43,9 +43,7 @@ pub fn parse_error(error: &str, lowering_ctxt: &mut LoweringContext) -> ParsedEr
         return ParsedError::Message(error.to_owned());
     }
     match serde_json::from_str(error) {
-        Ok(x) => {
-            ParsedError::Diagnostic((x: rustc_errors::Diagnostic).lower(lowering_ctxt))
-        }
+        Ok(x) => ParsedError::Diagnostic((x: rustc_errors::Diagnostic).lower(lowering_ctxt)),
         Err(e) => {
             debug!("ERROR parsing compiler output: {}", e);
             debug!("input: `{}`", error);
