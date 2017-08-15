@@ -11,11 +11,15 @@ import React from 'react';
 export function BreadCrumbs(props) {
     // TODO[ES6]: use props.path.map
     let crumbs = [];
-    for (const c in props.path) {
-        const id = "breadcrumb_" + c;
-        const path = props.path.slice(0, c + 1).join('/');
-        const onClick = (e) => props.getSource(path);
-        crumbs.push(<span key={c}>> <span className="link_breadcrumb" id={id} onClick={onClick}>{props.path[c]}</span></span>);
+    let path = "";
+    for (const p of props.path) {
+        if (path.length > 0) {
+            path += '/';
+        }
+        path += p;
+        const pathCopy = path;
+        const onClick = (e) => props.getSource(pathCopy);
+        crumbs.push(<span key={path}>> <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
     }
     return <div id="div_dir_path">
         {crumbs}
