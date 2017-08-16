@@ -2,9 +2,11 @@ language: rust
 rust:
   - nightly
 
-script:
+install:
   - npm install
   - yarn build
-  - cargo build
   - npm install travis-github-lint-status eslint eslint-plugin-react
+
+script:
+  - cargo build
   - ./node_modules/travis-github-lint-status/index.js
