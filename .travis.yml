@@ -1,0 +1,9 @@
+language: rust
+rust:
+  - nightly
+
+script:
+  - npm install
+  - yarn build
+  - cargo build
+  
