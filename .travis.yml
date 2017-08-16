@@ -6,5 +6,5 @@ script:
   - npm install
   - yarn build
   - cargo build
-  - npm install travis-github-lint-status
+  - npm install travis-github-lint-status eslint eslint-plugin-react
   - ./node_modules/travis-github-lint-status/index.js
