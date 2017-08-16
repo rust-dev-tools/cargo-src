@@ -6,4 +6,5 @@ script:
   - npm install
   - yarn build
   - cargo build
-  
+  - npm install travis-github-lint-status
+  - ./node_modules/travis-github-lint-status/index.js
