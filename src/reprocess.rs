@@ -95,14 +95,14 @@ fn reprocess_diagnostic(
             let mut line_end = last.line_end + config.context_lines;
 
             let path = &Path::new(&first.file_name);
-            let text = {
-                // TODO ignore the span rather than panicking here
-                let file = file_cache.get_highlighted(path).unwrap();
-
-                if line_end >= file.len() {
-                    line_end = file.len();
+            let text = match file_cache.get_highlighted(path) {
+                Ok(file) => {
+                    if line_end >= file.len() {
+                        line_end = file.len();
+                    }
+                    file[line_start..line_end].to_owned()
                 }
-                file[line_start..line_end].to_owned()
+                Err(_) => Vec::new(),
             };
 
             let mut primary_span = None;
@@ -113,6 +113,13 @@ fn reprocess_diagnostic(
                 }
             }
             let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
+            let lines = file_cache
+                .get_lines(
+                    path,
+                    span::Row::new_zero_indexed(line_start as u32),
+                    span::Row::new_zero_indexed(line_end as u32),
+                )
+                .unwrap_or(String::new());
 
             let snippet = Snippet::new(
                 parent_id,
@@ -125,13 +132,7 @@ fn reprocess_diagnostic(
                 sg.iter()
                     .map(|s| (Highlight::from_diagnostic_span(s), s.label.clone()))
                     .collect(),
-                file_cache
-                    .get_lines(
-                        path,
-                        span::Row::new_zero_indexed(line_start as u32),
-                        span::Row::new_zero_indexed(line_end as u32),
-                    )
-                    .unwrap(),
+                lines,
                 primary_span,
             );
             result.snippets.push(snippet);
