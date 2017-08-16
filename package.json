@@ -15,6 +15,8 @@
     "babel-plugin-transform-object-rest-spread": "^6.23.0",
     "babel-preset-env": "^1.2.1",
     "babel-preset-react": "^6.23.0",
+    "eslint": "^4.4.1",
+    "eslint-plugin-react": "^7.2.1",
     "immutable": "^3.8.1",
     "webpack": "^2.2.1"
   }
