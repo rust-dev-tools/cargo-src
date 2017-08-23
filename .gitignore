@@ -1,5 +1,6 @@
 .DS_Store
 target
 node_modules
+package-lock.json
 */rustw.out.js
 */rustw.out.js.map
