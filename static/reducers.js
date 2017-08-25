@@ -107,6 +107,7 @@ function build(state = BuildState.FRESH, action) {
         case DO_BUILD:
             return BuildState.BUILDING;
         case BUILD_COMPLETE:
+        case SHOW_BUILD_RESULTS:
             return BuildState.BUILT;
         case SHOW_ERR_CODE:
         case SHOW_SEARCH:
