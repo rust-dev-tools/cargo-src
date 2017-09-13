@@ -9,4 +9,4 @@ install:
 
 script:
   - cargo build
-  - ./node_modules/travis-github-lint-status/index.js
+  - cd static && ./node_modules/travis-github-lint-status/index.js

@@ -1,9 +1,13 @@
 {
   "globals": {},
-  "env": {},
+  "env": {
+    "browser": true,
+    "jquery": true
+  },
   "rules": {},
   "plugins": [
-    "react"
+    "react",
+    "jquery"
   ],
   "extends": [
     "eslint:recommended",
