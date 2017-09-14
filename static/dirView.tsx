@@ -6,16 +6,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-import React from 'react';
+import * as React from 'react';
 
 import { BreadCrumbs } from './breadCrumbs';
 
-export function DirView(props) {
+export function DirView(props: any) {
     // TODO[ES6]: use props.map
     let files = [];
     for (const f of props.files) {
         // TODO[ES6]: use string interpolation
-        const onClick = (e) => props.getSource(props.file + "/" + f.name);
+        const onClick = () => props.getSource(props.file + "/" + f.name);
         const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';
         files.push(<div className="div_entry" key={f.name}>
                         <span className={className} onClick={onClick}>{f.name}</span>

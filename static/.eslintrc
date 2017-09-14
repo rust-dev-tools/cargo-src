@@ -4,7 +4,9 @@
     "browser": true,
     "jquery": true
   },
-  "rules": {},
+  "rules": {
+    "react/prop-types": 0
+  },
   "plugins": [
     "react",
     "jquery"
