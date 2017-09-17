@@ -3,12 +3,17 @@
     "build": "webpack"
   },
   "dependencies": {
+    "@types/react": "^16.0.5",
+    "@types/react-redux": "^5.0.8",
+    "@types/redux": "^3.6.0",
     "eslint-plugin-jquery": "^1.2.1",
     "react": "^15.4.2",
     "react-dom": "^15.4.2",
     "react-redux": "^5.0.5",
     "redux": "^3.7.0",
-    "redux-thunk": "^2.2.0"
+    "redux-thunk": "^2.2.0",
+    "ts-loader": "^2.3.7",
+    "typescript": "^2.5.2"
   },
   "devDependencies": {
     "babel-core": "^6.23.1",

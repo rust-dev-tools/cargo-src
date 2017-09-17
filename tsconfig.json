@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "jsx": "react",
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "outDir": "./dist/",
+        "sourceMap": true,
+        "target": "es2016",
+    },
+    "include": [
+        "./static/**/*"
+    ],
+    "exclude": [
+        "./node_modules/**/*"
+    ],
+    
+}

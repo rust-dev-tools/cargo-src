@@ -12,7 +12,7 @@ import * as actions from './actions';
 
 import { Error } from './errors';
 
-function ErrCode(props) {
+function ErrCode(props: any) {
     let explain;
     if (props.explain) {
         explain = props.explain;
@@ -33,12 +33,12 @@ function ErrCode(props) {
     );
 }
 
-export const mapStateToProps = (state) => {
+export const mapStateToProps = (state: any) => {
     return state.errCode;
 }
 
-export const mapDispatchToProps = (dispatch) => {
+export const mapDispatchToProps = (dispatch: any) => {
     return {
-        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
+        getSource: (fileName: string, lineStart: number) => dispatch(actions.getSource(fileName, lineStart)),
     };
 }
