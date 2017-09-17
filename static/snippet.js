@@ -75,28 +75,27 @@ class SnippetSpan extends MenuHost {
         if (showBlock && highlights) {
             const { line_start, line_end, column_start, column_end } = this.props;
 
-            // TODO[ES6]: use highlights.forEach
-            for (const h of highlights) {
+           highlights.forEach((h) => {
                 let css_class = "selected_secondary";
                 if (JSON.stringify(h[0]) === JSON.stringify({ line_start, line_end, column_start, column_end })) {
                     css_class = "selected";
                 }
                 utils.highlight_spans(h[0],
-                                      "snippet_line_number_" + id + "_",
-                                      "snippet_line_" + id + "_",
+                                      `snippet_line_number_${id}_`,
+                                      `snippet_line_${id}_`,
                                       css_class);
 
                 // Make a label for the message.
                 if (h[1]) {
-                    let line_span = $("#snippet_line_" + id + "_" + h[0].line_start);
+                    let line_span = $(`#snippet_line_${id}_${h[0].line_start}`);
                     let old_width = line_span.width();
-                    let label_span = $("<span class=\"highlight_label\">" + h[1] + "</span>");
+                    let label_span = $(`<span class="highlight_label">${h[1]}</span>`);
                     line_span.append(label_span);
                     let offset = line_span.offset();
                     offset.left += old_width + 40;
                     label_span.offset(offset);
                 }
-            }
+            });
         }
     }
 
@@ -116,13 +115,11 @@ class SnippetSpan extends MenuHost {
                 block_line_start = line_start;
             }
 
-            block = <div className="div_all_span_src" id={'src_span_' + id}>
+            block = <div className="div_all_span_src" id={`src_span_${id}`}>
                     <SnippetBlock id={id} line_start={block_line_start} text={text}/>
                 </div>;
         }
 
-        // TODO[ES6]: seems to be unnecessary
-        const self = this;
         const onClick = (ev) => {
             var highlight = {
                 "line_start": line_start,
@@ -130,11 +127,11 @@ class SnippetSpan extends MenuHost {
                 "column_start": column_start,
                 "column_end": column_end
             };
-            self.props.getSource(file_name, highlight);
+            this.props.getSource(file_name, highlight);
         };
         return (
-            <span className="div_span" id={'div_span_' + id}>
-                <span className="span_loc" id={'span_loc_' + id} onClick={onClick}>
+            <span className="div_span" id={`div_span_${id}`}>
+                <span className="span_loc" id={`span_loc_${id}`} onClick={onClick}>
                     {file_name}:{line_start}:{column_start}:{line_end}:{column_end}
                 </span>
                 {label}
@@ -147,17 +144,16 @@ class SnippetSpan extends MenuHost {
 function SnippetBlock(props) {
     let { line_start: line_number, text, id } = props;
     const numbers = [];
-    const lines = [];
-    // TODO[ES6]: use text.map
-    for (let line of text) {
-        numbers.push(<div className="span_src_number" id={'snippet_line_number_' + id + '_' + line_number} key={'number_' + line_number}>{line_number}</div>);
+    const lines = text.map((line) => {
+        numbers.push(<div className="span_src_number" id={`snippet_line_number_${id}_${line_number}`} key={`number_${line_number}`}>{line_number}</div>);
         let text = "&nbsp;";
         if (line) {
             text = line;
         }
-        lines.push(<div className="span_src" id={'snippet_line_' + id + '_' + line_number} key={'span_' + line_number}  dangerouslySetInnerHTML={{__html: text}} />);
+        let div = <div className="span_src" id={`snippet_line_${id}_${line_number}`} key={`span_${line_number}`}  dangerouslySetInnerHTML={{__html: text}} />;
         line_number += 1;
-    }
+        return div;
+    });
     return (
         <span>
             <span className="div_span_src_number">

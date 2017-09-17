@@ -51,12 +51,9 @@ export class Summary extends React.Component {
             // rustw.load_link.call(e.target);
             e.preventDefault();
         };
-        // TODO[ES6]: use this.props.breadCrumbs.map
-        let breadCrumbs = [];
-        for (const bc in this.props.breadCrumbs) {
-            breadCrumbs.push(<span>{bc} :: </span>);
-        }
-        let parent = null;
+        let breadCrumbs = this.props.breadCrumbs.map((bc) => <span>{bc} :: </span>),
+            parent = null;
+            
         if (this.props.parent) {
             parent = <span className="small_button" id="jump_up" data-link={'summary:' + this.props.parent} onClick={loadLink}>&#x2191;</span>;
         }
@@ -64,31 +61,25 @@ export class Summary extends React.Component {
         let docExpandButton = null;
         let docsRest = null;
         if (this.props.doc_rest) {
-            // TODO[ES6]: seems to be unnecessary with arrow funcitons
-            const self = this;
             if (this.state.showDocs) {
-                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => self.setState({ showDocs: false })}>-</span>;
+                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => this.setState({ showDocs: false })}>-</span>;
                 docsRest = <div id="div_summary_doc_more" dangerouslySetInnerHTML={{__html: this.props.doc_rest}} />;
             } else {
-                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => self.setState({ showDocs: true })}>+</span>;
+                docExpandButton = <span className="small_button" id="expand_docs" onClick={() => this.setState({ showDocs: true })}>+</span>;
             }
         }
 
-        // TODO[ES6]: use this.props.children.map
-        let children = [];
-        for (const c of this.props.children) {
-            children.push(<div className="div_summary_sub" id={"div_summary_sub_" + c.id} key={c.id}>
+        let children = this.props.children.map((c) => {
+            return (<div className="div_summary_sub" id={"div_summary_sub_" + c.id} key={c.id}>
                             <span className="jump_children small_button" data-link={"summary:" + c.id} onClick={loadLink}>&#x2192;</span>
                             <span className="summary_sig_sub div_all_span_src" dangerouslySetInnerHTML={{__html: c.signature}} />
                             <p className="div_summary_doc_sub" dangerouslySetInnerHTML={{__html: c.doc_summary}} />
                         </div>);
-        }
+        })
 
         let refMenu = null;
         if (!!this.state.refMenu) {
-            // TODO[ES6]: seems to be unnecessary with arrow funcitons
-            const self = this;
-            const onClose = () => self.setState({ refMenu: null });
+            const onClose = () => this.setState({ refMenu: null });
             refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;            
         }
 

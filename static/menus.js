@@ -25,7 +25,7 @@ export class Menu extends React.Component {
             return;
         }
 
-        var menuDiv = $("#" + this.props.id);
+        var menuDiv = $(`#${this.props.id}`);
         menuDiv.offset(this.props.location);
     }
 
@@ -37,22 +37,21 @@ export class Menu extends React.Component {
             event.stopPropagation();
         };
 
-        // TODO[ES6]: use this.props.items.map
-        let items = [];
-        for (const i of this.props.items) {
-            if (!i.unstable || CONFIG.unstable_features) {
-                const className = this.props.id + "_link menu_link";
-                let onClick = (ev) => {
-                    hideMenu(ev);
-                    i.fn(self.props.target, self.props.location);
-                };
-                items.push(<div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>);
-            }
-        }
+        let items = this.props.items.filter((i) => {return !i.unstable || CONFIG.unstable_features})
+                        .map((i) => {
+                            const className = `${this.props.id}_link menu_link`;
+                            let onClick = (ev) => {
+                                hideMenu(ev);
+                                i.fn(self.props.target, self.props.location);
+                            };
+                            return <div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>;
+                        });
+    
         if (items.length === 0) {
             this.isEmpty = true;
             return null;
         }
+
         return <span>
             <div id="div_overlay" onClick={hideMenu} />
             <div id={this.props.id} className="div_menu">
@@ -71,19 +70,16 @@ export class MenuHost extends React.Component {
     render() {
         let menu = null;
         if (!!this.state.menuOpen) {
-            // TODO[ES6]: remove, unnecessary if arrow function has been used
-            const self = this;
-            const onClose = () => self.setState({ menuOpen: null});
+            const onClose = () => this.setState({ menuOpen: null});
             menu = React.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target, callbacks: this.props.callbacks });
         }
 
-        // TODO[ES6]: remove, unnecessary if arrow function has been used
-        const self = this;
         let contextMenu = (ev) => {
-            self.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
+            this.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
             ev.preventDefault();
         };
-        let onClick=null;
+        
+        let onClick = null;
         if (this.leftClick) {
             onClick = contextMenu;
             contextMenu = null;
