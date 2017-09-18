@@ -21,25 +21,23 @@ function add_ref_functionality(self) {
         const element = $(el);
         const classes = el.className.split(' ');
         // TODO[ES6]: use classes.find() and then execute following code
-        for (const c of classes) {
-            if (c.startsWith('class_id_')) {
-                element.hover(function() {
-                    $("." + c).css("background-color", "#d5f3b5");
-                }, function() {
-                    $("." + c).css("background-color", "");
-                });
-
-                const id = c.slice('class_id_'.length);
-                const showRefMenu = (ev) => {
-                    self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
-                    ev.preventDefault();
-                };
-                element.on("contextmenu", showRefMenu);
-                element.addClass("hand_cursor");
-
-                break;
-            }
+        let c = classes.find((c) => c.startsWith('class_id_'));
+        if(c === undefined) {
+            return;
         }
+        element.hover(function() {
+            $("." + c).css("background-color", "#d5f3b5");
+        }, function() {
+            $("." + c).css("background-color", "");
+        });
+
+        const id = c.slice('class_id_'.length);
+        const showRefMenu = (ev) => {
+            self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
+            ev.preventDefault();
+        };
+        element.on("contextmenu", showRefMenu);
+        element.addClass("hand_cursor");
     }
 }
 
@@ -100,8 +98,6 @@ class SourceView extends React.Component {
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
-        // TODO[ES6]: seems to be unnecessary with arrow function
-        const self = this;
         linkables.click((e) => {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
@@ -138,22 +134,18 @@ class SourceView extends React.Component {
     }
 
     render() {
-        const self = this;
         const path = this.props.path.join('/');
-        let numbers = [];
-        let lines = []
-        let count = 0;
-
-        // TODO[ES6]: use this.props.lines.map
-        for (const l of this.props.lines) {
-            count += 1;
-            numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
-            lines.push(<Line count={count} line={l} key={"line-" + count} />);
-        }
+        let count = 0,
+            numbers = [],
+            lines = this.props.lines.map((l) => {
+                count += 1;
+                numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
+                return (<Line count={count} line={l} key={"line-" + count} />);
+            });
 
         let refMenu = null;
         if (!!this.state.refMenu) {
-            const onClose = () => self.setState({ refMenu: null });
+            const onClose = () => this.setState({ refMenu: null });
 
             refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} getSummary={this.props.getSummary} getUses={this.props.getUses} getImpls={this.props.getImpls} />;
         }
