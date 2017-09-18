@@ -16,12 +16,15 @@ import { MenuHost, Menu } from './menus';
 
 
 // Menus, highlighting on mouseover.
-function add_ref_functionality() {
+function add_ref_functionality(self) {
     for (const el of $("#div_src_view").find(".class_id")) {
         const element = $(el);
         const classes = el.className.split(' ');
         // TODO[ES6]: use classes.find() and then execute following code
         let c = classes.find((c) => c.startsWith('class_id_'));
+        if(c === undefined) {
+            return;
+        }
         element.hover(function() {
             $("." + c).css("background-color", "#d5f3b5");
         }, function() {
@@ -30,7 +33,7 @@ function add_ref_functionality() {
 
         const id = c.slice('class_id_'.length);
         const showRefMenu = (ev) => {
-            this.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
+            self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
             ev.preventDefault();
         };
         element.on("contextmenu", showRefMenu);
@@ -123,7 +126,7 @@ class SourceView extends React.Component {
             this.props.getSource(file, data);
         });
 
-        add_ref_functionality();
+        add_ref_functionality(this);
 
         if (this.props.scrollTo) {
             jumpToLine(this.props.scrollTo);

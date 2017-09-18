@@ -15,9 +15,10 @@ export function BreadCrumbs(props: any) {
                 path += '/';
             }
             path += p;
-            const onClick = () => props.getSource(path);
+            const pathCopy = path;
+            const onClick = () => props.getSource(pathCopy);
             return (<span key={path}>> <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
-        })
+        });
     return <div id="div_dir_path">
         {crumbs}
     </div>;
