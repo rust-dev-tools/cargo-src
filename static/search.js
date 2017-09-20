@@ -45,7 +45,7 @@ class ResultSet extends React.Component {
                     this.props.getSource(r.file_name, highlight);
                     e.preventDefault();
                 };
-                lines.push(<div key={`${kind}-${l.line_start}`}>
+                return (<div key={`${kind}-${l.line_start}`}>
                     <span className="div_span_src_number">
                         <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
                     </span>
@@ -65,7 +65,7 @@ class ResultSet extends React.Component {
                 <div className="div_all_span_src">
                     {lines}
                 </div>
-            </div>); 
+            </div>);
         })
 
         return <div className="div_search_results">
