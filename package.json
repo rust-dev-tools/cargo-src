@@ -1,6 +1,8 @@
 {
   "scripts": {
     "build": "webpack"
+    "build": "webpack",
+    "lint:es": "eslint -c ./static/.eslintrc --ignore-path ./static/.eslintignore static/ || true"
   },
   "dependencies": {
     "@types/react": "^16.0.5",
