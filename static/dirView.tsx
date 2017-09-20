@@ -10,7 +10,13 @@ import * as React from 'react';
 
 import { BreadCrumbs } from './breadCrumbs';
 
-export function DirView(props: any) {
+export interface DirViewProps {
+    files: Array<any>,
+    file: string,
+    getSource: (path :string) => any
+}
+
+export const DirView: React.SFC<DirViewProps> = (props) => {
     let files = props.files.map((f: any) => {
         const onClick = () => props.getSource(`${props.file}/${f.name}`);
         const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';

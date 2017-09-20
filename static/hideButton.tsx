@@ -6,9 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-import React from 'react';
+import * as React from 'react';
 
-export function HideButton(props) {
+export interface HideButtonProps {
+    hidden: boolean,
+    onClick: () => any
+}
+
+export const HideButton: React.SFC<HideButtonProps> = (props) => {
     const text = props.hidden ? '+' : '-';
     return <span className="small_button" onClick={props.onClick}>{text}</span>
 }
