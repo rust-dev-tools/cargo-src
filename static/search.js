@@ -118,12 +118,12 @@ export function SearchResults(props) {
 }
 
 function highlight_needle(results, tag) {
-    results.map((i) => {
-        results[i].lines.map((line) => {
+    results.map((file, index) => {
+        file.lines.map((line) => {
             line.line_end = line.line_start;
             utils.highlight_spans(line,
                                   null,
-                                  `snippet_line_${tag}_${i}_`,
+                                  `snippet_line_${tag}_${index}_`,
                                   "selected");
         })
     })
