@@ -27,7 +27,6 @@ import { Summary } from './summary';
 
 class RustwApp extends React.Component {
     componentWillMount() {
-        $("#measure").hide();
 
         // history.replaceState(MAIN_PAGE_STATE, "");
         // window.onpopstate = onPopState;    
@@ -55,10 +54,10 @@ class RustwApp extends React.Component {
                 divMain = <ErrCodeController />;
                 break;
             case Page.SEARCH:
-                divMain = <SearchResults defs={this.props.page.defs} refs={this.props.page.refs} />;
+                divMain = <div id="div_search_results"><SearchResults defs={this.props.page.defs} refs={this.props.page.refs} /></div>;
                 break;
             case Page.FIND:
-                divMain = <FindResults results={this.props.page.results} />;
+                divMain = <div id="div_search_results"><FindResults results={this.props.page.results} /></div>;
                 break;
             case Page.SOURCE:
                 divMain = <SourceViewController path={this.props.page.path} lines={this.props.page.lines} highlight={this.props.page.highlight} scrollTo={this.props.page.lineStart} />;
@@ -67,7 +66,7 @@ class RustwApp extends React.Component {
                 divMain = <DirView file={this.props.page.name} files={this.props.page.files} getSource={this.props.getSource} />;
                 break;
             case Page.LOADING:
-                divMain = "Loading...";
+                divMain = <div id="div_loading">Loading...</div>;
                 break;
             case Page.SUMMARY:
                 divMain = <Summary breadCrumbs={this.props.page.breadCrumbs} parent={this.props.page.parent} signature={this.props.page.signature} doc_summary={this.props.page.doc_summary} doc_rest={this.props.page.doc_rest} children={this.props.page.children} />;
@@ -79,7 +78,6 @@ class RustwApp extends React.Component {
             default:
                 divMain = null;
         }
-
         return <div id="div_app">
             <TopBarController />
             <div id="div_main">

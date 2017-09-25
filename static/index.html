@@ -22,14 +22,20 @@ except according to those terms.
 
 <body>
     <div id="container" />
-    <span id="measure">abcdefghij</span>
 </body>
 
 <script>
-var MAIN_PAGE_STATE = null;
-var CONFIG;
-var CHAR_WIDTH = $("#measure").innerWidth() / 10;
+var CHAR_WIDTH,
+    CONFIG,
+    MAIN_PAGE_STATE = null;
 
 Rustw.renderApp();
+
+// Get the measure after the CSS has loaded.
+$(window).load(function() {
+  $('#container').append("<span id='measure'>abcdefghij</span>")
+  CHAR_WIDTH= $("#measure").width() / 10;
+  $("#measure").hide();
+});
 </script>
 </html>
