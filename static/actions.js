@@ -130,6 +130,7 @@ export function getSource(fileName, highlight) {
                 }
             },
             "Error with source request for " + fileName,
+            true
         );
     };
 }
