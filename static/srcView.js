@@ -85,6 +85,8 @@ function view_in_vcs(target) {
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
 }
 
+// See https://github.com/Microsoft/TypeScript/issues/18134
+/** @augments {React.Component<object, object>} */
 class SourceView extends React.Component {
     constructor(props) {
         super(props);
