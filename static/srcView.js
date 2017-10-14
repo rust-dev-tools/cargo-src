@@ -163,7 +163,7 @@ class SourceView extends React.Component {
             refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} getSummary={this.props.getSummary} getUses={this.props.getUses} getImpls={this.props.getImpls} />;
         }
 
-        return <div> 
+        return <div id="src"> 
             <BreadCrumbs path={this.props.path} getSource={this.props.getSource} />
             <div id="div_src_view">
                 <div id="div_src_contents">

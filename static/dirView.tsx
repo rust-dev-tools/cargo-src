@@ -26,7 +26,7 @@ export const DirView: React.SFC<DirViewProps> = (props) => {
             </div>
         );
     });
-    return <div>
+    return <div id="src">
         <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
         <div id="div_dir_view">
             <div id="div_dir_contents">

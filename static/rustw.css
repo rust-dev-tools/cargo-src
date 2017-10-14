@@ -102,12 +102,6 @@ html {
 .link_hidden {
     visibility: hidden;
 }
-#search_box {
-    display: inline-block;
-    float: right;
-    margin-top: 4px;
-    margin-right: 7em;
-}
 
 #div_header_group {
     width: 100%;
@@ -158,6 +152,7 @@ html {
     background-color: #fafafa;
     min-height: 100%;
     font-size: small;
+    display: flex;
 }
 #div_app {
     position: absolute;
@@ -167,7 +162,8 @@ html {
     right: 0;
 }
 #container {
-    min-height: 100%;    
+    min-height: 100%;
+    display: flex;
 }
 #div_message {
     margin-bottom: 20px;
@@ -512,7 +508,7 @@ span#measure {
 }
 
 .div_search_title {
-    font-size: large;
+    font-weight: heavy;
 }
 .div_search_file_link {
     padding-top: 0.2em;
@@ -595,10 +591,55 @@ span#measure {
 
 #div_dir_view, #div_src_view, #div_build_results, #div_loading, #div_search_results {
     position: relative;
-    padding: 0.5em 1em;
+    padding: 0.5em 0em;
 }
 
 #div_dir_path {
     padding: 10px 20px;
     background-color: #CCCCFF;
+}
+
+.div_sidebar {
+    flex: 0 0 250px;
+    background-color: lightgrey;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.div_sidebar_tabs{
+    display: flex;
+    height: fit-content;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+.div_sidebar_tab {
+    flex: 1;
+    height: fit-content;
+    background-color: lightslategrey;
+    padding: 10px 20px;
+    list-style: none;
+
+}
+
+.div_sidebar_main {
+    padding: 10px;
+    overflow: hidden;
+}
+
+#search_box{
+    width:100%;
+    height: 20px;
+    box-sizing: border-box;
+
+}
+
+.selected {
+    background-color: lightgrey;
+}
+
+#src {
+    flex: 1;
 }

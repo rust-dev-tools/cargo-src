@@ -114,6 +114,7 @@ export function getSource(fileName, highlight) {
             dispatch,
             'src/' + fileName,
             function(json) {
+                console.log(json)
                 if (json.Directory) {
                     dispatch(showSourceDir(fileName, json.Directory.files));
                     // history.pushState(state, "", utils.make_url("#src=" + fileName));

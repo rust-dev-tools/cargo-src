@@ -10,18 +10,19 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider, connect } from 'react-redux';
 import { createStore, applyMiddleware } from 'redux';
+import { BrowserRouter as Router, Route, withRouter } from 'react-router-dom'
 import thunk from 'redux-thunk';
 import { rustwReducer, Page } from './reducers';
 import * as actions from './actions';
 
 import * as utils from './utils';
-import { TopBarController } from './topbar';
 import { ResultsController, Error } from "./errors";
 import { ErrCodeController } from "./err_code";
 import { FindResults, SearchResults } from "./search";
 import { DirView } from './dirView';
 import { SourceViewController } from './srcView';
 import { Summary } from './summary';
+import { SidebarController } from './Sidebar';
 
 // TODOs in build
 
@@ -53,12 +54,6 @@ class RustwApp extends React.Component {
             case Page.ERR_CODE:
                 divMain = <ErrCodeController />;
                 break;
-            case Page.SEARCH:
-                divMain = <div id="div_search_results"><SearchResults defs={this.props.page.defs} refs={this.props.page.refs} /></div>;
-                break;
-            case Page.FIND:
-                divMain = <div id="div_search_results"><FindResults results={this.props.page.results} /></div>;
-                break;
             case Page.SOURCE:
                 divMain = <SourceViewController path={this.props.page.path} lines={this.props.page.lines} highlight={this.props.page.highlight} scrollTo={this.props.page.lineStart} />;
                 break;
@@ -78,9 +73,10 @@ class RustwApp extends React.Component {
             default:
                 divMain = null;
         }
+
         return <div id="div_app">
-            <TopBarController />
             <div id="div_main">
+                <SidebarController page={this.props.page}/>
                 {divMain}
             </div>
         </div>;
@@ -99,17 +95,20 @@ const mapDispatchToProps = (dispatch) => {
     }
 }
 
-const AppController = connect(
+const AppController = withRouter(connect(
     mapStateToProps,
     mapDispatchToProps
-)(RustwApp);
+)(RustwApp));
+
 
 let store = createStore(rustwReducer, applyMiddleware(thunk));
 
 export function renderApp() {
     ReactDOM.render(
         <Provider store={store}>
-            <AppController />
+            <Router>
+                <Route path='/' component={AppController} />
+            </Router>
         </Provider>,
         document.getElementById('container')
     );

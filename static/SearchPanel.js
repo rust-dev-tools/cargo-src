@@ -10,21 +10,13 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { BuildState } from './reducers';
 
+import { FindResults, SearchResults } from "./search";
 import { Menu, MenuHost } from './menus';
 import * as actions from './actions';
 
-class TopBar extends React.Component {
+class SearchPanel extends React.Component {
     render() {
-        return <div id="div_header_group">
-              <div id="div_header">
-                <HomeLink visible={this.props.visibleHomeLink} onClick={this.props.clickHomeLink} />
-                <BuildButton state={this.props.buildState} onClick={this.props.clickBuild} />
-                <Options />
-                <BrowseLink visible={this.props.visibleBrowseLink} onClick={this.props.clickBrowseLink} />
-                <SearchBox getSearch={this.props.getSearch} />
-              </div>
-              <Indicator status={this.props.indicatorStatus} />
-            </div>;
+        return <SearchBox getSearch={this.props.getSearch} />
     }
 }
 
@@ -56,9 +48,7 @@ const mapStateToProps = (state) => {
 const mapDispatchToProps = (dispatch) => {
     return {
         clickHomeLink: () => dispatch(actions.showBuildResults()),
-        clickBrowseLink: () => dispatch(actions.getSource(CONFIG.workspace_root)),
         clickBuild: () => dispatch(actions.doBuild()),
-        getSearch: (needle) => dispatch(actions.getSearch(needle)),
     }
 };
 
@@ -70,35 +60,11 @@ const mergeProps = (stateProps, dispatchProps) => {
     return props;
 };
 
-export const TopBarController = connect(
+export const SearchPanelController = connect(
     mapStateToProps,
     mapDispatchToProps,
     mergeProps
-)(TopBar);
-
-function renderLink(text, id, visible, onClick) {
-    let className;
-    let onClickFn;
-    if (visible) {
-        className = "header_link";
-        onClickFn = onClick;
-    } else {
-        className = "link_hidden";
-        onClickFn = null;
-    }
-
-    return <span id={id} className={className} onClick={onClickFn}>{text}</span>;    
-}
-
-function HomeLink(props) {
-    // TODO should change this to be home-looking, rather than back-looking
-    // TODO or even have this as a popup, rather than a 'home screen'
-    return renderLink("← return to build results", "link_back", props.visible, props.onClick);
-}
-
-function BrowseLink(props) {
-    return renderLink("browse source", "link_browse", props.visible, props.onClick);
-}
+)(SearchPanel);
 
 function SearchBox(props) {
     const enterKeyCode = 13;
@@ -108,7 +74,9 @@ function SearchBox(props) {
         }
     };
 
-    return <input id="search_box" placeholder="identifier search" autoComplete="off" onKeyPress={onKeyPress}></input>;
+    return (<div>
+        <input id="search_box" placeholder="identifier search" autoComplete="off" onKeyPress={onKeyPress}></input>
+    </div>)
 }
 
 function BuildButton(props) {
