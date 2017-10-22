@@ -9,7 +9,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
-import { SidebarTab } from './SidebarTab';
 import { DirView } from './dirView';
 import { SearchPanelController } from './SearchPanel.js';
 
