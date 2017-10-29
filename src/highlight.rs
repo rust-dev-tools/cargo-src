@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::str;
 use std::time::Instant;
 
 use rustdoc_highlight::{self as highlight, Class, Classifier};
@@ -207,8 +206,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             Class::Ident => {
                 match tas {
                     Some(t) => {
-                        let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                        let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                        let lo = self.codemap.lookup_char_pos(t.sp.lo());
+                        let hi = self.codemap.lookup_char_pos(t.sp.hi());
                         // FIXME should be able to get all this info with a single query of analysis
                         let span = &self.span_from_locs(&lo, &hi);
                         let ty = self.analysis
@@ -285,8 +284,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             }
             Class::RefKeyWord if text == "*" => match tas {
                 Some(t) => {
-                    let lo = self.codemap.lookup_char_pos(t.sp.lo);
-                    let hi = self.codemap.lookup_char_pos(t.sp.hi);
+                    let lo = self.codemap.lookup_char_pos(t.sp.lo());
+                    let hi = self.codemap.lookup_char_pos(t.sp.hi());
                     let span = &self.span_from_locs(&lo, &hi);
                     let mut extra = HashMap::new();
                     extra.insert(
@@ -376,8 +375,8 @@ impl highlight::Writer for BasicHighlighter {
         let mut id = None;
         let mut link = None;
         if let Some(tas) = tas {
-            let lo = tas.sp.lo.0;
-            let hi = tas.sp.hi.0;
+            let lo = tas.sp.lo().0;
+            let hi = tas.sp.hi().0;
             for s in &self.spans {
                 if s.start_byte == lo && s.end_byte == hi {
                     extra_class = Some(s.klass.clone());
