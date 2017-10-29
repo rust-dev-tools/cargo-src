@@ -552,49 +552,6 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_summary<'b: 'a, 'k: 'a>(
-        &mut self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-        query: Option<String>,
-    ) {
-        match parse_query_value(&query, "id=") {
-            Some(id) => {
-                let id = match u64::from_str(&id) {
-                    Ok(l) => l,
-                    Err(_) => {
-                        self.handle_error(
-                            _req,
-                            res,
-                            StatusCode::InternalServerError,
-                            format!("Bad id: {}", id),
-                        );
-                        return;
-                    }
-                };
-                let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.summary(analysis::Id::new(id)) {
-                    Ok(data) => {
-                        res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
-                            .unwrap();
-                    }
-                    Err(s) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
-                    }
-                }
-            }
-            None => {
-                self.handle_error(
-                    _req,
-                    res,
-                    StatusCode::InternalServerError,
-                    "No id for summary".to_owned(),
-                );
-            }
-        }
-    }
-
     fn handle_plain_text<'b: 'a, 'k: 'a>(
         &mut self,
         _req: Request<'b, 'k>,
@@ -783,7 +740,6 @@ const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";
 const FIND_REQUEST: &'static str = "find";
-const SUMMARY_REQUEST: &'static str = "summary";
 const BUILD_UPDATE_REQUEST: &'static str = "build_updates";
 
 fn route<'a, 'b: 'a, 'k: 'a>(
@@ -839,11 +795,6 @@ fn route<'a, 'b: 'a, 'k: 'a>(
 
     if path[0] == FIND_REQUEST {
         handler.handle_find(req, res, query);
-        return;
-    }
-
-    if path[0] == SUMMARY_REQUEST {
-        handler.handle_summary(req, res, query);
         return;
     }
 

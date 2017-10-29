@@ -52,21 +52,6 @@ pub fn highlight<'a>(
     String::from_utf8_lossy(&out.buf).into_owned()
 }
 
-pub fn custom_highlight<H: highlight::Writer + GetBuf>(
-    file_name: String,
-    file_text: String,
-    highlighter: &mut H,
-) -> String {
-    debug!("custom_highlight `{}` in `{}`", file_text, file_name);
-    let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
-
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
-    classifier.write_source(highlighter).unwrap();
-
-    String::from_utf8_lossy(highlighter.get_buf()).into_owned()
-}
-
 struct Highlighter<'a> {
     buf: Vec<u8>,
     analysis: &'a AnalysisHost,
@@ -304,94 +289,6 @@ impl<'a> highlight::Writer for Highlighter<'a> {
     }
 }
 
-// Just does syntax highlighting, no fancy stuff.
-pub struct BasicHighlighter {
-    buf: Vec<u8>,
-    spans: Vec<SpanSpan>,
-}
-
-struct SpanSpan {
-    start_byte: u32,
-    end_byte: u32,
-    klass: String,
-    id: String,
-    def_span: Option<Span>,
-}
-
 pub trait GetBuf {
     fn get_buf(&self) -> &[u8];
-}
-
-impl GetBuf for BasicHighlighter {
-    fn get_buf(&self) -> &[u8] {
-        &self.buf
-    }
-}
-
-impl BasicHighlighter {
-    pub fn new() -> BasicHighlighter {
-        BasicHighlighter {
-            buf: vec![],
-            spans: vec![],
-        }
-    }
-
-    pub fn span(
-        &mut self,
-        start: u32,
-        end: u32,
-        klass: String,
-        id: String,
-        def_span: Option<Span>,
-    ) {
-        self.spans.push(SpanSpan {
-            start_byte: start,
-            end_byte: end,
-            klass: klass,
-            id: id,
-            def_span: def_span,
-        });
-    }
-}
-
-impl highlight::Writer for BasicHighlighter {
-    fn enter_span(&mut self, klass: Class) -> io::Result<()> {
-        write!(self.buf, "<span class='{}'>", klass.rustdoc_class())
-    }
-
-    fn exit_span(&mut self) -> io::Result<()> {
-        write!(self.buf, "</span>")
-    }
-
-    fn string<T: Display>(
-        &mut self,
-        text: T,
-        klass: Class,
-        tas: Option<&TokenAndSpan>,
-    ) -> io::Result<()> {
-        let text = text.to_string();
-
-        let mut extra_class = None;
-        let mut id = None;
-        let mut link = None;
-        if let Some(tas) = tas {
-            let lo = tas.sp.lo().0;
-            let hi = tas.sp.hi().0;
-            for s in &self.spans {
-                if s.start_byte == lo && s.end_byte == hi {
-                    extra_class = Some(s.klass.clone());
-                    id = Some(s.id.clone());
-                    link = s.def_span
-                        .as_ref()
-                        .map(|sp| loc_for_span(sp, &Path::new("")));
-                }
-            }
-        }
-
-        let has_link = link.is_some();
-        let mut extra = HashMap::new();
-        maybe_insert!(extra, "id", id);
-        maybe_insert!(extra, "data-link", link);
-        write_span(&mut self.buf, klass, extra_class, text, has_link, extra)
-    }
 }
