@@ -188,7 +188,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
         match klass {
             Class::None => write!(self.buf, "{}", text),
-            Class::Ident => {
+            Class::Ident | Class::Self_ => {
                 match tas {
                     Some(t) => {
                         let lo = self.codemap.lookup_char_pos(t.sp.lo());
