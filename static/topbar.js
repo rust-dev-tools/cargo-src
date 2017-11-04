@@ -30,7 +30,7 @@ class TopBar extends React.Component {
 
 const mapStateToProps = (state) => {
     let visibleHomeLink = null;
-    let visibleBrowseLink = null;
+    let visibleBrowseLink = true;
     let indicatorStatus = null;
     let buildState = state.build;
     switch (state.build) {
@@ -38,10 +38,8 @@ const mapStateToProps = (state) => {
             indicatorStatus = true;
             break;
         case BuildState.BUILT:
-            visibleBrowseLink = true;
             break;
         case BuildState.BUILT_AND_NAVIGATING:
-            visibleBrowseLink = true;
             visibleHomeLink = true;
             buildState = BuildState.BUILT;
             break;

@@ -12,6 +12,7 @@ use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
 use listings::DirectoryListing;
+use Mode;
 use reprocess;
 
 use std::collections::HashMap;
@@ -43,13 +44,19 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn new(config: Config) -> Instance {
+    pub(super) fn new(config: Config, mode: Mode) -> Instance {
         let config = Arc::new(config);
         let build_update_handler = Arc::new(Mutex::new(None));
+
+        let mut file_cache = Cache::new();
+        if mode == Mode::Src {
+            println!("Processing analysis data...");
+            file_cache.update_analysis();
+        }
         Instance {
             builder: build::Builder::from_config(config.clone(), build_update_handler.clone()),
             config: config,
-            file_cache: Arc::new(Mutex::new(Cache::new())),
+            file_cache: Arc::new(Mutex::new(file_cache)),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_push_data: Arc::new(Mutex::new(HashMap::new())),
             build_update_handler: build_update_handler,

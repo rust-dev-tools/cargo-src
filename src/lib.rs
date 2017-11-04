@@ -43,16 +43,27 @@ mod listings;
 mod highlight;
 mod server;
 
+pub fn run_src_server(ip: Option<String>) {
+    run_server_internal(ip, Mode::Src);
+}
+
 pub fn run_server(ip: Option<String>) {
+    run_server_internal(ip, Mode::Rustw);
+}
+
+fn run_server_internal(ip: Option<String>, mode: Mode) {
     let config_file = File::open("rustw.toml");
     let mut toml = String::new();
     if let Ok(mut f) = config_file {
         f.read_to_string(&mut toml).unwrap();
     }
-    let config = Config::from_toml(&toml);
+    let mut config = Config::from_toml(&toml);
+    if mode == Mode::Src {
+        config.build_on_load = false;
+    }
     let port = config.port;
 
-    let server = server::Instance::new(config);
+    let server = server::Instance::new(config, mode);
 
     let ip = ip.unwrap_or("127.0.0.1".to_owned());
     println!("server running on http://{}:{}", ip, port);
@@ -60,4 +71,10 @@ pub fn run_server(ip: Option<String>) {
         .unwrap()
         .handle(server)
         .unwrap();
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Src,
+    Rustw,
 }
