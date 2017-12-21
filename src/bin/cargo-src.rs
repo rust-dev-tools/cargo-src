@@ -4,7 +4,6 @@ use std::env;
 use std::process::Command;
 
 fn main() {
-    let cargo = env::var("CARGO").expect("Missing $CARGO var");
     let mut args = env::args();
     let prog = args.next().expect("No program name?");
     if prog == "cargo" || prog.ends_with("/cargo") {
@@ -14,6 +13,7 @@ fn main() {
         panic!("cargo-src started in some weird and unexpected way: `{}`", prog);
     }
     
+    let cargo = env::var("CARGO").expect("Missing $CARGO var");
     let mut cmd = Command::new(cargo);
     cmd.arg("check");
     cmd.args(args);
