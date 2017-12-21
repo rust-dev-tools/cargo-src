@@ -19,6 +19,7 @@ use span;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::{CodeMap, FilePathMapping, Loc};
+use syntax_pos::FileName;
 
 use analysis::AnalysisHost;
 use analysis::DefKind;
@@ -33,7 +34,7 @@ pub fn highlight<'a>(
 ) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(file_name.clone(), file_text);
+    let fm = sess.codemap().new_filemap(FileName::Real(PathBuf::from(&file_name)), file_text);
 
     let mut out = Highlighter::new(analysis, project_path, sess.codemap());
 
@@ -57,7 +58,6 @@ struct Highlighter<'a> {
     analysis: &'a AnalysisHost,
     codemap: &'a CodeMap,
     project_path: &'a Path,
-    path_cache: HashMap<String, PathBuf>,
 }
 
 impl<'a> Highlighter<'a> {
@@ -71,7 +71,6 @@ impl<'a> Highlighter<'a> {
             analysis: analysis,
             codemap: codemap,
             project_path: project_path,
-            path_cache: HashMap::new(),
         }
     }
 
@@ -87,16 +86,20 @@ impl<'a> Highlighter<'a> {
     }
 
     fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
-        let file_path = self.path_cache
-            .entry(lo.file.name.clone())
-            .or_insert_with(|| Path::new(&lo.file.name).canonicalize().unwrap());
         Span::new(
             span::Row::new_one_indexed(lo.line as u32).zero_indexed(),
             span::Row::new_one_indexed(hi.line as u32).zero_indexed(),
             span::Column::new_zero_indexed(lo.col.0 as u32),
             span::Column::new_zero_indexed(hi.col.0 as u32),
-            file_path.clone(),
+            file_path_for_loc(lo),
         )
+    }
+}
+
+fn file_path_for_loc(loc: &Loc) -> PathBuf {
+    match loc.file.name {
+        FileName::Real(ref path) => path.canonicalize().unwrap(),
+        ref f => panic!("Expected real path, found {:?}", f),
     }
 }
 

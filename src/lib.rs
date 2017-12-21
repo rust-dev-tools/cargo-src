@@ -27,6 +27,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate syntax;
+extern crate syntax_pos;
 extern crate toml;
 extern crate url;
 
