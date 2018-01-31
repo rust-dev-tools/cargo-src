@@ -47,18 +47,24 @@ impl Instance {
         let config = Arc::new(config);
         let build_update_handler = Arc::new(Mutex::new(None));
 
-        let mut file_cache = Cache::new();
-        println!("Processing analysis data...");
-        file_cache.update_analysis();
-
-        Instance {
+        let mut instance = Instance {
             builder: build::Builder::from_config(config.clone(), build_update_handler.clone()),
             config: config,
-            file_cache: Arc::new(Mutex::new(file_cache)),
+            file_cache: Arc::new(Mutex::new(Cache::new())),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_push_data: Arc::new(Mutex::new(HashMap::new())),
             build_update_handler: build_update_handler,
-        }
+        };
+
+        instance.run_analysis();
+
+        instance
+    }
+
+    fn run_analysis(&mut self) {
+        println!("Processing analysis data...");
+        let mut file_cache = self.file_cache.lock().unwrap();
+        file_cache.update_analysis();
     }
 }
 
@@ -66,14 +72,7 @@ impl ::hyper::server::Handler for Instance {
     fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, res: Response<'a, Fresh>) {
         let uri = req.uri.clone();
         if let RequestUri::AbsolutePath(ref s) = uri {
-            let mut handler = Handler {
-                config: &self.config,
-                builder: &self.builder,
-                file_cache: &self.file_cache,
-                pending_push_data: &self.pending_push_data,
-                build_update_handler: &self.build_update_handler,
-            };
-            route(s, &mut handler, req, res);
+            self.route(s, req, res);
         } else {
             // TODO log this and ignore it.
             panic!("Unexpected uri");
@@ -111,17 +110,94 @@ impl BuildUpdateHandler {
     }
 }
 
-// Handles a single request.
-struct Handler<'a> {
-    pub config: &'a Arc<Config>,
-    builder: &'a build::Builder,
-    file_cache: &'a Arc<Mutex<Cache>>,
-    pending_push_data: &'a Arc<Mutex<HashMap<String, Option<String>>>>,
-    build_update_handler: &'a Arc<Mutex<Option<BuildUpdateHandler>>>,
-}
 
-impl<'a> Handler<'a> {
-    fn handle_error<'b: 'a, 'k: 'a>(
+impl Instance {
+    fn route<'b, 'k>(
+        &self,
+        uri_path: &str,
+        req: Request<'b, 'k>,
+        res: Response<'b, Fresh>,
+    ) {
+        let (path, query, _) = parse_path(uri_path).unwrap();
+
+        trace!("route: path: {:?}, query: {:?}", path, query);
+        if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
+            self.handle_index(req, res);
+            return;
+        }
+
+        if path[0] == STATIC_REQUEST {
+            self.handle_static(req, res, &path[1..]);
+            return;
+        }
+
+        if path[0] == CONFIG_REQUEST {
+            self.handle_config(req, res);
+            return;
+        }
+
+        if path[0] == PULL_REQUEST {
+            self.handle_pull(req, res, query);
+            return;
+        }
+
+        if path[0] == SOURCE_REQUEST {
+            let path = &path[1..];
+            // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
+            // We try to correct for that here.
+            if path.len() == 1 && path[0] == "" {
+                self.handle_src(req, res, &[".".to_owned()]);
+            } else {
+                self.handle_src(req, res, path);
+            }
+            return;
+        }
+
+        if path[0] == PLAIN_TEXT {
+            self.handle_plain_text(req, res, query);
+            return;
+        }
+
+        if path[0] == SEARCH_REQUEST {
+            self.handle_search(req, res, query);
+            return;
+        }
+
+        if path[0] == FIND_REQUEST {
+            self.handle_find(req, res, query);
+            return;
+        }
+
+        if path[0] == BUILD_REQUEST {
+            if self.config.demo_mode {
+                self.handle_test(req, res);
+            } else {
+                self.handle_build(req, res);
+            }
+            return;
+        }
+
+        if !self.config.demo_mode {
+            if path[0] == BUILD_UPDATE_REQUEST {
+                self.handle_build_updates(req, res);
+                return;
+            }
+
+            if path[0] == EDIT_REQUEST {
+                self.handle_edit(req, res, query);
+                return;
+            }
+        }
+
+        self.handle_error(
+            req,
+            res,
+            StatusCode::NotFound,
+            format!("Unexpected path: `/{}`", path.join("/")),
+        );
+    }
+
+    fn handle_error<'b, 'k>(
         &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
@@ -134,8 +210,8 @@ impl<'a> Handler<'a> {
         res.send(msg.as_bytes()).unwrap();
     }
 
-    fn handle_index<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_index<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
     ) {
@@ -155,8 +231,8 @@ impl<'a> Handler<'a> {
         self.handle_error(_req, res, StatusCode::InternalServerError, msg);
     }
 
-    fn handle_static<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_static<'b, 'k>(
+        &self,
         req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         path: &[String],
@@ -192,8 +268,8 @@ impl<'a> Handler<'a> {
         self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
     }
 
-    fn handle_src<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_src<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         mut path: &[String],
@@ -255,18 +331,18 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_config<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_config<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
     ) {
-        let text = serde_json::to_string(&**self.config).unwrap();
+        let text = serde_json::to_string(&*self.config).unwrap();
 
         res.headers_mut().set(ContentType::json());
         res.send(text.as_bytes()).unwrap();
     }
 
-    fn handle_test<'b: 'a, 'k: 'a>(&mut self, _req: Request<'b, 'k>, mut res: Response<'b, Fresh>) {
+    fn handle_test<'b, 'k>(&self, _req: Request<'b, 'k>, mut res: Response<'b, Fresh>) {
         let build_result = build::BuildResult::test_result();
         let result = self.make_build_result(&build_result);
         let text = serde_json::to_string(&result).unwrap();
@@ -277,8 +353,8 @@ impl<'a> Handler<'a> {
         self.process_push_data(result);
     }
 
-    fn handle_build<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_build<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
     ) {
@@ -306,8 +382,8 @@ impl<'a> Handler<'a> {
         *build_update_handler = None;
     }
 
-    fn handle_build_updates<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_build_updates<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
     ) {
@@ -367,7 +443,7 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn make_build_result(&mut self, build_result: &build::BuildResult) -> BuildResult {
+    fn make_build_result(&self, build_result: &build::BuildResult) -> BuildResult {
         let mut result = BuildResult::from_build(&build_result);
         let key = reprocess::make_key();
         result.push_data_key = Some(key.clone());
@@ -405,8 +481,8 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_edit<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_edit<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         query: Option<String>,
@@ -453,8 +529,8 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_search<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_search<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         query: Option<String>,
@@ -514,8 +590,8 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_find<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_find<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         query: Option<String>,
@@ -557,8 +633,8 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_plain_text<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_plain_text<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         query: Option<String>,
@@ -618,8 +694,8 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn handle_pull<'b: 'a, 'k: 'a>(
-        &mut self,
+    fn handle_pull<'b, 'k>(
+        &self,
         _req: Request<'b, 'k>,
         mut res: Response<'b, Fresh>,
         query: Option<String>,
@@ -746,88 +822,3 @@ const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";
 const FIND_REQUEST: &'static str = "find";
 const BUILD_UPDATE_REQUEST: &'static str = "build_updates";
-
-fn route<'a, 'b: 'a, 'k: 'a>(
-    uri_path: &str,
-    handler: &'a mut Handler<'a>,
-    req: Request<'b, 'k>,
-    res: Response<'b, Fresh>,
-) {
-    let (path, query, _) = parse_path(uri_path).unwrap();
-
-    trace!("route: path: {:?}, query: {:?}", path, query);
-    if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
-        handler.handle_index(req, res);
-        return;
-    }
-
-    if path[0] == STATIC_REQUEST {
-        handler.handle_static(req, res, &path[1..]);
-        return;
-    }
-
-    if path[0] == CONFIG_REQUEST {
-        handler.handle_config(req, res);
-        return;
-    }
-
-    if path[0] == PULL_REQUEST {
-        handler.handle_pull(req, res, query);
-        return;
-    }
-
-    if path[0] == SOURCE_REQUEST {
-        let path = &path[1..];
-        // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
-        // We try to correct for that here.
-        if path.len() == 1 && path[0] == "" {
-            handler.handle_src(req, res, &[".".to_owned()]);
-        } else {
-            handler.handle_src(req, res, path);
-        }
-        return;
-    }
-
-    if path[0] == PLAIN_TEXT {
-        handler.handle_plain_text(req, res, query);
-        return;
-    }
-
-    if path[0] == SEARCH_REQUEST {
-        handler.handle_search(req, res, query);
-        return;
-    }
-
-    if path[0] == FIND_REQUEST {
-        handler.handle_find(req, res, query);
-        return;
-    }
-
-    if path[0] == BUILD_REQUEST {
-        if handler.config.demo_mode {
-            handler.handle_test(req, res);
-        } else {
-            handler.handle_build(req, res);
-        }
-        return;
-    }
-
-    if !handler.config.demo_mode {
-        if path[0] == BUILD_UPDATE_REQUEST {
-            handler.handle_build_updates(req, res);
-            return;
-        }
-
-        if path[0] == EDIT_REQUEST {
-            handler.handle_edit(req, res, query);
-            return;
-        }
-    }
-
-    handler.handle_error(
-        req,
-        res,
-        StatusCode::NotFound,
-        format!("Unexpected path: `/{}`", path.join("/")),
-    );
-}
