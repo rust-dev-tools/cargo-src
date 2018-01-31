@@ -118,6 +118,7 @@ create_config! {
     edit_command: String, String::new(), false,
         "command to call to edit; can use $file, $line, and $col.";
     unstable_features: bool, false, false, "Enable unstable features";
+    ip: String, "127.0.0.1".to_owned(), false, "ip address to launch server";
     port: usize, 7878, false, "port to run rustw on";
     demo_mode: bool, false, true, "run in demo mode";
     demo_mode_root_path: String, String::new(), true, "path to use in URLs in demo mode";

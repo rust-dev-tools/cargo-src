@@ -26,6 +26,6 @@ fn main() {
     cmd.env("CARGO_TARGET_DIR", "target/rls");
     cmd.status().expect("Error trying to run `cargo check`");
 
-    rustw::run_server(None);
+    rustw::run_server();
 
 }
