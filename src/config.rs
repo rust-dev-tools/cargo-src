@@ -125,6 +125,5 @@ create_config! {
     context_lines: usize, 2, false, "lines of context to show before and after code snippets";
     build_on_load: bool, true, false, "build on page load and refresh";
     source_directory: String, "src".to_owned(), false, "root of the source directory";
-    save_analysis: bool, true, false, "whether to run the save_analysis pass";
     vcs_link: String, String::new(), false, "link to use for VCS; should use $file and $line.";
 }

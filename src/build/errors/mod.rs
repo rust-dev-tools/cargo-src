@@ -20,10 +20,10 @@ pub enum ParsedError {
     Error,
 }
 
-pub fn parse_errors(stderr: &str, stdout: &str) -> (Vec<Diagnostic>, Vec<String>) {
+pub fn parse_errors(stderr: &str) -> (Vec<Diagnostic>, Vec<String>) {
     let mut lowering_ctxt = LoweringContext::new();
     let mut errs: Vec<Diagnostic> = vec![];
-    let mut msgs: Vec<String> = stdout.split('\n').map(|s| s.to_owned()).collect();
+    let mut msgs: Vec<String> = vec![];
     for i in stderr.split('\n') {
         if i.trim().is_empty() {
             continue;

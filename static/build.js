@@ -13,21 +13,7 @@ import * as utils from './utils';
 
 
 export function runBuild(dispatch) {
-    utils.request(
-        dispatch,
-        'build',
-        function(json) {
-            dispatch(actions.buildComplete());
-            pull_data(json.push_data_key, dispatch);
-
-            // probably not right. Do this before we make the ajax call?
-            // history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
-        },
-        "Error with build request",
-        true,
-    );
-
-    let updateSource = new EventSource(utils.make_url("build_updates"));
+    let updateSource = new EventSource(utils.make_url("build"));
     updateSource.addEventListener("error", function(event) {
         const error = makeError(JSON.parse(event.data));
         dispatch(actions.setError(error));
@@ -38,6 +24,13 @@ export function runBuild(dispatch) {
     }, false);
     updateSource.addEventListener("close", function(event) {
         updateSource.close();
+        const data = JSON.parse(event.data);
+
+        dispatch(actions.buildComplete());
+        pull_data(data.pull_data_key, dispatch);
+
+        // probably not right. Do this before we make the ajax call?
+        // history.pushState(MAIN_PAGE_STATE, "", utils.make_url("#build"));
     }, false);
 }
 

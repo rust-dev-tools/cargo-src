@@ -1,4 +1,4 @@
-// Copyright 2016 The Rustw Project Developers.
+// Copyright 2016-2018 The Rustw Project Developers.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -20,11 +20,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::thread::{self, sleep, Thread};
+use std::thread::{self, sleep};
 use std::time;
 
 use hyper::header::ContentType;
-use hyper::net::Fresh;
+use hyper::net::{Fresh, Streaming};
 use hyper::server::request::Request;
 use hyper::server::response::Response;
 use hyper::status::StatusCode;
@@ -33,27 +33,30 @@ use serde_json;
 use span;
 use url::parse_path;
 
+/// This module handles the server responsibilities - it routes incoming requests
+/// and dispatches them. It also handles pushing events to the client during
+/// builds and making pull-able data available to the client post-build.
+
+
 /// An instance of the server. Runs a session of rustw.
 pub struct Instance {
     builder: build::Builder,
     pub config: Arc<Config>,
     file_cache: Arc<Mutex<Cache>>,
-    pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-    build_update_handler: Arc<Mutex<Option<BuildUpdateHandler>>>,
+    // Data which is produced by a post-build pass (see reprocess.rs).
+    pending_pull_data: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
 
 impl Instance {
     pub(super) fn new(config: Config) -> Instance {
         let config = Arc::new(config);
-        let build_update_handler = Arc::new(Mutex::new(None));
 
         let mut instance = Instance {
-            builder: build::Builder::from_config(config.clone(), build_update_handler.clone()),
+            builder: build::Builder::from_config(config.clone()),
             config: config,
             file_cache: Arc::new(Mutex::new(Cache::new())),
             // FIXME(#58) a rebuild should cancel all pending tasks.
-            pending_push_data: Arc::new(Mutex::new(HashMap::new())),
-            build_update_handler: build_update_handler,
+            pending_pull_data: Arc::new(Mutex::new(HashMap::new())),
         };
 
         instance.run_analysis();
@@ -80,36 +83,53 @@ impl ::hyper::server::Handler for Instance {
     }
 }
 
-pub struct BuildUpdateHandler {
-    thread: Thread,
-    updates: Vec<String>,
-    seen: usize,
+// Diagnostics are streamed to the client. This struct is an interface for
+// the build module to relay messages as an event stream.
+pub struct DiagnosticEventHandler<'b> {
+    lowering_ctxt: errors::LoweringContext,
+    res: Response<'b, Streaming>,
     diagnostics: Vec<Diagnostic>,
-    complete: bool,
 }
 
-impl BuildUpdateHandler {
-    fn new(thread: Thread) -> BuildUpdateHandler {
-        BuildUpdateHandler {
-            thread: thread,
-            updates: vec![],
-            seen: 0,
+impl<'b> DiagnosticEventHandler<'b> {
+    fn new(res: Response<'b, Streaming>) -> DiagnosticEventHandler<'b> {
+        DiagnosticEventHandler {
+            lowering_ctxt: errors::LoweringContext::new(),
+            res,
             diagnostics: vec![],
-            complete: false,
         }
     }
 
-    pub fn push_updates(&mut self, updates: &[&str], done: bool) {
-        for u in updates {
-            self.updates.push((*u).to_owned());
+    pub fn handle_msg(&mut self, msg: &str) {
+        let parsed = errors::parse_error(&msg, &mut self.lowering_ctxt);
+        match parsed {
+            errors::ParsedError::Diagnostic(d) => {
+                let text = serde_json::to_string(&d).unwrap();
+                self.res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes())
+                    .unwrap();
+                self.res.flush().unwrap();
+                self.diagnostics.push(d);
+            }
+            errors::ParsedError::Message(s) => {
+                let text = serde_json::to_string(&s).unwrap();
+                self.res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes())
+                    .unwrap();
+                self.res.flush().unwrap();
+            }
+            errors::ParsedError::Error => {}
         }
-        if done {
-            self.complete = true;
-        }
-        self.thread.unpark();
+    }
+
+    fn complete(mut self, result: &BuildResult) -> Vec<Diagnostic> {
+        let text = serde_json::to_string(&result).unwrap();
+        let event_str = format!("event: close\ndata: {}\n\n", text);
+
+        self.res.write_all(event_str.as_bytes()).unwrap();
+        self.res.end().unwrap();
+
+        self.diagnostics
     }
 }
-
 
 impl Instance {
     fn route<'b, 'k>(
@@ -168,18 +188,9 @@ impl Instance {
             return;
         }
 
-        if path[0] == BUILD_REQUEST {
-            if self.config.demo_mode {
-                self.handle_test(req, res);
-            } else {
-                self.handle_build(req, res);
-            }
-            return;
-        }
-
         if !self.config.demo_mode {
-            if path[0] == BUILD_UPDATE_REQUEST {
-                self.handle_build_updates(req, res);
+            if path[0] == BUILD_REQUEST {
+                self.handle_build(req, res);
                 return;
             }
 
@@ -342,17 +353,6 @@ impl Instance {
         res.send(text.as_bytes()).unwrap();
     }
 
-    fn handle_test<'b, 'k>(&self, _req: Request<'b, 'k>, mut res: Response<'b, Fresh>) {
-        let build_result = build::BuildResult::test_result();
-        let result = self.make_build_result(&build_result);
-        let text = serde_json::to_string(&result).unwrap();
-
-        res.headers_mut().set(ContentType::json());
-        res.send(text.as_bytes()).unwrap();
-
-        self.process_push_data(result);
-    }
-
     fn handle_build<'b, 'k>(
         &self,
         _req: Request<'b, 'k>,
@@ -368,117 +368,25 @@ impl Instance {
             file_cache.reset();
         }
 
-        let build_result = self.builder.build().unwrap();
-        assert!(build_result.stdout.is_empty());
-        let result = self.make_build_result(&build_result);
-        let text = serde_json::to_string(&result).unwrap();
-
-        res.headers_mut().set(ContentType::json());
-        res.send(text.as_bytes()).unwrap();
-
-        self.process_push_data(result);
-
-        let mut build_update_handler = self.build_update_handler.lock().unwrap();
-        *build_update_handler = None;
-    }
-
-    fn handle_build_updates<'b, 'k>(
-        &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-    ) {
-        assert!(
-            !self.config.demo_mode,
-            "Build shouldn't happen in demo mode"
-        );
         res.headers_mut()
             .set(ContentType("text/event-stream".parse().unwrap()));
+        let mut diagnostic_event_handler = DiagnosticEventHandler::new(res.start().unwrap());
 
-        {
-            let mut build_update_handler = self.build_update_handler.lock().unwrap();
-            if build_update_handler.is_some() {
-                debug!("build_update_handler already present, returning");
-                res.send(b"event: close\ndata: {}\n\n").unwrap();
-                return;
-            }
+        let build_result = self.builder.build(&mut diagnostic_event_handler).unwrap();
+        let result = self.make_build_result(&build_result);
+        let diagnostics = diagnostic_event_handler.complete(&result);
 
-            *build_update_handler = Some(BuildUpdateHandler::new(thread::current()));
-        }
-        let mut res = res.start().unwrap();
-
-        let mut lowering_ctxt = errors::LoweringContext::new();
-        loop {
-            thread::park();
-
-            let mut build_update_handler = self.build_update_handler.lock().unwrap();
-            let build_update_handler = build_update_handler
-                .as_mut()
-                .expect("No build_update_handler");
-            let msgs = &build_update_handler.updates[build_update_handler.seen..];
-            build_update_handler.seen = build_update_handler.updates.len();
-            for msg in msgs {
-                let parsed = errors::parse_error(&msg, &mut lowering_ctxt);
-                match parsed {
-                    errors::ParsedError::Diagnostic(d) => {
-                        let text = serde_json::to_string(&d).unwrap();
-                        res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes())
-                            .unwrap();
-                        res.flush().unwrap();
-                        build_update_handler.diagnostics.push(d);
-                    }
-                    errors::ParsedError::Message(s) => {
-                        let text = serde_json::to_string(&s).unwrap();
-                        res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes())
-                            .unwrap();
-                        res.flush().unwrap();
-                    }
-                    errors::ParsedError::Error => {}
-                }
-            }
-            if build_update_handler.complete {
-                res.write_all(b"event: close\ndata: {}\n\n").unwrap();
-                res.end().unwrap();
-                return;
-            }
-        }
+        self.reprocess_snippet_data(result, diagnostics);
     }
 
     fn make_build_result(&self, build_result: &build::BuildResult) -> BuildResult {
-        let mut result = BuildResult::from_build(&build_result);
         let key = reprocess::make_key();
-        result.push_data_key = Some(key.clone());
-        let mut pending_push_data = self.pending_push_data.lock().unwrap();
-        pending_push_data.insert(key, None);
+        let result = BuildResult::from_build(&build_result, key.clone());
+
+        let mut pending_pull_data = self.pending_pull_data.lock().unwrap();
+        pending_pull_data.insert(key, None);
 
         result
-    }
-
-    fn process_push_data(&self, mut result: BuildResult) {
-        if let Some(key) = result.push_data_key {
-            let mut errors: Vec<Diagnostic> = vec![];
-
-            let mut build_update_handler = self.build_update_handler.lock().unwrap();
-            if let Some(ref mut build_update_handler) = *build_update_handler {
-                errors = build_update_handler.diagnostics.drain(..).collect();
-            }
-
-            errors.extend(result.errors.drain(..));
-
-            let pending_push_data = self.pending_push_data.clone();
-            let file_cache = self.file_cache.clone();
-            let config = self.config.clone();
-            let use_analysis = self.config.save_analysis;
-            thread::spawn(move || {
-                reprocess::reprocess_snippets(
-                    key,
-                    errors,
-                    pending_push_data,
-                    use_analysis,
-                    file_cache,
-                    config,
-                )
-            });
-        }
     }
 
     fn handle_edit<'b, 'k>(
@@ -706,8 +614,8 @@ impl Instance {
 
                 loop {
                     {
-                        let pending_push_data = self.pending_push_data.lock().unwrap();
-                        match pending_push_data.get(&key) {
+                        let pending_pull_data = self.pending_pull_data.lock().unwrap();
+                        match pending_pull_data.get(&key) {
                             Some(&Some(ref s)) => {
                                 // Data is ready, return it.
                                 res.send(s.as_bytes()).unwrap();
@@ -736,7 +644,27 @@ impl Instance {
             }
         }
     }
+
+
+    fn reprocess_snippet_data(&self, mut result: BuildResult, mut diagnostics: Vec<Diagnostic>) {
+        diagnostics.extend(result.errors.drain(..));
+
+        let pending_pull_data = self.pending_pull_data.clone();
+        let file_cache = self.file_cache.clone();
+        let config = self.config.clone();
+        thread::spawn(move || {
+            reprocess::reprocess_snippets(
+                result.pull_data_key,
+                diagnostics,
+                pending_pull_data,
+                file_cache,
+                config,
+            )
+        });
+    }
 }
+
+// The below data types are used to pass data to the client.
 
 #[derive(Serialize, Debug)]
 pub enum SourceResult<'a> {
@@ -759,17 +687,16 @@ pub struct TextResult<'a> {
 pub struct BuildResult {
     pub messages: Vec<String>,
     pub errors: Vec<Diagnostic>,
-    pub push_data_key: Option<String>,
-    // build_command: String,
+    pub pull_data_key: String,
 }
 
 impl BuildResult {
-    fn from_build(build: &build::BuildResult) -> BuildResult {
-        let (errors, messages) = errors::parse_errors(&build.stderr, &build.stdout);
+    fn from_build(build: &build::BuildResult, key: String) -> BuildResult {
+        let (errors, messages) = errors::parse_errors(&build.stderr);
         BuildResult {
             messages: messages,
             errors: errors,
-            push_data_key: None,
+            pull_data_key: key,
         }
     }
 }
@@ -821,4 +748,3 @@ const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";
 const FIND_REQUEST: &'static str = "find";
-const BUILD_UPDATE_REQUEST: &'static str = "build_updates";

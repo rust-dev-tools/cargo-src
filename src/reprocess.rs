@@ -35,11 +35,10 @@ pub fn reprocess_snippets(
     key: String,
     errors: Vec<Diagnostic>,
     pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-    use_analysis: bool,
     file_cache: Arc<Mutex<Cache>>,
     config: Arc<Config>,
 ) {
-    if use_analysis {
+    {
         let mut file_cache = file_cache.lock().unwrap();
         file_cache.update_analysis();
     }
