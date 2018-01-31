@@ -1,9 +1,13 @@
+extern crate log;
+extern crate env_logger;
 extern crate rustw;
 
 use std::env;
 use std::process::Command;
 
 fn main() {
+    env_logger::init().unwrap();
+
     let mut args = env::args();
     let prog = args.next().expect("No program name?");
     if prog == "cargo" || prog.ends_with("/cargo") {
@@ -22,6 +26,6 @@ fn main() {
     cmd.env("CARGO_TARGET_DIR", "target/rls");
     cmd.status().expect("Error trying to run `cargo check`");
 
-    rustw::run_src_server(None);
+    rustw::run_server(None);
 
 }

@@ -12,7 +12,6 @@ use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
 use listings::DirectoryListing;
-use Mode;
 use reprocess;
 
 use std::collections::HashMap;
@@ -44,15 +43,14 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub(super) fn new(config: Config, mode: Mode) -> Instance {
+    pub(super) fn new(config: Config) -> Instance {
         let config = Arc::new(config);
         let build_update_handler = Arc::new(Mutex::new(None));
 
         let mut file_cache = Cache::new();
-        if mode == Mode::Src {
-            println!("Processing analysis data...");
-            file_cache.update_analysis();
-        }
+        println!("Processing analysis data...");
+        file_cache.update_analysis();
+
         Instance {
             builder: build::Builder::from_config(config.clone(), build_update_handler.clone()),
             config: config,

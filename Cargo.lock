@@ -74,11 +74,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "getopts"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "hpack"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -301,7 +296,6 @@ version = "0.1.0"
 dependencies = [
  "derive-new 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-analysis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -542,7 +536,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum fuchsia-zircon 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f6c0581a4e363262e52b87f59ee2afe3415361c6ec35e665924eb08afe8ff159"
 "checksum fuchsia-zircon-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "43f3795b4bae048dc6123a6b972cadde2e676f9ded08aef6bb77f5f157684a82"
-"checksum getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)" = "65922871abd2f101a2eb0eaebadc66668e54a87ad9c3dd82520b5f86ede5eff9"
 "checksum hpack 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d2da7d3a34cf6406d9d700111b8eafafe9a251de41ae71d8052748259343b58"
 "checksum httparse 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "af2f2dd97457e8fb1ae7c5a420db346af389926e36f43768b96f101546b04a07"
 "checksum hyper 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bb0f4d00bb781e559b6e66ae4b5479df0fdf9ab15949f52fa2f1f5de16d4cc07"
