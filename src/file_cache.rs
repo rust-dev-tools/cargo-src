@@ -191,7 +191,6 @@ impl Cache {
         self.files.clear();
 
         info!("Processing analysis...");
-        // TODO if this is a test run, we should mock the analysis, rather than trying to read it in
         self.project_dir = env::current_dir().unwrap();
         self.analysis
             .reload_with_blacklist(&self.project_dir, &self.project_dir, &CRATE_BLACKLIST)

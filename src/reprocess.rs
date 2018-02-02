@@ -38,11 +38,6 @@ pub fn reprocess_snippets(
     file_cache: Arc<Mutex<Cache>>,
     config: Arc<Config>,
 ) {
-    {
-        let mut file_cache = file_cache.lock().unwrap();
-        file_cache.update_analysis();
-    }
-
     let mut snippets = ReprocessedSnippets::new(key);
     for d in &errors {
         reprocess_diagnostic(d, None, &file_cache, &mut snippets, &config);

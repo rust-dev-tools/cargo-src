@@ -24,6 +24,7 @@ fn main() {
     // FIXME(#170) configure save-analysis
     cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis");
     cmd.env("CARGO_TARGET_DIR", "target/rls");
+    println!("Checking...");
     cmd.status().expect("Error trying to run `cargo check`");
 
     rustw::run_server();

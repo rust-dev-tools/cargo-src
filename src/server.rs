@@ -65,9 +65,13 @@ impl Instance {
     }
 
     fn run_analysis(&mut self) {
-        println!("Processing analysis data...");
-        let mut file_cache = self.file_cache.lock().unwrap();
-        file_cache.update_analysis();
+        let file_cache = self.file_cache.clone();
+        thread::spawn(move || {
+            println!("Processing analysis data...");
+            let mut file_cache = file_cache.lock().unwrap();
+            file_cache.update_analysis();
+            println!("Done");
+        });
     }
 }
 
@@ -653,6 +657,11 @@ impl Instance {
         let file_cache = self.file_cache.clone();
         let config = self.config.clone();
         thread::spawn(move || {
+            {
+                let mut file_cache = file_cache.lock().unwrap();
+                file_cache.update_analysis();
+            }
+
             reprocess::reprocess_snippets(
                 result.pull_data_key,
                 diagnostics,
