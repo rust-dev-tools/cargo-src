@@ -186,14 +186,15 @@ impl Cache {
     }
 
     pub fn update_analysis(&self) {
-        // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
-        // need to invalidate Rust files.
-        self.files.clear();
-
         info!("Processing analysis...");
         self.analysis
             .reload_with_blacklist(&self.project_dir, &self.project_dir, &CRATE_BLACKLIST)
             .unwrap();
+
+        // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
+        // need to invalidate Rust files.
+        self.files.clear();
+
         info!("done");
     }
 
