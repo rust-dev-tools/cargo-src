@@ -111,7 +111,7 @@ impl Cache {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&self) {
         self.files.clear();
     }
 
@@ -185,24 +185,23 @@ impl Cache {
         Ok(lines[line.0 as usize].clone())
     }
 
-    pub fn update_analysis(&mut self) {
+    pub fn update_analysis(&self) {
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
         // need to invalidate Rust files.
         self.files.clear();
 
         info!("Processing analysis...");
-        self.project_dir = env::current_dir().unwrap();
         self.analysis
             .reload_with_blacklist(&self.project_dir, &self.project_dir, &CRATE_BLACKLIST)
             .unwrap();
         info!("done");
     }
 
-    pub fn id_search(&mut self, id: Id) -> Result<SearchResult, String> {
+    pub fn id_search(&self, id: Id) -> Result<SearchResult, String> {
         self.ids_search(vec![id])
     }
 
-    pub fn ident_search(&mut self, needle: &str) -> Result<SearchResult, String> {
+    pub fn ident_search(&self, needle: &str) -> Result<SearchResult, String> {
         // First see if the needle corresponds to any definitions, if it does, get a list of the
         // ids, otherwise, return an empty search result.
         let ids = match self.analysis.search_for_id(needle) {
@@ -218,7 +217,7 @@ impl Cache {
         self.ids_search(ids)
     }
 
-    pub fn find_impls(&mut self, id: Id) -> Result<FindResult, String> {
+    pub fn find_impls(&self, id: Id) -> Result<FindResult, String> {
         let impls = self.analysis
             .find_impls(id)
             .map_err(|_| "No impls found".to_owned())?;
@@ -227,7 +226,7 @@ impl Cache {
         })
     }
 
-    fn ids_search(&mut self, ids: Vec<Id>) -> Result<SearchResult, String> {
+    fn ids_search(&self, ids: Vec<Id>) -> Result<SearchResult, String> {
         let mut defs = Vec::new();
         let mut refs = Vec::new();
 

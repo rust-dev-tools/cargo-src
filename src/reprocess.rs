@@ -35,7 +35,7 @@ pub fn reprocess_snippets(
     key: String,
     errors: Vec<Diagnostic>,
     pending_push_data: Arc<Mutex<HashMap<String, Option<String>>>>,
-    file_cache: Arc<Mutex<Cache>>,
+    file_cache: Arc<Cache>,
     config: Arc<Config>,
 ) {
     let mut snippets = ReprocessedSnippets::new(key);
@@ -52,85 +52,79 @@ pub fn reprocess_snippets(
 fn reprocess_diagnostic(
     diagnostic: &Diagnostic,
     parent_id: Option<u32>,
-    file_cache: &Mutex<Cache>,
+    file_cache: &Cache,
     result: &mut ReprocessedSnippets,
     config: &Config,
 ) {
-    // Lock the file_cache on every iteration because this thread should be
-    // low priority, and we're happy to wait if someone else wants access to
-    // the file_cache.
-    {
-        let file_cache = file_cache.lock().unwrap();
-        let mut spans = diagnostic.spans.clone();
-        spans.sort();
-        let span_groups = partition(&spans, config.context_lines);
+    let mut spans = diagnostic.spans.clone();
+    spans.sort();
+    let span_groups = partition(&spans, config.context_lines);
 
-        for sg in &span_groups {
-            if sg.is_empty() {
-                continue;
-            }
-
-            let first = &sg[0];
-            let last = &sg[sg.len() - 1];
-
-            // Lines should be 1-indexed, account for that here.
-            let mut line_start = if first.line_start == 0 {
-                // TODO is this a SpanEnd which needs better handling?
-                0
-            } else {
-                first.line_start - 1
-            };
-            // Add context lines.
-            if line_start <= config.context_lines {
-                line_start = 0;
-            } else {
-                line_start -= config.context_lines;
-            }
-            let mut line_end = last.line_end + config.context_lines;
-
-            let path = &Path::new(&first.file_name);
-            let text = match file_cache.get_highlighted(path) {
-                Ok(file) => {
-                    if line_end >= file.len() {
-                        line_end = file.len();
-                    }
-                    file[line_start..line_end].to_owned()
-                }
-                Err(_) => Vec::new(),
-            };
-
-            let mut primary_span = None;
-            for s in *sg {
-                if s.is_primary {
-                    primary_span = Some(Highlight::from_diagnostic_span(s));
-                    break;
-                }
-            }
-            let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
-            let lines = file_cache
-                .get_lines(
-                    path,
-                    span::Row::new_zero_indexed(line_start as u32),
-                    span::Row::new_zero_indexed(line_end as u32),
-                )
-                .unwrap_or(String::new());
-
-            let snippet = Snippet::new(
-                parent_id,
-                diagnostic.id,
-                sg.iter().map(|s| s.id).collect(),
-                text,
-                first.file_name.to_owned(),
-                line_start + 1,
-                line_end,
-                sg.iter()
-                    .map(|s| (Highlight::from_diagnostic_span(s), s.label.clone()))
-                    .collect(),
-                lines,
-                primary_span,
-            );
-            result.snippets.push(snippet);
+    for sg in &span_groups {
+        if sg.is_empty() {
+            continue;
         }
+
+        let first = &sg[0];
+        let last = &sg[sg.len() - 1];
+
+        // Lines should be 1-indexed, account for that here.
+        let mut line_start = if first.line_start == 0 {
+            // TODO is this a SpanEnd which needs better handling?
+            0
+        } else {
+            first.line_start - 1
+        };
+        // Add context lines.
+        if line_start <= config.context_lines {
+            line_start = 0;
+        } else {
+            line_start -= config.context_lines;
+        }
+        let mut line_end = last.line_end + config.context_lines;
+
+        let path = &Path::new(&first.file_name);
+        let text = match file_cache.get_highlighted(path) {
+            Ok(file) => {
+                if line_end >= file.len() {
+                    line_end = file.len();
+                }
+                file[line_start..line_end].to_owned()
+            }
+            Err(_) => Vec::new(),
+        };
+
+        let mut primary_span = None;
+        for s in *sg {
+            if s.is_primary {
+                primary_span = Some(Highlight::from_diagnostic_span(s));
+                break;
+            }
+        }
+        let primary_span = primary_span.unwrap_or(Highlight::from_diagnostic_span(first));
+        let lines = file_cache
+            .get_lines(
+                path,
+                span::Row::new_zero_indexed(line_start as u32),
+                span::Row::new_zero_indexed(line_end as u32),
+            )
+            .unwrap_or(String::new());
+
+        let snippet = Snippet::new(
+            parent_id,
+            diagnostic.id,
+            sg.iter().map(|s| s.id).collect(),
+            text,
+            first.file_name.to_owned(),
+            line_start + 1,
+            line_end,
+            sg.iter()
+                .map(|s| (Highlight::from_diagnostic_span(s), s.label.clone()))
+                .collect(),
+            lines,
+            primary_span,
+        );
+        result.snippets.push(snippet);
     }
 
     for d in &diagnostic.children {

@@ -42,7 +42,7 @@ use url::parse_path;
 pub struct Instance {
     builder: build::Builder,
     pub config: Arc<Config>,
-    file_cache: Arc<Mutex<Cache>>,
+    file_cache: Arc<Cache>,
     // Data which is produced by a post-build pass (see reprocess.rs).
     pending_pull_data: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
@@ -54,7 +54,7 @@ impl Instance {
         let mut instance = Instance {
             builder: build::Builder::from_config(config.clone()),
             config: config,
-            file_cache: Arc::new(Mutex::new(Cache::new())),
+            file_cache: Arc::new(Cache::new()),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_pull_data: Arc::new(Mutex::new(HashMap::new())),
         };
@@ -68,7 +68,6 @@ impl Instance {
         let file_cache = self.file_cache.clone();
         thread::spawn(move || {
             println!("Processing analysis data...");
-            let mut file_cache = file_cache.lock().unwrap();
             file_cache.update_analysis();
             println!("Done");
         });
@@ -233,8 +232,7 @@ impl Instance {
         let mut path_buf = static_path();
         path_buf.push("index.html");
 
-        let file_cache = self.file_cache.lock().unwrap();
-        let msg = match file_cache.get_text(&path_buf) {
+        let msg = match self.file_cache.get_text(&path_buf) {
             Ok(data) => {
                 res.headers_mut().set(ContentType::html());
                 res.send(data.as_bytes()).unwrap();
@@ -265,8 +263,7 @@ impl Instance {
             _ => ContentType("application/octet-stream".parse().unwrap()),
         };
 
-        let file_cache = self.file_cache.lock().unwrap();
-        let file_contents = file_cache.get_bytes(&path_buf);
+        let file_contents = self.file_cache.get_bytes(&path_buf);
         if let Ok(bytes) = file_contents {
             trace!(
                 "handle_static: serving `{}`. {} bytes, {}",
@@ -327,8 +324,7 @@ impl Instance {
                 Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
             }
         } else {
-            let file_cache = self.file_cache.lock().unwrap();
-            match file_cache.get_highlighted(&path_buf) {
+            match self.file_cache.get_highlighted(&path_buf) {
                 Ok(ref lines) => {
                     res.headers_mut().set(ContentType::json());
                     let result = SourceResult::Source {
@@ -368,8 +364,7 @@ impl Instance {
         );
 
         {
-            let mut file_cache = self.file_cache.lock().unwrap();
-            file_cache.reset();
+            self.file_cache.reset();
         }
 
         res.headers_mut()
@@ -453,8 +448,7 @@ impl Instance {
         ) {
             (Some(needle), None) => {
                 // Identifier search.
-                let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.ident_search(&needle) {
+                match self.file_cache.ident_search(&needle) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes())
@@ -479,8 +473,7 @@ impl Instance {
                         return;
                     }
                 };
-                let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.id_search(analysis::Id::new(id)) {
+                match self.file_cache.id_search(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes())
@@ -522,8 +515,7 @@ impl Instance {
                         return;
                     }
                 };
-                let mut file_cache = self.file_cache.lock().unwrap();
-                match file_cache.find_impls(analysis::Id::new(id)) {
+                match self.file_cache.find_impls(analysis::Id::new(id)) {
                     Ok(data) => {
                         res.headers_mut().set(ContentType::json());
                         res.send(serde_json::to_string(&data).unwrap().as_bytes())
@@ -568,13 +560,12 @@ impl Instance {
                         return;
                     }
                 };
-                let file_cache = self.file_cache.lock().unwrap();
 
                 // Hard-coded 2 lines of context before and after target line.
                 let line_start = line.saturating_sub(3);
                 let line_end = line + 2;
 
-                match file_cache.get_lines(
+                match self.file_cache.get_lines(
                     &Path::new(&file_name),
                     span::Row::new_zero_indexed(line_start as u32),
                     span::Row::new_zero_indexed(line_end as u32),
@@ -657,10 +648,7 @@ impl Instance {
         let file_cache = self.file_cache.clone();
         let config = self.config.clone();
         thread::spawn(move || {
-            {
-                let mut file_cache = file_cache.lock().unwrap();
-                file_cache.update_analysis();
-            }
+            file_cache.update_analysis();
 
             reprocess::reprocess_snippets(
                 result.pull_data_key,
