@@ -12,6 +12,8 @@
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
 #![feature(proc_macro)]
+#![feature(use_nested_groups)]
+#![feature(integer_atomics)]
 
 #[macro_use]
 extern crate derive_new;

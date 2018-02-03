@@ -15,11 +15,12 @@ use listings::DirectoryListing;
 use reprocess;
 
 use std::collections::HashMap;
+use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::{AtomicU32, Ordering}};
 use std::thread::{self, sleep};
 use std::time;
 
@@ -45,6 +46,7 @@ pub struct Instance {
     file_cache: Arc<Cache>,
     // Data which is produced by a post-build pass (see reprocess.rs).
     pending_pull_data: Arc<Mutex<HashMap<String, Option<String>>>>,
+    status: Status
 }
 
 impl Instance {
@@ -57,6 +59,7 @@ impl Instance {
             file_cache: Arc::new(Cache::new()),
             // FIXME(#58) a rebuild should cancel all pending tasks.
             pending_pull_data: Arc::new(Mutex::new(HashMap::new())),
+            status: Status::new(),
         };
 
         instance.run_analysis();
@@ -66,9 +69,12 @@ impl Instance {
 
     fn run_analysis(&mut self) {
         let file_cache = self.file_cache.clone();
+        let status = self.status.clone();
         thread::spawn(move || {
             println!("Processing analysis data...");
+            status.start_analysis();
             file_cache.update_analysis();
+            status.finish_analysis();
             println!("Done");
         });
     }
@@ -82,6 +88,52 @@ impl ::hyper::server::Handler for Instance {
         } else {
             // TODO log this and ignore it.
             panic!("Unexpected uri");
+        }
+    }
+}
+
+struct Status_ {
+    build: AtomicU32,
+    analysis: AtomicU32,
+}
+
+#[derive(Clone)]
+pub struct Status {
+    internal: Arc<Status_>,
+}
+
+impl Status {
+    fn new() -> Status {
+        Status {
+            internal: Arc::new(Status_ {
+                build: AtomicU32::new(0),
+                analysis: AtomicU32::new(0),
+            })
+        }
+    }
+
+    fn start_build(&self) {
+        self.internal.build.fetch_add(1, Ordering::SeqCst);
+    }
+    fn start_analysis(&self) {
+        self.internal.analysis.fetch_add(1, Ordering::SeqCst);
+    }
+    fn finish_build(&self) {
+        self.internal.build.fetch_sub(1, Ordering::SeqCst);
+    }
+    fn finish_analysis(&self) {
+        self.internal.analysis.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.internal.build.load(Ordering::SeqCst) > 0 {
+            write!(f, "Building")
+        } else if self.internal.analysis.load(Ordering::SeqCst) > 0 {
+            write!(f, "Analysis")
+        } else {
+            write!(f, "Done")
         }
     }
 }
@@ -146,6 +198,11 @@ impl Instance {
         trace!("route: path: {:?}, query: {:?}", path, query);
         if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
             self.handle_index(req, res);
+            return;
+        }
+
+        if path[0] == GET_STATUS {
+            self.handle_status(req, res);
             return;
         }
 
@@ -222,6 +279,15 @@ impl Instance {
 
         *res.status_mut() = status;
         res.send(msg.as_bytes()).unwrap();
+    }
+
+    fn handle_status<'b, 'k>(
+        &self,
+        _req: Request<'b, 'k>,
+        mut res: Response<'b, Fresh>,
+    ) {
+        res.headers_mut().set(ContentType::plaintext());
+        res.send(format!("{{\"status\":\"{}\"}}", self.status).as_bytes()).unwrap();
     }
 
     fn handle_index<'b, 'k>(
@@ -371,7 +437,9 @@ impl Instance {
             .set(ContentType("text/event-stream".parse().unwrap()));
         let mut diagnostic_event_handler = DiagnosticEventHandler::new(res.start().unwrap());
 
+        self.status.start_build();
         let build_result = self.builder.build(&mut diagnostic_event_handler).unwrap();
+        self.status.finish_build();
         let result = self.make_build_result(&build_result);
         let diagnostics = diagnostic_event_handler.complete(&result);
 
@@ -640,15 +708,17 @@ impl Instance {
         }
     }
 
-
     fn reprocess_snippet_data(&self, mut result: BuildResult, mut diagnostics: Vec<Diagnostic>) {
         diagnostics.extend(result.errors.drain(..));
 
         let pending_pull_data = self.pending_pull_data.clone();
         let file_cache = self.file_cache.clone();
         let config = self.config.clone();
+        let status = self.status.clone();
         thread::spawn(move || {
+            status.start_analysis();
             file_cache.update_analysis();
+            status.finish_analysis();
 
             reprocess::reprocess_snippets(
                 result.pull_data_key,
@@ -745,3 +815,4 @@ const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";
 const FIND_REQUEST: &'static str = "find";
+const GET_STATUS: &'static str = "status";
