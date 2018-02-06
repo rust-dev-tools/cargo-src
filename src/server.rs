@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use analysis;
-use build;
+use build::{self, BuildArgs};
 use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
@@ -50,11 +50,11 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub(super) fn new(config: Config) -> Instance {
+    pub(super) fn new(config: Config, build_args: Option<BuildArgs>) -> Instance {
         let config = Arc::new(config);
 
         let mut instance = Instance {
-            builder: build::Builder::from_config(config.clone()),
+            builder: build::Builder::new(config.clone(), build_args),
             config: config,
             file_cache: Arc::new(Cache::new()),
             // FIXME(#58) a rebuild should cancel all pending tasks.

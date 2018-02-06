@@ -17,6 +17,7 @@ use std::sync::Arc;
 
 pub struct Builder {
     config: Arc<Config>,
+    build_args: Option<BuildArgs>,
 }
 
 #[derive(Clone, Debug)]
@@ -25,13 +26,17 @@ pub struct BuildResult {
     pub stderr: String,
 }
 
+pub struct BuildArgs {
+    pub program: String,
+    pub args: Vec<String>,
+}
+
 impl Builder {
-    pub fn from_config(
+    pub fn new(
         config: Arc<Config>,
+        build_args: Option<BuildArgs>,
     ) -> Builder {
-        Builder {
-            config: config,
-        }
+        Builder { config, build_args }
     }
 
     fn init_cmd(&self) -> Result<Command, ()> {
@@ -85,14 +90,45 @@ impl Builder {
         Ok(output.status.code())
     }
 
-    pub fn build(&self, ev_handler: &mut DiagnosticEventHandler) -> Result<BuildResult, ()> {
-        let mut cmd = self.init_cmd()?;
+    fn cargo_src_build(build_args: &BuildArgs) -> Result<BuildResult, ()> {
+        let mut cmd = Command::new(&build_args.program);
+        cmd.arg("check");
+        cmd.args(&build_args.args);
+        // FIXME(#170) configure save-analysis
+        cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis");
+        cmd.env("CARGO_TARGET_DIR", "target/rls");
 
+        println!("Checking...");
+        let status = match cmd.status() {
+            Ok(s) => s.code(),
+            Err(e) => {
+                // TODO could handle this error more nicely.
+                debug!(
+                    "build error: `{}`; command: `{}`, args: {:?}",
+                    e,
+                    build_args.program,
+                    build_args.args,
+                );
+                return Err(());
+            }
+        };
+        Ok(BuildResult {
+            status,
+            stderr: String::new(),
+        })
+    }
+
+    pub fn build(&self, ev_handler: &mut DiagnosticEventHandler) -> Result<BuildResult, ()> {
         // TODO execute async
         // TODO record compile time
 
-        info!("building...");
+        if let Some(ref build_args) = self.build_args {
+            return Self::cargo_src_build(build_args);
+        }
 
+        let mut cmd = self.init_cmd()?;
+
+        info!("building...");
         let mut child = cmd.spawn().unwrap();
         let mut stderr = BufReader::new(child.stderr.take().unwrap());
 

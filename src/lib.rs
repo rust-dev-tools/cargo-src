@@ -38,6 +38,8 @@ use hyper::Server;
 use std::fs::File;
 use std::io::Read;
 
+pub use build::BuildArgs;
+
 mod build;
 pub mod config;
 mod reprocess;
@@ -46,23 +48,25 @@ mod listings;
 mod highlight;
 mod server;
 
-pub fn run_server() {
-    let config_file = File::open("rustw.toml");
-    let mut toml = String::new();
-    if let Ok(mut f) = config_file {
-        f.read_to_string(&mut toml).unwrap();
-    }
-    let mut config = Config::from_toml(&toml);
-    config.build_on_load = false;
-
+pub fn run_server(build_args: Option<BuildArgs>) {
+    let config = load_config();
     let ip = config.ip.clone();
     let port = config.port;
 
-    let server = server::Instance::new(config);
+    let server = server::Instance::new(config, build_args);
 
     println!("server running on http://{}:{}", ip, port);
     Server::http(&*format!("{}:{}", ip, port))
         .unwrap()
         .handle(server)
         .unwrap();
+}
+
+fn load_config() -> Config {
+    let config_file = File::open("rustw.toml");
+    let mut toml = String::new();
+    if let Ok(mut f) = config_file {
+        f.read_to_string(&mut toml).unwrap();
+    }
+    Config::from_toml(&toml)
 }

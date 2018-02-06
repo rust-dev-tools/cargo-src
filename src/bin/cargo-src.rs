@@ -3,7 +3,7 @@ extern crate env_logger;
 extern crate rustw;
 
 use std::env;
-use std::process::Command;
+use rustw::BuildArgs;
 
 fn main() {
     env_logger::init().unwrap();
@@ -17,16 +17,11 @@ fn main() {
         panic!("cargo-src started in some weird and unexpected way: `{}`", prog);
     }
     
-    let cargo = env::var("CARGO").expect("Missing $CARGO var");
-    let mut cmd = Command::new(cargo);
-    cmd.arg("check");
-    cmd.args(args);
-    // FIXME(#170) configure save-analysis
-    cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis");
-    cmd.env("CARGO_TARGET_DIR", "target/rls");
-    println!("Checking...");
-    cmd.status().expect("Error trying to run `cargo check`");
+    let build_args = BuildArgs {
+        program: env::var("CARGO").expect("Missing $CARGO var"),
+        args: args.collect(),
+    };
 
-    rustw::run_server();
+    rustw::run_server(Some(build_args));
 
 }
