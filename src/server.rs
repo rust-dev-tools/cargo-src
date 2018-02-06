@@ -62,7 +62,8 @@ impl Instance {
             status: Status::new(),
         };
 
-        instance.run_analysis();
+        // We'll start a build and index from the frontend, so this is not necessary.
+        // instance.run_analysis();
 
         instance
     }

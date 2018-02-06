@@ -170,7 +170,7 @@ impl Cache {
     }
 
     pub fn update_analysis(&self) {
-        info!("Processing analysis...");
+        println!("Processing analysis...");
         self.analysis
             .reload_with_blacklist(&self.project_dir, &self.project_dir, &::blacklist::CRATE_BLACKLIST)
             .unwrap();
@@ -179,7 +179,7 @@ impl Cache {
         // need to invalidate Rust files.
         self.files.clear();
 
-        info!("done");
+        println!("done");
     }
 
     pub fn id_search(&self, id: Id) -> Result<SearchResult, String> {

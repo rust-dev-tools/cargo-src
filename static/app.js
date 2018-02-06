@@ -45,6 +45,7 @@ class RustwApp extends React.Component {
         if (CONFIG.build_on_load) {
             store.dispatch(actions.doBuild());
         }
+        store.dispatch(actions.getSource(CONFIG.source_directory));
     }
 
     render() {
