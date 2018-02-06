@@ -21,6 +21,7 @@ extern crate hyper;
 #[macro_use]
 extern crate log;
 extern crate rls_analysis as analysis;
+extern crate rls_blacklist as blacklist;
 extern crate rls_span as span;
 extern crate rls_vfs as vfs;
 extern crate rustdoc_highlight;

@@ -253,6 +253,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "rls-blacklist"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "rls-data"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -299,6 +304,7 @@ dependencies = [
  "hyper 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-analysis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-blacklist 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustdoc-highlight 0.1.0 (git+https://github.com/nrc/rustdoc-highlight)",
@@ -560,6 +566,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)" = "4fd4ace6a8cf7860714a2c2280d6c1f7e6a413486c13298bbc86fd3da019402f"
 "checksum regex-syntax 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
 "checksum rls-analysis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "38841e3c5271715a574ac220d9b408b59ed9e2626909c3bc54b5853b4eaadb7b"
+"checksum rls-blacklist 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "56fb7b8e4850b988fbcf277fbdb1eff36879070d02fc1ca243b559273866973d"
 "checksum rls-data 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8024f1feaca72d0aa4ae1e2a8d454a31b9a33ed02f8d0e9c8559bf53c267ec3c"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
 "checksum rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ffd34691a510938bb67fe0444fb363103c73ffb31c121d1e16bc92d8945ea8ff"

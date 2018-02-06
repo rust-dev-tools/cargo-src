@@ -20,22 +20,6 @@ use super::highlight;
 // TODO maximum size and evication policy
 // TODO keep timestamps and check on every read. Then don't empty on build.
 
-const CRATE_BLACKLIST: [&'static str; 13] = [
-    "libc",
-    "typenum",
-    "alloc",
-    "idna",
-    "openssl",
-    "unicode_normalization",
-    "serde",
-    "serde_json",
-    "rustc_serialize",
-    "unicode_segmentation",
-    "cocoa",
-    "gleam",
-    "winapi",
-];
-
 pub struct Cache {
     files: Vfs<VfsUserData>,
     analysis: AnalysisHost,
@@ -188,7 +172,7 @@ impl Cache {
     pub fn update_analysis(&self) {
         info!("Processing analysis...");
         self.analysis
-            .reload_with_blacklist(&self.project_dir, &self.project_dir, &CRATE_BLACKLIST)
+            .reload_with_blacklist(&self.project_dir, &self.project_dir, &::blacklist::CRATE_BLACKLIST)
             .unwrap();
 
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
