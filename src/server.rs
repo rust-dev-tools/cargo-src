@@ -62,8 +62,7 @@ impl Instance {
             status: Status::new(),
         };
 
-        // We'll start a build and index from the frontend, so this is not necessary.
-        // instance.run_analysis();
+        instance.run_analysis();
 
         instance
     }
@@ -71,12 +70,17 @@ impl Instance {
     fn run_analysis(&mut self) {
         let file_cache = self.file_cache.clone();
         let status = self.status.clone();
+        let builder = self.builder.clone();
+
         thread::spawn(move || {
-            println!("Processing analysis data...");
+            println!("Building...");
+            status.start_build();
+            builder.build(None).unwrap();
+            status.finish_build();
+
             status.start_analysis();
             file_cache.update_analysis();
             status.finish_analysis();
-            println!("Done");
         });
     }
 }
@@ -439,7 +443,7 @@ impl Instance {
         let mut diagnostic_event_handler = DiagnosticEventHandler::new(res.start().unwrap());
 
         self.status.start_build();
-        let build_result = self.builder.build(&mut diagnostic_event_handler).unwrap();
+        let build_result = self.builder.build(Some(&mut diagnostic_event_handler)).unwrap();
         self.status.finish_build();
         let result = self.make_build_result(&build_result);
         let diagnostics = diagnostic_event_handler.complete(&result);

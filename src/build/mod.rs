@@ -15,6 +15,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::process::{Command, Stdio, Child};
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct Builder {
     config: Arc<Config>,
     build_args: Option<BuildArgs>,
@@ -26,6 +27,7 @@ pub struct BuildResult {
     pub stderr: String,
 }
 
+#[derive(Clone, Debug)]
 pub struct BuildArgs {
     pub program: String,
     pub args: Vec<String>,
@@ -118,14 +120,18 @@ impl Builder {
         })
     }
 
-    pub fn build(&self, ev_handler: &mut DiagnosticEventHandler) -> Result<BuildResult, ()> {
+    // precondition: self.build_args.is_some() || ev_handler.is_some()
+    pub fn build(&self, ev_handler: Option<&mut DiagnosticEventHandler>) -> Result<BuildResult, ()> {
         // TODO execute async
         // TODO record compile time
 
+        // cargo src build
         if let Some(ref build_args) = self.build_args {
             return Self::cargo_src_build(build_args);
         }
 
+        // legacy build
+        let ev_handler = ev_handler.expect("Legacy build with no diagnostic event handler");
         let mut cmd = self.init_cmd()?;
 
         info!("building...");
