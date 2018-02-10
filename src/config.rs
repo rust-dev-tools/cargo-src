@@ -34,6 +34,12 @@ impl ConfigType for String {
     }
 }
 
+impl<T: ConfigType> ConfigType for Option<T> {
+    fn get_variant_names() -> String {
+        String::from("<string> | null")
+    }
+}
+
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $unstable:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         #[derive(Serialize, Deserialize, Clone)]
@@ -124,6 +130,6 @@ create_config! {
     demo_mode_root_path: String, String::new(), true, "path to use in URLs in demo mode";
     context_lines: usize, 2, false, "lines of context to show before and after code snippets";
     build_on_load: bool, true, false, "build on page load and refresh";
-    source_directory: String, "src".to_owned(), false, "root of the source directory";
+    workspace_root: Option<String>, None: Option<String>, false, "root of the project workspace";
     vcs_link: String, String::new(), false, "link to use for VCS; should use $file and $line.";
 }

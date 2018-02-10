@@ -31,6 +31,7 @@ pub struct BuildResult {
 pub struct BuildArgs {
     pub program: String,
     pub args: Vec<String>,
+    pub workspace_root: String,
 }
 
 impl Builder {

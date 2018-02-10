@@ -50,7 +50,7 @@ mod highlight;
 mod server;
 
 pub fn run_server(build_args: Option<BuildArgs>) {
-    let config = load_config();
+    let config = load_config(&build_args);
     let ip = config.ip.clone();
     let port = config.port;
 
@@ -63,11 +63,21 @@ pub fn run_server(build_args: Option<BuildArgs>) {
         .unwrap();
 }
 
-fn load_config() -> Config {
+fn load_config(build_args: &Option<BuildArgs>) -> Config {
     let config_file = File::open("rustw.toml");
     let mut toml = String::new();
     if let Ok(mut f) = config_file {
         f.read_to_string(&mut toml).unwrap();
     }
-    Config::from_toml(&toml)
+    let mut config = Config::from_toml(&toml);
+
+    if config.workspace_root.is_none() {
+        config.workspace_root = if let Some(build_args) = build_args.as_ref() {
+            Some(build_args.workspace_root.clone())
+        } else {
+            Some("src".to_owned())
+        };
+    }
+
+    config
 }

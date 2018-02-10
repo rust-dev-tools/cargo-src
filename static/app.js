@@ -42,7 +42,7 @@ class RustwApp extends React.Component {
             },
             async: false,
         });
-        store.dispatch(actions.getSource(CONFIG.source_directory));
+        store.dispatch(actions.getSource(CONFIG.workspace_root));
     }
 
     render() {
