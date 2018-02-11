@@ -125,7 +125,6 @@ impl Cache {
         vfs_err!(self.files.load_lines(path, line_start, line_end))
     }
 
-    // TODO handle non-rs files by returning plain text lines
     pub fn get_highlighted(&self, path: &Path) -> Result<Vec<String>, String> {
         vfs_err!(self.files.load_file(path))?;
         vfs_err!(
@@ -139,21 +138,34 @@ impl Cache {
                 None => return Err(::vfs::Error::BadFileKind),
             };
             if u.highlighted_lines.is_empty() {
-                let highlighted = highlight::highlight(
-                    &self.analysis,
-                    &self.project_dir,
-                    path.to_str().unwrap().to_owned(),
-                    text.to_owned(),
-                );
+                if let Some(ext) = path.extension() {
+                    if ext == "rs" {
+                        let highlighted = highlight::highlight(
+                            &self.analysis,
+                            &self.project_dir,
+                            path.to_str().unwrap().to_owned(),
+                            text.to_owned(),
+                        );
 
-                let mut highlighted_lines = vec![];
-                for line in highlighted.lines() {
-                    highlighted_lines.push(line.replace("<br>", "\n"));
+                        let mut highlighted_lines = vec![];
+                        for line in highlighted.lines() {
+                            highlighted_lines.push(line.replace("<br>", "\n"));
+                        }
+                        if text.ends_with('\n') {
+                            highlighted_lines.push(String::new());
+                        }
+                        u.highlighted_lines = highlighted_lines;
+                    }
                 }
-                if text.ends_with('\n') {
-                    highlighted_lines.push(String::new());
+
+                // Don't try to highlight non-Rust files (and cope with highlighting failure).
+                if u.highlighted_lines.is_empty() {
+                    let mut highlighted_lines: Vec<String> = text.lines().map(|s| s.to_owned()).collect();
+                    if text.ends_with('\n') {
+                        highlighted_lines.push(String::new());
+                    }
+                    u.highlighted_lines = highlighted_lines;
                 }
-                u.highlighted_lines = highlighted_lines;
             }
 
             Ok(u.highlighted_lines.clone())
