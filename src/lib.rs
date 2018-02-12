@@ -12,12 +12,12 @@
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
 #![feature(proc_macro)]
-#![feature(use_nested_groups)]
 #![feature(integer_atomics)]
 
 #[macro_use]
 extern crate derive_new;
 extern crate hyper;
+extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate rls_analysis as analysis;
@@ -35,7 +35,7 @@ extern crate toml;
 extern crate url;
 
 use config::Config;
-use hyper::Server;
+use hyper::server::Http;
 use std::fs::File;
 use std::io::Read;
 
@@ -54,12 +54,11 @@ pub fn run_server(build_args: Option<BuildArgs>) {
     let ip = config.ip.clone();
     let port = config.port;
 
-    let server = server::Instance::new(config, build_args);
-
     println!("server running on http://{}:{}", ip, port);
-    Server::http(&*format!("{}:{}", ip, port))
+    let addr = format!("{}:{}", ip, port).parse().unwrap();
+    Http::new().bind(&addr, move || Ok(server::Instance::new(config.clone(), build_args.clone())))
         .unwrap()
-        .handle(server)
+        .run()
         .unwrap();
 }
 
