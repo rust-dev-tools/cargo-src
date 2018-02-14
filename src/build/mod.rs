@@ -18,7 +18,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Builder {
     config: Arc<Config>,
-    build_args: Option<BuildArgs>,
+    build_args: BuildArgs,
 }
 
 #[derive(Clone, Debug)]
@@ -37,26 +37,17 @@ pub struct BuildArgs {
 impl Builder {
     pub fn new(
         config: Arc<Config>,
-        build_args: Option<BuildArgs>,
+        build_args: BuildArgs,
     ) -> Builder {
         Builder { config, build_args }
     }
 
     fn init_cmd(&self) -> Result<Command, ()> {
-        let mut build_split = self.config.build_command.split(' ');
-        let mut cmd = if let Some(cmd) = build_split.next() {
-            Command::new(cmd)
-        } else {
-            debug!("build error - no build command");
-            return Err(());
-        };
-
-        for arg in build_split {
-            cmd.arg(arg);
-        }
-
-        let flags = "-Zunstable-options --error-format json -Zsave-analysis".to_owned();
-        cmd.env("RUSTFLAGS", &flags);
+        let mut cmd = Command::new(&self.build_args.program);
+        cmd.arg("check");
+        cmd.args(&self.build_args.args);
+        // FIXME(#170) configure save-analysis
+        cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis --error-format json");
         cmd.env("CARGO_TARGET_DIR", "target/rls");
         cmd.env("RUST_LOG", "");
 
@@ -93,49 +84,8 @@ impl Builder {
         Ok(output.status.code())
     }
 
-    fn cargo_src_build(build_args: &BuildArgs) -> Result<BuildResult, ()> {
-        let mut cmd = Command::new(&build_args.program);
-        cmd.arg("check");
-        cmd.args(&build_args.args);
-        // FIXME(#170) configure save-analysis
-        cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis");
-        cmd.env("CARGO_TARGET_DIR", "target/rls");
-
-        println!("Checking...");
-        let status = match cmd.status() {
-            Ok(s) => s.code(),
-            Err(e) => {
-                // TODO could handle this error more nicely.
-                debug!(
-                    "build error: `{}`; command: `{}`, args: {:?}",
-                    e,
-                    build_args.program,
-                    build_args.args,
-                );
-                return Err(());
-            }
-        };
-        Ok(BuildResult {
-            status,
-            stderr: String::new(),
-        })
-    }
-
-    // precondition: self.build_args.is_some() || ev_handler.is_some()
-    pub fn build(&self, ev_handler: Option<&mut DiagnosticEventHandler>) -> Result<BuildResult, ()> {
-        // TODO execute async
-        // TODO record compile time
-
-        // cargo src build
-        if let Some(ref build_args) = self.build_args {
-            return Self::cargo_src_build(build_args);
-        }
-
-        // legacy build
-        let ev_handler = ev_handler.expect("Legacy build with no diagnostic event handler");
+    pub fn build(&self, mut ev_handler: Option<&mut DiagnosticEventHandler>) -> Result<BuildResult, ()> {
         let mut cmd = self.init_cmd()?;
-
-        info!("building...");
         let mut child = cmd.spawn().unwrap();
         let mut stderr = BufReader::new(child.stderr.take().unwrap());
 
@@ -147,23 +97,23 @@ impl Builder {
                     break;
                 }
                 Ok(_) => {
-                    ev_handler.handle_msg(&buf);
+                    // TODO there should be an option to suppress printing to stdout.
+                    print!("{}", buf);
+                    if let Some(ref mut ev_handler) = ev_handler {
+                        ev_handler.handle_msg(&buf);
+                    }
                 }
             }
         }
 
         let mut buf = vec![];
         stderr.read_to_end(&mut buf).unwrap();
+        assert!(buf.is_empty());
 
         let status = self.finish(child)?;
-
-        let result = BuildResult {
+        Ok(BuildResult {
             status,
-            stderr: String::from_utf8(buf).unwrap(),
-        };
-
-        trace!("Build output: {:?}", result);
-
-        Ok(result)
+            stderr: String::new(),
+        })
     }
 }

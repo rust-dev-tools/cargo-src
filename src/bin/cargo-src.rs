@@ -29,7 +29,7 @@ fn main() {
         workspace_root,
     };
 
-    rustw::run_server(Some(build_args));
+    rustw::run_server(build_args);
 }
 
 fn workspace_root() -> String {

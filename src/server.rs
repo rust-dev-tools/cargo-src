@@ -50,7 +50,7 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub(super) fn new(config: Config, build_args: Option<BuildArgs>) -> Instance {
+    pub(super) fn new(config: Config, build_args: BuildArgs) -> Instance {
         let config = Arc::new(config);
 
         let mut instance = Instance {
