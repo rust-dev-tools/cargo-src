@@ -13,10 +13,10 @@ use config::Config;
 use file_cache::Cache;
 use listings::DirectoryListing;
 use reprocess;
+use futures;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -25,11 +25,14 @@ use std::thread::{self, sleep};
 use std::time;
 
 use hyper::header::ContentType;
-use hyper::net::{Fresh, Streaming};
-use hyper::server::request::Request;
-use hyper::server::response::Response;
-use hyper::status::StatusCode;
-use hyper::uri::RequestUri;
+use hyper::server::Request;
+use hyper::server::Response;
+use hyper::StatusCode;
+use hyper::server::Service;
+use hyper::error::Error;
+use hyper::Body;
+use hyper::Chunk;
+use futures::sync::mpsc::Sender;
 use serde_json;
 use span;
 use url::parse_path;
@@ -85,15 +88,15 @@ impl Instance {
     }
 }
 
-impl ::hyper::server::Handler for Instance {
-    fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, res: Response<'a, Fresh>) {
-        let uri = req.uri.clone();
-        if let RequestUri::AbsolutePath(ref s) = uri {
-            self.route(s, req, res);
-        } else {
-            // TODO log this and ignore it.
-            panic!("Unexpected uri");
-        }
+impl Service for Instance {
+    type Request = Request;
+    type Response = Response;
+    type Error = Error;
+    type Future = Box<futures::future::Future<Item=Self::Response, Error=Self::Error>>;
+
+    fn call(&self, req: Request) -> Self::Future {
+        let uri = req.uri().clone();
+        return Box::new(futures::future::ok(self.route(uri.path(), req)));
     }
 }
 
@@ -145,17 +148,17 @@ impl fmt::Display for Status {
 
 // Diagnostics are streamed to the client. This struct is an interface for
 // the build module to relay messages as an event stream.
-pub struct DiagnosticEventHandler<'b> {
+pub struct DiagnosticEventHandler {
     lowering_ctxt: errors::LoweringContext,
-    res: Response<'b, Streaming>,
+    tx: Sender<Result<Chunk, Error>>,
     diagnostics: Vec<Diagnostic>,
 }
 
-impl<'b> DiagnosticEventHandler<'b> {
-    fn new(res: Response<'b, Streaming>) -> DiagnosticEventHandler<'b> {
+impl DiagnosticEventHandler {
+    fn new(tx: Sender<Result<Chunk, Error>>) -> DiagnosticEventHandler {
         DiagnosticEventHandler {
             lowering_ctxt: errors::LoweringContext::new(),
-            res,
+            tx: tx,
             diagnostics: vec![],
         }
     }
@@ -165,16 +168,19 @@ impl<'b> DiagnosticEventHandler<'b> {
         match parsed {
             errors::ParsedError::Diagnostic(d) => {
                 let text = serde_json::to_string(&d).unwrap();
-                self.res.write_all(format!("event: error\ndata: {}\n\n", text).as_bytes())
+                self.tx
+                    .try_send(Ok(Chunk::from(format!("event: error\ndata: {}\n\n", text))))
                     .unwrap();
-                self.res.flush().unwrap();
                 self.diagnostics.push(d);
             }
             errors::ParsedError::Message(s) => {
                 let text = serde_json::to_string(&s).unwrap();
-                self.res.write_all(format!("event: message\ndata: {}\n\n", text).as_bytes())
+                self.tx
+                    .try_send(Ok(Chunk::from(format!(
+                        "event: message\ndata: {}\n\n",
+                        text
+                    ))))
                     .unwrap();
-                self.res.flush().unwrap();
             }
             errors::ParsedError::Error => {}
         }
@@ -182,48 +188,42 @@ impl<'b> DiagnosticEventHandler<'b> {
 
     fn complete(mut self, result: &BuildResult) -> Vec<Diagnostic> {
         let text = serde_json::to_string(&result).unwrap();
-        let event_str = format!("event: close\ndata: {}\n\n", text);
 
-        self.res.write_all(event_str.as_bytes()).unwrap();
-        self.res.end().unwrap();
+        self.tx
+            .try_send(Ok(Chunk::from(format!("event: close\ndata: {}\n\n", text))))
+            .unwrap();
 
         self.diagnostics
     }
 }
 
 impl Instance {
-    fn route<'b, 'k>(
+    fn route(
         &self,
         uri_path: &str,
-        req: Request<'b, 'k>,
-        res: Response<'b, Fresh>,
-    ) {
+        req: Request,
+    ) -> Response {
         let (path, query, _) = parse_path(uri_path).unwrap();
 
         trace!("route: path: {:?}, query: {:?}", path, query);
         if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
-            self.handle_index(req, res);
-            return;
+            return self.handle_index(req);
         }
 
         if path[0] == GET_STATUS {
-            self.handle_status(req, res);
-            return;
+            return self.handle_status(req);
         }
 
         if path[0] == STATIC_REQUEST {
-            self.handle_static(req, res, &path[1..]);
-            return;
+            return self.handle_static(req, &path[1..]);
         }
 
         if path[0] == CONFIG_REQUEST {
-            self.handle_config(req, res);
-            return;
+            return self.handle_config(req);
         }
 
         if path[0] == PULL_REQUEST {
-            self.handle_pull(req, res, query);
-            return;
+            return self.handle_pull(req, query);
         }
 
         if path[0] == SOURCE_REQUEST {
@@ -231,96 +231,85 @@ impl Instance {
             // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
             // We try to correct for that here.
             if path.len() == 1 && path[0] == "" {
-                self.handle_src(req, res, &[".".to_owned()]);
+                return self.handle_src(req, &[".".to_owned()]);
             } else {
-                self.handle_src(req, res, path);
+                return self.handle_src(req, path);
             }
-            return;
         }
 
         if path[0] == PLAIN_TEXT {
-            self.handle_plain_text(req, res, query);
-            return;
+            return self.handle_plain_text(req, query);
         }
 
         if path[0] == SEARCH_REQUEST {
-            self.handle_search(req, res, query);
-            return;
+            return self.handle_search(req, query);
         }
 
         if path[0] == FIND_REQUEST {
-            self.handle_find(req, res, query);
-            return;
+            return self.handle_find(req, query);
         }
 
         if !self.config.demo_mode {
             if path[0] == BUILD_REQUEST {
-                self.handle_build(req, res);
-                return;
+                return self.handle_build(req);
             }
 
             if path[0] == EDIT_REQUEST {
-                self.handle_edit(req, res, query);
-                return;
+                return self.handle_edit(req, query);
             }
         }
 
         self.handle_error(
             req,
-            res,
             StatusCode::NotFound,
             format!("Unexpected path: `/{}`", path.join("/")),
-        );
+        )
     }
 
-    fn handle_error<'b, 'k>(
+    fn handle_error(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         status: StatusCode,
         msg: String,
-    ) {
+    ) -> Response {
         debug!("ERROR: {} ({})", msg, status);
 
-        *res.status_mut() = status;
-        res.send(msg.as_bytes()).unwrap();
+        Response::new().with_status(status).with_body(msg)
     }
 
-    fn handle_status<'b, 'k>(
+    fn handle_status(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-    ) {
+        _req: Request,
+    )  -> Response {
+        let mut res = Response::new();
         res.headers_mut().set(ContentType::plaintext());
-        res.send(format!("{{\"status\":\"{}\"}}", self.status).as_bytes()).unwrap();
+        res.with_body(format!("{{\"status\":\"{}\"}}", self.status))
     }
 
-    fn handle_index<'b, 'k>(
+    fn handle_index(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-    ) {
+        _req: Request,
+    ) -> Response {
         let mut path_buf = static_path();
         path_buf.push("index.html");
 
         let msg = match self.file_cache.get_text(&path_buf) {
             Ok(data) => {
+                let mut res = Response::new();
                 res.headers_mut().set(ContentType::html());
-                res.send(data.as_bytes()).unwrap();
-                return;
+                return res.with_body(data);
             }
             Err(s) => s,
         };
 
-        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+        self.handle_error(_req, StatusCode::InternalServerError, msg)
     }
 
-    fn handle_static<'b, 'k>(
+    fn handle_static(
         &self,
-        req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        req: Request,
         path: &[String],
-    ) {
+    ) -> Response {
         let mut path_buf = static_path();
         for p in path {
             path_buf.push(p);
@@ -342,33 +331,30 @@ impl Instance {
                 bytes.len(),
                 content_type
             );
+            let mut res = Response::new();
             res.headers_mut().set(content_type);
-            res.send(&bytes).unwrap();
-            return;
+            return res.with_body(bytes);
         }
 
         trace!("404 {:?}", file_contents);
-        self.handle_error(req, res, StatusCode::NotFound, "Page not found".to_owned());
+        self.handle_error(req, StatusCode::NotFound, "Page not found".to_owned())
     }
 
-    fn handle_src<'b, 'k>(
+    fn handle_src(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         mut path: &[String],
-    ) {
+    ) -> Response {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
             // hey, FIXME).
             if p.contains("..") || p == "/" {
-                self.handle_error(
+                return self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     "Bad path, found `..`".to_owned(),
                 );
-                return;
             }
         }
 
@@ -385,18 +371,19 @@ impl Instance {
         if path_buf.is_dir() {
             match DirectoryListing::from_path(&path_buf) {
                 Ok(listing) => {
+                    let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
-                    res.send(
+                    return res.with_body(
                         serde_json::to_string(&SourceResult::Directory(listing))
                             .unwrap()
-                            .as_bytes(),
-                    ).unwrap();
+                    );
                 }
-                Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
+                Err(msg) => self.handle_error(_req, StatusCode::InternalServerError, msg),
             }
         } else {
             match self.file_cache.get_highlighted(&path_buf) {
                 Ok(ref lines) => {
+                    let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
                     let result = SourceResult::Source {
                         path: path_buf
@@ -405,30 +392,27 @@ impl Instance {
                             .collect(),
                         lines: lines,
                     };
-                    res.send(serde_json::to_string(&result).unwrap().as_bytes())
-                        .unwrap();
+                    return res.with_body(serde_json::to_string(&result).unwrap());
                 }
-                Err(msg) => self.handle_error(_req, res, StatusCode::InternalServerError, msg),
+                Err(msg) => self.handle_error(_req, StatusCode::InternalServerError, msg),
             }
         }
     }
 
-    fn handle_config<'b, 'k>(
+    fn handle_config(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-    ) {
+        _req: Request,
+    ) -> Response {
         let text = serde_json::to_string(&*self.config).unwrap();
-
+        let mut res = Response::new();
         res.headers_mut().set(ContentType::json());
-        res.send(text.as_bytes()).unwrap();
+        return res.with_body(text);
     }
 
-    fn handle_build<'b, 'k>(
+    fn handle_build(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
-    ) {
+        _req: Request,
+    ) -> Response {
         assert!(
             !self.config.demo_mode,
             "Build shouldn't happen in demo mode"
@@ -438,35 +422,50 @@ impl Instance {
             self.file_cache.reset();
         }
 
+        let mut res = Response::new();
         res.headers_mut()
             .set(ContentType("text/event-stream".parse().unwrap()));
-        let mut diagnostic_event_handler = DiagnosticEventHandler::new(res.start().unwrap());
 
-        self.status.start_build();
-        let build_result = self.builder.build(Some(&mut diagnostic_event_handler)).unwrap();
-        self.status.finish_build();
-        let result = self.make_build_result(&build_result);
-        let diagnostics = diagnostic_event_handler.complete(&result);
+        let (tx, body) = Body::pair();
+        res.set_body(body);
+        self.spawn_build(tx);
 
-        self.reprocess_snippet_data(result, diagnostics);
+        res
     }
 
-    fn make_build_result(&self, build_result: &build::BuildResult) -> BuildResult {
-        let key = reprocess::make_key();
-        let result = BuildResult::from_build(&build_result, key.clone());
-
-        let mut pending_pull_data = self.pending_pull_data.lock().unwrap();
-        pending_pull_data.insert(key, None);
-
-        result
-    }
-
-    fn handle_edit<'b, 'k>(
+    fn spawn_build(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        res: Sender<Result<Chunk, Error>>) {
+        let pending_pull_data = self.pending_pull_data.clone();
+        let file_cache = self.file_cache.clone();
+        let config = self.config.clone();
+        let status = self.status.clone();
+        let builder = self.builder.clone();
+
+        thread::spawn(move || {
+            status.start_build();
+            let mut diagnostic_event_handler = DiagnosticEventHandler::new(res);
+            let build_result = builder.build(Some(&mut diagnostic_event_handler)).unwrap();
+            status.finish_build();
+            let key = reprocess::make_key();
+            let result = BuildResult::from_build(&build_result, key.clone());
+            pending_pull_data.lock().unwrap().insert(key, None);
+            let diagnostics = diagnostic_event_handler.complete(&result);
+            reprocess::reprocess_snippets(
+                result.pull_data_key,
+                diagnostics,
+                pending_pull_data,
+                file_cache,
+                config,
+            )
+        });
+    }
+
+    fn handle_edit(
+        &self,
+        _req: Request,
         query: Option<String>,
-    ) {
+    ) -> Response {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
         assert!(self.config.unstable_features, "Edit is unstable");
 
@@ -495,13 +494,13 @@ impl Instance {
                     }
                 }
 
+                let mut res = Response::new();
                 res.headers_mut().set(ContentType::json());
-                res.send("{}".as_bytes()).unwrap();
+                return res.with_body("{}".as_bytes());
             }
             None => {
-                self.handle_error(
+                return self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     format!("Bad query string: {:?}", query),
                 );
@@ -509,12 +508,11 @@ impl Instance {
         }
     }
 
-    fn handle_search<'b, 'k>(
+    fn handle_search(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         query: Option<String>,
-    ) {
+    ) -> Response {
         match (
             parse_query_value(&query, "needle="),
             parse_query_value(&query, "id="),
@@ -523,12 +521,12 @@ impl Instance {
                 // Identifier search.
                 match self.file_cache.ident_search(&needle) {
                     Ok(data) => {
+                        let mut res = Response::new();
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
-                            .unwrap();
+                        return res.with_body(serde_json::to_string(&data).unwrap());
                     }
                     Err(s) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                        return self.handle_error(_req, StatusCode::InternalServerError, s);
                     }
                 }
             }
@@ -537,30 +535,27 @@ impl Instance {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(
+                        return self.handle_error(
                             _req,
-                            res,
                             StatusCode::InternalServerError,
                             format!("Bad id: {}", id),
                         );
-                        return;
                     }
                 };
                 match self.file_cache.id_search(analysis::Id::new(id)) {
                     Ok(data) => {
+                        let mut res = Response::new();
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
-                            .unwrap();
+                        return res.with_body(serde_json::to_string(&data).unwrap());
                     }
                     Err(s) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                        return self.handle_error(_req, StatusCode::InternalServerError, s);
                     }
                 }
             }
             _ => {
-                self.handle_error(
+                return self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     "Bad search string".to_owned(),
                 );
@@ -568,41 +563,37 @@ impl Instance {
         }
     }
 
-    fn handle_find<'b, 'k>(
+    fn handle_find(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         query: Option<String>,
-    ) {
+    ) -> Response {
         match parse_query_value(&query, "impls=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(
+                        return self.handle_error(
                             _req,
-                            res,
                             StatusCode::InternalServerError,
                             format!("Bad id: {}", id),
                         );
-                        return;
                     }
                 };
                 match self.file_cache.find_impls(analysis::Id::new(id)) {
                     Ok(data) => {
+                        let mut res = Response::new();
                         res.headers_mut().set(ContentType::json());
-                        res.send(serde_json::to_string(&data).unwrap().as_bytes())
-                            .unwrap();
+                        return res.with_body(serde_json::to_string(&data).unwrap());
                     }
                     Err(s) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, s);
+                        return self.handle_error(_req, StatusCode::InternalServerError, s);
                     }
                 }
             }
             _ => {
-                self.handle_error(
+                return self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     "Unknown argument to find".to_owned(),
                 );
@@ -610,12 +601,11 @@ impl Instance {
         }
     }
 
-    fn handle_plain_text<'b, 'k>(
+    fn handle_plain_text(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         query: Option<String>,
-    ) {
+    ) -> Response {
         match (
             parse_query_value(&query, "file="),
             parse_query_value(&query, "line="),
@@ -624,13 +614,11 @@ impl Instance {
                 let line = match usize::from_str(&line) {
                     Ok(l) => l,
                     Err(_) => {
-                        self.handle_error(
+                        return self.handle_error(
                             _req,
-                            res,
                             StatusCode::InternalServerError,
                             format!("Bad line number: {}", line),
-                        );
-                        return;
+                        )
                     }
                 };
 
@@ -644,6 +632,7 @@ impl Instance {
                     span::Row::new_zero_indexed(line_end as u32),
                 ) {
                     Ok(ref lines) => {
+                        let mut res = Response::new();
                         res.headers_mut().set(ContentType::json());
                         let result = TextResult {
                             text: lines,
@@ -651,18 +640,16 @@ impl Instance {
                             line_start: line_start + 1,
                             line_end: line_end,
                         };
-                        res.send(serde_json::to_string(&result).unwrap().as_bytes())
-                            .unwrap();
+                        return res.with_body(serde_json::to_string(&result).unwrap());
                     }
                     Err(msg) => {
-                        self.handle_error(_req, res, StatusCode::InternalServerError, msg);
+                        return self.handle_error(_req, StatusCode::InternalServerError, msg);
                     }
                 }
             }
             _ => {
-                self.handle_error(
+                return self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     "Bad query string".to_owned(),
                 );
@@ -670,33 +657,29 @@ impl Instance {
         }
     }
 
-    fn handle_pull<'b, 'k>(
+    fn handle_pull(
         &self,
-        _req: Request<'b, 'k>,
-        mut res: Response<'b, Fresh>,
+        _req: Request,
         query: Option<String>,
-    ) {
+    ) -> Response {
         match parse_query_value(&query, "key=") {
             Some(key) => {
+                let mut res = Response::new();
                 res.headers_mut().set(ContentType::json());
 
                 loop {
-                    {
-                        let pending_pull_data = self.pending_pull_data.lock().unwrap();
-                        match pending_pull_data.get(&key) {
-                            Some(&Some(ref s)) => {
-                                // Data is ready, return it.
-                                res.send(s.as_bytes()).unwrap();
-                                return;
-                            }
-                            Some(&None) => {
-                                // Task is in progress, wait.
-                            }
-                            None => {
-                                // No push task, return nothing.
-                                res.send("{}".as_bytes()).unwrap();
-                                return;
-                            }
+                    let pending_pull_data = self.pending_pull_data.lock().unwrap();
+                    match pending_pull_data.get(&key) {
+                        Some(&Some(ref s)) => {
+                            // Data is ready, return it.
+                            return res.with_body(s.clone());
+                        }
+                        Some(&None) => {
+                            // Task is in progress, wait.
+                        }
+                        None => {
+                            // No push task, return nothing.
+                            return res.with_body("{}");
                         }
                     }
                     sleep(time::Duration::from_millis(200));
@@ -705,34 +688,11 @@ impl Instance {
             None => {
                 self.handle_error(
                     _req,
-                    res,
                     StatusCode::InternalServerError,
                     "Bad query string".to_owned(),
-                );
+                )
             }
         }
-    }
-
-    fn reprocess_snippet_data(&self, mut result: BuildResult, mut diagnostics: Vec<Diagnostic>) {
-        diagnostics.extend(result.errors.drain(..));
-
-        let pending_pull_data = self.pending_pull_data.clone();
-        let file_cache = self.file_cache.clone();
-        let config = self.config.clone();
-        let status = self.status.clone();
-        thread::spawn(move || {
-            status.start_analysis();
-            file_cache.update_analysis();
-            status.finish_analysis();
-
-            reprocess::reprocess_snippets(
-                result.pull_data_key,
-                diagnostics,
-                pending_pull_data,
-                file_cache,
-                config,
-            )
-        });
     }
 }
 
