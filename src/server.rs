@@ -43,7 +43,7 @@ use url::parse_path;
 
 
 /// An instance of the server. Runs a session of rustw.
-pub struct Instance {
+pub struct Server {
     builder: build::Builder,
     pub config: Arc<Config>,
     file_cache: Arc<Cache>,
@@ -52,11 +52,16 @@ pub struct Instance {
     status: Status
 }
 
-impl Instance {
-    pub(super) fn new(config: Config, build_args: BuildArgs) -> Instance {
+#[derive(Clone)]
+pub struct Instance {
+    server: Arc<Mutex<Server>>,
+}
+
+impl Server {
+    pub(super) fn new(config: Config, build_args: BuildArgs) -> Server {
         let config = Arc::new(config);
 
-        let mut instance = Instance {
+        let mut instance = Server {
             builder: build::Builder::new(config.clone(), build_args),
             config: config,
             file_cache: Arc::new(Cache::new()),
@@ -88,6 +93,14 @@ impl Instance {
     }
 }
 
+impl Instance {
+    pub fn new(server: Server) -> Instance {
+        Instance {
+            server: Arc::new(Mutex::new(server)),
+        }
+    }
+}
+
 impl Service for Instance {
     type Request = Request;
     type Response = Response;
@@ -96,7 +109,7 @@ impl Service for Instance {
 
     fn call(&self, req: Request) -> Self::Future {
         let uri = req.uri().clone();
-        return Box::new(futures::future::ok(self.route(uri.path(), req)));
+        return Box::new(futures::future::ok(self.server.lock().unwrap().route(uri.path(), req)));
     }
 }
 
@@ -197,7 +210,7 @@ impl DiagnosticEventHandler {
     }
 }
 
-impl Instance {
+impl Server {
     fn route(
         &self,
         uri_path: &str,

@@ -56,7 +56,9 @@ pub fn run_server(build_args: BuildArgs) {
 
     println!("server running on http://{}:{}", ip, port);
     let addr = format!("{}:{}", ip, port).parse().unwrap();
-    Http::new().bind(&addr, move || Ok(server::Instance::new(config.clone(), build_args.clone())))
+    let server = server::Server::new(config.clone(), build_args.clone());
+    let instance = server::Instance::new(server);
+    Http::new().bind(&addr, move || Ok(instance.clone()))
         .unwrap()
         .run()
         .unwrap();
