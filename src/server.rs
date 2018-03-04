@@ -11,7 +11,7 @@ use build::{self, BuildArgs};
 use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
-use listings::DirectoryListing;
+use listings::{Listing, DirectoryListing};
 use reprocess;
 use futures;
 
@@ -381,13 +381,18 @@ impl Server {
         }
 
         // TODO should cache directory listings too
-        if path_buf.is_dir() {
+        return if path_buf.is_dir() {
             match DirectoryListing::from_path(&path_buf) {
                 Ok(listing) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
+                    let path = path_parts(&listing.path);
+                    let result = SourceResult::Directory {
+                        path,
+                        files: listing.files,
+                    };
                     return res.with_body(
-                        serde_json::to_string(&SourceResult::Directory(listing))
+                        serde_json::to_string(&result)
                             .unwrap()
                     );
                 }
@@ -398,10 +403,7 @@ impl Server {
                 Ok(ref lines) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
-                    let path = path_buf
-                        .components()
-                        .map(|c| c.as_os_str().to_str().unwrap().to_owned())
-                        .collect();
+                    let path = path_parts(&path_buf);
                     let result = SourceResult::Source {
                         path,
                         lines: lines,
@@ -410,6 +412,12 @@ impl Server {
                 }
                 Err(msg) => self.handle_error(_req, StatusCode::InternalServerError, msg),
             }
+        };
+
+        fn path_parts(path: &Path) -> Vec<String> {
+            path.components()
+                .map(|c| c.as_os_str().to_str().unwrap().to_owned())
+                .collect()
         }
     }
 
@@ -718,7 +726,10 @@ pub enum SourceResult<'a> {
         path: Vec<String>,
         lines: &'a [String],
     },
-    Directory(DirectoryListing),
+    Directory {
+        path: Vec<String>,
+        files: Vec<Listing>,
+    },
 }
 
 #[derive(Serialize, Debug)]

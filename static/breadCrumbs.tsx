@@ -7,6 +7,7 @@
 // except according to those terms.
 
 import * as React from 'react';
+declare var CONFIG: any;
 
 export interface BreadCrumbProps {
     path: Array<string>,
@@ -14,12 +15,27 @@ export interface BreadCrumbProps {
 }
 
 export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
+    // The root path for the workspace.
+    let root = CONFIG.workspace_root.split('/');
+    if (root[0] === '') {
+        root[0] = '/';
+    }
+    root.pop();
+    root.reverse();
+
     let path = "",
         crumbs = props.path.map((p: string) => {
             if (path.length > 0) {
                 path += '/';
             }
             path += p;
+
+            // Don't display the workspace root prefix.
+            if (p === root.pop()) {
+                return null;
+            }
+            root = [];
+
             const pathCopy = path;
             const onClick = () => props.getSource(pathCopy);
             return (<span key={path}> > <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);

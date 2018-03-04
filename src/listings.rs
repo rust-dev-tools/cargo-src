@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct DirectoryListing {
-    pub path: Vec<String>,
+    pub path: PathBuf,
     pub files: Vec<Listing>,
 }
 
@@ -55,9 +55,7 @@ impl DirectoryListing {
         files.sort();
 
         Ok(DirectoryListing {
-            path: path.components()
-                .map(|c| c.as_os_str().to_str().unwrap().to_owned())
-                .collect(),
+            path: path.to_owned(),
             files: files,
         })
     }
