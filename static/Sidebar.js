@@ -9,7 +9,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
-import { DirView } from './dirView';
 import { SearchPanelController } from './SearchPanel.js';
 
 import { FindResults, SearchResults } from "./search";
@@ -20,8 +19,8 @@ function Sidebar(props) {
     return (
         <Tabs className="div_sidebar" selectedTabClassName="selected">
             <TabList className="div_sidebar_tabs">
-                <Tab className="div_sidebar_tab">Search</Tab>
-                <Tab className="div_sidebar_tab">DirView</Tab>
+                <Tab className="div_sidebar_tab">search</Tab>
+                <Tab className="div_sidebar_tab">files</Tab>
             </TabList>
             <TabPanel className="div_sidebar_main">
                 <SearchPanelController/>

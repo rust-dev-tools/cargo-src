@@ -398,11 +398,12 @@ impl Server {
                 Ok(ref lines) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
+                    let path = path_buf
+                        .components()
+                        .map(|c| c.as_os_str().to_str().unwrap().to_owned())
+                        .collect();
                     let result = SourceResult::Source {
-                        path: path_buf
-                            .components()
-                            .map(|c| c.as_os_str().to_str().unwrap().to_owned())
-                            .collect(),
+                        path,
                         lines: lines,
                     };
                     return res.with_body(serde_json::to_string(&result).unwrap());

@@ -12,13 +12,14 @@ import { BreadCrumbs } from './breadCrumbs';
 
 export interface DirViewProps {
     files: Array<any>,
-    file: string,
+    path: Array<string>,
     getSource: (path :string) => any
 }
 
 export const DirView: React.SFC<DirViewProps> = (props) => {
+    const dirPath = props.path.join('/');
     let files = props.files.map((f: any) => {
-        const onClick = () => props.getSource(`${props.file}/${f.name}`);
+        const onClick = () => props.getSource(`${dirPath}/${f.name}`);
         const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';
         return (
             <div className="div_entry" key={f.name}>
@@ -27,7 +28,7 @@ export const DirView: React.SFC<DirViewProps> = (props) => {
         );
     });
     return <div id="src">
-        <BreadCrumbs path = {props.file.split('/')} getSource={props.getSource} />
+        <BreadCrumbs path = {props.path} getSource={props.getSource} />
         <div id="div_dir_view">
             <div id="div_dir_contents">
                 {files}

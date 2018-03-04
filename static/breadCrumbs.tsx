@@ -22,7 +22,7 @@ export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
             path += p;
             const pathCopy = path;
             const onClick = () => props.getSource(pathCopy);
-            return (<span key={path}>> <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
+            return (<span key={path}> > <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
         });
     return <div id="div_dir_path">
         {crumbs}

@@ -89,7 +89,7 @@ function page(state = { type: Page.START }, action) {
         case SHOW_SOURCE_DIR:
             return {
                 type: Page.SOURCE_DIR,
-                name: action.name,
+                path: action.path,
                 files: action.files,
             };
         case SHOW_SUMMARY:

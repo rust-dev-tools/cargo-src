@@ -58,7 +58,7 @@ class RustwApp extends React.Component {
                 divMain = <SourceViewController path={this.props.page.path} lines={this.props.page.lines} highlight={this.props.page.highlight} scrollTo={this.props.page.lineStart} />;
                 break;
             case Page.SOURCE_DIR:
-                divMain = <DirView file={this.props.page.name} files={this.props.page.files} getSource={this.props.getSource} />;
+                divMain = <DirView path={this.props.page.path} files={this.props.page.files} getSource={this.props.getSource} />;
                 break;
             case Page.LOADING:
                 divMain = <div id="div_loading">Loading...</div>;

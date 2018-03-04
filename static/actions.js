@@ -115,7 +115,7 @@ export function getSource(fileName, highlight) {
             'src/' + fileName,
             function(json) {
                 if (json.Directory) {
-                    dispatch(showSourceDir(fileName, json.Directory.files));
+                    dispatch(showSourceDir(json.Directory.path, json.Directory.files));
                     // history.pushState(state, "", utils.make_url("#src=" + fileName));
                 } else if (json.Source) {
                     let lineStart;
@@ -139,8 +139,8 @@ export function showSource(path, lines, lineStart, highlight) {
     return { type: SHOW_SOURCE, path, lines, lineStart, highlight };
 }
 
-export function showSourceDir(name, files) {
-    return { type: SHOW_SOURCE_DIR, name, files };
+export function showSourceDir(path, files) {
+    return { type: SHOW_SOURCE_DIR, path, files };
 }
 
 export function getUses(needle) {
