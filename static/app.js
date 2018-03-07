@@ -22,7 +22,7 @@ import { FindResults, SearchResults } from "./search";
 import { DirView } from './dirView';
 import { SourceViewController } from './srcView';
 import { Summary } from './summary';
-import { SidebarController } from './Sidebar';
+import { SidebarController } from './sidebar';
 
 // TODOs in build
 

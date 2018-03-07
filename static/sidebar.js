@@ -9,7 +9,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import * as actions from './actions';
-import { SearchPanelController } from './SearchPanel.js';
+import { SearchPanelController } from './searchPanel.js';
 
 import { FindResults, SearchResults } from "./search";
 
