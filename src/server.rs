@@ -35,7 +35,6 @@ use hyper::Chunk;
 use futures::sync::mpsc::Sender;
 use serde_json;
 use span;
-use url::parse_path;
 
 /// This module handles the server responsibilities - it routes incoming requests
 /// and dispatches them. It also handles pushing events to the client during
@@ -109,7 +108,7 @@ impl Service for Instance {
 
     fn call(&self, req: Request) -> Self::Future {
         let uri = req.uri().clone();
-        return Box::new(futures::future::ok(self.server.lock().unwrap().route(uri.path(), req)));
+        return Box::new(futures::future::ok(self.server.lock().unwrap().route(uri.path(), uri.query(), req)));
     }
 }
 
@@ -213,12 +212,17 @@ impl DiagnosticEventHandler {
 impl Server {
     fn route(
         &self,
-        uri_path: &str,
+        mut path: &str,
+        query: Option<&str>,
         req: Request,
     ) -> Response {
-        let (path, query, _) = parse_path(uri_path).unwrap();
-
         trace!("route: path: {:?}, query: {:?}", path, query);
+
+        if path.starts_with('/') {
+            path = &path[1..];
+        }
+        let path: Vec<_> = path.split('/').collect();
+
         if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
             return self.handle_index(req);
         }
@@ -244,7 +248,7 @@ impl Server {
             // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
             // We try to correct for that here.
             if path.len() == 1 && path[0] == "" {
-                return self.handle_src(req, &[".".to_owned()]);
+                return self.handle_src(req, &["."]);
             } else {
                 return self.handle_src(req, path);
             }
@@ -321,7 +325,7 @@ impl Server {
     fn handle_static(
         &self,
         req: Request,
-        path: &[String],
+        path: &[&str],
     ) -> Response {
         let mut path_buf = static_path();
         for p in path {
@@ -356,13 +360,13 @@ impl Server {
     fn handle_src(
         &self,
         _req: Request,
-        mut path: &[String],
+        mut path: &[&str],
     ) -> Response {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
             // hey, FIXME).
-            if p.contains("..") || p == "/" {
+            if p.contains("..") || *p == "/" {
                 return self.handle_error(
                     _req,
                     StatusCode::InternalServerError,
@@ -486,12 +490,12 @@ impl Server {
     fn handle_edit(
         &self,
         _req: Request,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
         assert!(self.config.unstable_features, "Edit is unstable");
 
-        match parse_query_value(&query, "file=") {
+        match parse_query_value(query, "file=") {
             Some(location) => {
                 // Split the 'filename' on colons for line and column numbers.
                 let args = parse_location_string(&location);
@@ -533,11 +537,11 @@ impl Server {
     fn handle_search(
         &self,
         _req: Request,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
         match (
-            parse_query_value(&query, "needle="),
-            parse_query_value(&query, "id="),
+            parse_query_value(query, "needle="),
+            parse_query_value(query, "id="),
         ) {
             (Some(needle), None) => {
                 // Identifier search.
@@ -588,9 +592,9 @@ impl Server {
     fn handle_find(
         &self,
         _req: Request,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
-        match parse_query_value(&query, "impls=") {
+        match parse_query_value(query, "impls=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
                     Ok(l) => l,
@@ -626,11 +630,11 @@ impl Server {
     fn handle_plain_text(
         &self,
         _req: Request,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
         match (
-            parse_query_value(&query, "file="),
-            parse_query_value(&query, "line="),
+            parse_query_value(query, "file="),
+            parse_query_value(query, "line="),
         ) {
             (Some(file_name), Some(line)) => {
                 let line = match usize::from_str(&line) {
@@ -682,9 +686,9 @@ impl Server {
     fn handle_pull(
         &self,
         _req: Request,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
-        match parse_query_value(&query, "key=") {
+        match parse_query_value(query, "key=") {
             Some(key) => {
                 let mut res = Response::new();
                 res.headers_mut().set(ContentType::json());
@@ -779,9 +783,9 @@ pub fn parse_location_string(input: &str) -> [String; 5] {
 }
 
 // key should include `=` suffix.
-fn parse_query_value(query: &Option<String>, key: &str) -> Option<String> {
-    match *query {
-        Some(ref q) => {
+fn parse_query_value(query: Option<&str>, key: &str) -> Option<String> {
+    match query {
+        Some(q) => {
             let start = match q.find(key) {
                 Some(i) => i + key.len(),
                 None => {

@@ -49,6 +49,7 @@ const mapDispatchToProps = (dispatch) => {
     return {
         clickHomeLink: () => dispatch(actions.showBuildResults()),
         clickBuild: () => dispatch(actions.doBuild()),
+        getSearch: (needle) => dispatch(actions.getSearch(needle)),
     }
 };
 
