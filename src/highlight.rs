@@ -16,6 +16,7 @@ use std::time::Instant;
 
 use rustdoc_highlight::{self as highlight, Class, Classifier};
 use span;
+use syntax;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::codemap::{CodeMap, FilePathMapping, Loc};
@@ -33,24 +34,27 @@ pub fn highlight<'a>(
     file_text: String,
 ) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
-    let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(FileName::Real(PathBuf::from(&file_name)), file_text);
 
-    let mut out = Highlighter::new(analysis, project_path, sess.codemap());
+    syntax::with_globals(move || {
+        let sess = parse::ParseSess::new(FilePathMapping::empty());
+        let fm = sess.codemap().new_filemap(FileName::Real(PathBuf::from(&file_name)), file_text);
 
-    let t_start = Instant::now();
+        let mut out = Highlighter::new(analysis, project_path, sess.codemap());
 
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
-    classifier.write_source(&mut out).unwrap();
+        let t_start = Instant::now();
 
-    let time = t_start.elapsed();
-    info!(
-        "Highlighting {} in {:.3}s",
-        file_name,
-        time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0
-    );
+        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
+        classifier.write_source(&mut out).unwrap();
 
-    String::from_utf8_lossy(&out.buf).into_owned()
+        let time = t_start.elapsed();
+        info!(
+            "Highlighting {} in {:.3}s",
+            file_name,
+            time.as_secs() as f64 + time.subsec_nanos() as f64 / 1_000_000_000.0
+        );
+
+        String::from_utf8_lossy(&out.buf).into_owned()
+    })
 }
 
 struct Highlighter<'a> {
