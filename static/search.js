@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import { connect } from 'react-redux';
 import * as actions from './actions';
 
 const utils = require('./utils');
@@ -20,6 +19,7 @@ class ResultSet extends React.Component {
 
     render() {
         const { input, kind } = this.props;
+        const self = this;
         let count = 0;
         let result = input.map((r) => {
             let lines = r.lines.map((l) => {
@@ -32,7 +32,7 @@ class ResultSet extends React.Component {
                         "column_start": 0,
                         "column_end": 0
                     };
-                    this.props.getSource(r.file_name, highlight);
+                    actions.getSource(self.props.app, r.file_name, highlight);
                     e.preventDefault();
                 };
                 const snippetClick = (e) => {
@@ -42,10 +42,10 @@ class ResultSet extends React.Component {
                         "column_start": l.column_start,
                         "column_end": l.column_end
                     };
-                    this.props.getSource(r.file_name, highlight);
+                    actions.getSource(self.props.app, r.file_name, highlight);
                     e.preventDefault();
                 };
-                return (<div key={`${kind}-${l.line_start}`}>
+                return (<div key={`${kind}-${count}-${l.line_start}`}>
                     <span className="div_span_src_number">
                         <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
                     </span>
@@ -56,7 +56,7 @@ class ResultSet extends React.Component {
                 </div>);
             });
             const onClick = (e) => {
-                this.props.getSource(r.file_name, {});
+                actions.getSource(self.props.app, r.file_name, {});
                 e.preventDefault();
             };
             count += 1;
@@ -74,21 +74,6 @@ class ResultSet extends React.Component {
     }
 }
 
-const mapStateToProps = (state, ownProps) => {
-    return ownProps;
-}
-
-const mapDispatchToProps = (dispatch) => {
-    return {
-        getSource: (file, highlight) => dispatch(actions.getSource(file, highlight)),
-    };
-}
-
-const ResultSetController = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(ResultSet);
-
 function noResults() {
     return <span className="div_search_no_results">No results found</span>;
 }
@@ -99,7 +84,7 @@ export function FindResults(props) {
     } else {
         return(<div>
                 <div className="div_search_title">Search results:</div>
-                <ResultSetController input={props.results} kind="result" />
+                <ResultSet app={props.app} input={props.results} kind="result" />
             </div>);
     }
 }
@@ -110,9 +95,9 @@ export function SearchResults(props) {
     } else {
         return <div>
             <div className="div_search_title">Definitions:</div>
-            <ResultSetController input={props.defs} kind="def"/>
+            <ResultSet app={props.app} input={props.defs} kind="def"/>
             <div className="div_search_title">References:</div>
-            <ResultSetController input={props.refs} kind="ref"/>
+            <ResultSet app={props.app} input={props.refs} kind="ref"/>
         </div>;
     }
 }

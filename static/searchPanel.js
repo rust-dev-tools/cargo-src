@@ -7,70 +7,32 @@
 // except according to those terms.
 
 import React from 'react';
-import { connect } from 'react-redux';
-import { BuildState } from './reducers';
+import { FindResults, SearchResults } from "./search";
 
-import { Menu, MenuHost } from './menus';
+// import { Menu, MenuHost } from './menus';
 import * as actions from './actions';
 
-class SearchPanel extends React.Component {
+export class SearchPanel extends React.Component {
     render() {
-        return <SearchBox getSearch={this.props.getSearch} />
+        let searchResults = null;
+        if (this.props.defs || this.props.refs) {
+            searchResults = <SearchResults app={this.props.app} defs={this.props.defs} refs={this.props.refs} />;
+        } else if (this.props.results) {
+            searchResults = <FindResults app={this.props.app} results={this.props.results} />;
+        }
+
+        return <div>
+            <SearchBox app={this.props.app} />
+            <div id="div_search_results">{searchResults}</div>
+        </div>;
     }
 }
-
-const mapStateToProps = (state) => {
-    let visibleHomeLink = null;
-    let visibleBrowseLink = true;
-    let indicatorStatus = null;
-    let buildState = state.build;
-    switch (state.build) {
-        case BuildState.BUILDING:
-            indicatorStatus = true;
-            break;
-        case BuildState.BUILT:
-            break;
-        case BuildState.BUILT_AND_NAVIGATING:
-            visibleHomeLink = true;
-            buildState = BuildState.BUILT;
-            break;
-    }
-
-    return {
-        visibleHomeLink,
-        visibleBrowseLink,
-        indicatorStatus,
-        buildState
-    }
-};
-
-const mapDispatchToProps = (dispatch) => {
-    return {
-        clickHomeLink: () => dispatch(actions.showBuildResults()),
-        clickBuild: () => dispatch(actions.doBuild()),
-        getSearch: (needle) => dispatch(actions.getSearch(needle)),
-    }
-};
-
-const mergeProps = (stateProps, dispatchProps) => {
-    let props = Object.assign({}, stateProps, dispatchProps);
-    if (stateProps.buildState === BuildState.BUILDING) {
-        props.clickBuild = null;
-    }
-    return props;
-};
-
-export const SearchPanelController = connect(
-    mapStateToProps,
-    mapDispatchToProps,
-    mergeProps
-)(SearchPanel);
 
 function SearchBox(props) {
     const enterKeyCode = 13;
     const onKeyPress = (e) => {
         if (e.which === enterKeyCode) {
-            props.getSearch(e.currentTarget.value);
+            actions.getSearch(props.app, e.currentTarget.value);
         }
     };
 
@@ -79,63 +41,33 @@ function SearchBox(props) {
     </div>)
 }
 
-function BuildButton(props) {
-    const state = props.state;
-    let label;
-    let className = "button";
-    if (state === BuildState.FRESH) {
-        label = "build";
-        className += " enabled_button";
-    } else if (state === BuildState.BUILDING) {
-        label = "building...";
-        className += " disabled_button";
-    } else if (state === BuildState.BUILT) {
-        label = "rebuild";
-        if (CONFIG.build_on_load) {
-            label += " (F5)";
-        }
-        className += " enabled_button";
-    }
+// function OptionsMenu(props) {
+//     let items = [
+//         { id: "opt-0", label: "list view/code view", fn: () => {} },
+//         { id: "opt-1", label: "show/hide warnings", fn: () => {} },
+//         { id: "opt-2", label: "show/hide notes and help", fn: () => {} },
+//         { id: "opt-3", label: "show/hide all source snippets", fn: () => {} },
+//         { id: "opt-4", label: "show/hide context for source code", fn: () => {} },
+//         { id: "opt-5", label: "show/hide child messages", fn: () => {} },
+//         { id: "opt-6", label: "show/hide error context", fn: () => {} },
+//         { id: "opt-7", label: "build command: <code>cargo build</code>", fn: () => {} },
+//         { id: "opt-8", label: "toolchain: TODO", fn: () => {} },
+//         { id: "opt-9", label: "build time: TODO", fn: () => {} },
+//         { id: "opt-10", label: "exit status: TODO", fn: () => {} }
+//     ];
 
-    return <span id="link_build" className={className} onClick={props.onClick}>{label}</span>;
-}
+//     return <Menu id={"div_options"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
+// }
 
-function OptionsMenu(props) {
-    let items = [
-        { id: "opt-0", label: "list view/code view", fn: () => {} },
-        { id: "opt-1", label: "show/hide warnings", fn: () => {} },
-        { id: "opt-2", label: "show/hide notes and help", fn: () => {} },
-        { id: "opt-3", label: "show/hide all source snippets", fn: () => {} },
-        { id: "opt-4", label: "show/hide context for source code", fn: () => {} },
-        { id: "opt-5", label: "show/hide child messages", fn: () => {} },
-        { id: "opt-6", label: "show/hide error context", fn: () => {} },
-        { id: "opt-7", label: "build command: <code>cargo build</code>", fn: () => {} },
-        { id: "opt-8", label: "toolchain: TODO", fn: () => {} },
-        { id: "opt-9", label: "build time: TODO", fn: () => {} },
-        { id: "opt-10", label: "exit status: TODO", fn: () => {} }
-    ];
+// class Options extends MenuHost {
+//     constructor(props) {
+//         super(props);
+//         this.menuFn = OptionsMenu;
+//         this.leftClick = true;
+//     }
 
-    return <Menu id={"div_options"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
-}
+//     renderInner() {
+//         return <span id="link_options" className="button">options</span>;
+//     }
+// }
 
-class Options extends MenuHost {
-    constructor(props) {
-        super(props);
-        this.menuFn = OptionsMenu;
-        this.leftClick = true;
-    }
-
-    renderInner() {
-        return <span id="link_options" className="button">options</span>;
-    }
-}
-
-function Indicator(props) {
-    let overlay = null;
-    let className = "div_border_plain";
-    if (props.status) {
-        overlay = <div id="div_border_animated" className="animated_border" />;
-        className = "div_border_status";
-    }
-    return <div id="div_border" className={className}>{overlay}</div>;
-}

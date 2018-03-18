@@ -7,11 +7,15 @@
 // except according to those terms.
 
 import * as React from 'react';
+import * as actions from './actions';
+
+import { RustwApp } from './app.js';
+
 declare var CONFIG: any;
 
 export interface BreadCrumbProps {
+    app: RustwApp,
     path: Array<string>,
-    getSource: (path :string) => any
 }
 
 export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
@@ -37,7 +41,7 @@ export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
             root = [];
 
             const pathCopy = path;
-            const onClick = () => props.getSource(pathCopy);
+            const onClick = () => actions.getSource(props.app, pathCopy);
             return (<span key={path}> > <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
         });
     return <div id="div_dir_path">

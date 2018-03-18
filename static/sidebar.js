@@ -7,19 +7,12 @@
 // except according to those terms.
 
 import React from 'react';
-import { connect } from 'react-redux';
-import * as actions from './actions';
-import { SearchPanelController } from './searchPanel.js';
-
-import { SearchResults } from "./search";
-
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
-function Sidebar(props) {
-    let searchResults = null;
-    if (props.page.defs || props.page.refs) {
-        searchResults = <SearchResults defs={props.page.defs} refs={props.page.refs} />;
-    }
+import { SearchPanel } from './searchPanel.js';
+
+
+export function Sidebar(props) {
     return (
         <Tabs className="div_sidebar" selectedTabClassName="selected">
             <TabList className="div_sidebar_tabs">
@@ -27,27 +20,10 @@ function Sidebar(props) {
                 <Tab className="div_sidebar_tab">files</Tab>
             </TabList>
             <TabPanel className="div_sidebar_main">
-                <SearchPanelController/>
-                <div id="div_search_results">{searchResults}</div>
+                <SearchPanel app={props.app} {...props.search} />
             </TabPanel>
             <TabPanel className="div_sidebar_main">
             </TabPanel>
         </Tabs>
     );
 }
-
-const mapStateToProps = (state, ownProps) => {
-    return ownProps;
-}
-
-const mapDispatchToProps = (dispatch) => {
-    return {
-        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
-        
-    }
-}
-
-export const SidebarController = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(Sidebar);

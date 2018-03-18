@@ -6,8 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-import * as actions from './actions';
-
 export function make_url(suffix) {
     return '/' + CONFIG.demo_mode_root_path + suffix;
 }
@@ -59,7 +57,9 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
     }
 }
 
-export function request(dispatch, urlStr, success, errStr, suppressMessages) {
+// Only supply the `app` argument if you want to show loading/error messages
+// in the main content panel.
+export function request(urlStr, success, errStr, app) {
     const self = this;
     $.ajax({
         url: self.make_url(urlStr),
@@ -72,14 +72,13 @@ export function request(dispatch, urlStr, success, errStr, suppressMessages) {
         console.log(errStr);
         console.log("error: " + errorThrown + "; status: " + status);
 
-        if (!suppressMessages) {
-            dispatch(actions.showError());
+        if (!!app) {
+            app.showError();
         }
-        // history.pushState({}, "", self.make_url("#error"));
     });
 
-    if (!suppressMessages) {
-        dispatch(actions.showLoading());
+    if (!!app) {
+        app.showLoading();
     }
 }
 
@@ -122,13 +121,13 @@ export function parseLink(file_loc) {
 
 export function edit(target) {
     request(
-        null,
         'edit?file=' + target.dataset.link,
         function(json) {
             console.log("edit - success");
         },
         "Error with search edit",
-        true);
+        null
+    );
 }
 
 // Left is the number of chars from the left margin to where the highlight

@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import { connect } from 'react-redux';
 import * as actions from './actions';
 
 import * as utils from './utils';
@@ -20,7 +19,7 @@ function add_ref_functionality(self) {
     for (const el of $("#div_src_view").find(".class_id")) {
         const element = $(el);
         const classes = el.className.split(' ');
-        // TODO[ES6]: use classes.find() and then execute following code
+        // FIXME[ES6]: use classes.find() and then execute following code
         let c = classes.find((c) => c.startsWith('class_id_'));
         if(c === undefined) {
             return;
@@ -56,7 +55,7 @@ function LineNumberMenu(props) {
 // props: location, onClose, target, id
 // location: { "top": event.pageY, "left": event.pageX }
 function RefMenu(props) {
-    let items = [{ id: "ref_menu_view_summary", label: "view summary", fn: () => props.getSummary(props.id) }];
+    let items = [];
 
     const docUrl = props.target.dataset.docLink;
     if (docUrl) {
@@ -67,12 +66,12 @@ function RefMenu(props) {
         items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
     }
 
-    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.getUses(props.id) });
+    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => actions.getUses(props.app, props.id) });
 
     let impls = props.target.dataset.impls;
     // XXX non strict comparison
     if (impls && impls != "0") {
-        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.getImpls(props.id) });
+        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => actions.getImpls(props.app, props.id) });
     }
 
     return <Menu id={"div_ref_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
@@ -87,7 +86,7 @@ function view_in_vcs(target) {
 
 // See https://github.com/Microsoft/TypeScript/issues/18134
 /** @augments {React.Component<object, object>} */
-class SourceView extends React.Component {
+export class SourceView extends React.Component {
     constructor(props) {
         super(props);
         this.state = { refMenu: null, status: null };
@@ -115,17 +114,12 @@ class SourceView extends React.Component {
             var file = file_loc[0];
 
             if (file === "search") {
-                this.props.getUses(file_loc[1]);
-                return;
-            }
-
-            if (file === "summary") {
-                this.props.getSummary(file_loc[1]);
+                actions.getUses(this.props.app, file_loc[1]);
                 return;
             }
 
             let data = utils.parseLink(file_loc);
-            this.props.getSource(file, data);
+            actions.getSource(this.props.app, file, data);
         });
 
         add_ref_functionality(this);
@@ -136,13 +130,12 @@ class SourceView extends React.Component {
 
         let self = this;
         utils.request(
-            null,
             "status",
             function (data) {
                 self.setState({ status: data.status });
             },
             "Could not fetch status",
-            true,
+            null,
         );
     }
 
@@ -160,11 +153,11 @@ class SourceView extends React.Component {
         if (!!this.state.refMenu) {
             const onClose = () => this.setState({ refMenu: null });
 
-            refMenu = <RefMenu location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} getSummary={this.props.getSummary} getUses={this.props.getUses} getImpls={this.props.getImpls} />;
+            refMenu = <RefMenu app={this.props.app} location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
         }
 
         return <div id="src"> 
-            <BreadCrumbs path={this.props.path} getSource={this.props.getSource} />
+            <BreadCrumbs app={this.props.app} path={this.props.path} />
             <div id="div_src_view">
                 <div id="div_src_contents">
                     <span className="div_src_line_numbers">
@@ -182,24 +175,6 @@ class SourceView extends React.Component {
         </div>;
     }
 }
-
-const mapStateToProps = (state, ownProps) => {
-    return ownProps;
-}
-
-const mapDispatchToProps = (dispatch, ownProps) => {
-    return {
-        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
-        getSummary: (id) => dispatch(actions.getSummary(id)),
-        getImpls: (needle) => dispatch(actions.getImpls(needle)),
-        getUses: (needle) => dispatch(actions.getUses(needle)),
-    };
-}
-
-export const SourceViewController = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(SourceView);
 
 function jumpToLine(line) {
     // Jump to the start line. 100 is a fudge so that the start line is not

@@ -8,26 +8,30 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Provider, connect } from 'react-redux';
-import { createStore, applyMiddleware } from 'redux';
-import { BrowserRouter as Router, Route, withRouter } from 'react-router-dom'
-import thunk from 'redux-thunk';
-import { rustwReducer, Page } from './reducers';
+import { BrowserRouter as Router, Route, withRouter } from 'react-router-dom';
 import * as actions from './actions';
 
 import * as utils from './utils';
-import { ResultsController, Error } from "./errors";
-import { ErrCodeController } from "./err_code";
 import { DirView } from './dirView';
-import { SourceViewController } from './srcView';
-import { Summary } from './summary';
-import { SidebarController } from './sidebar';
+import { SourceView } from './srcView';
+import { Sidebar } from './sidebar';
 
-// TODOs in build
+const Page = {
+    START: 'START',
+    SOURCE: 'SOURCE',
+    SOURCE_DIR: 'SOURCE_DIR',
+    SEARCH: 'SEARCH',
+    FIND: 'FIND',
+    INTERNAL_ERROR: 'INTERNAL_ERROR',
+};
 
-class RustwApp extends React.Component {
+export class RustwApp extends React.Component {
+    constructor() {
+        super();
+        this.state = { page: Page.START }
+    }
+
     componentWillMount() {
-
         // history.replaceState(MAIN_PAGE_STATE, "");
         // window.onpopstate = onPopState;    
     }
@@ -39,31 +43,47 @@ class RustwApp extends React.Component {
             success: (data) => {
                 CONFIG = data;
             },
-            async: false,
+            async: false
         });
-        store.dispatch(actions.getSource(CONFIG.workspace_root));
+        actions.getSource(this, CONFIG.workspace_root);
+    }
+
+    showSource(path, lines, lineStart, highlight) {
+        this.setState({ page: Page.SOURCE, params: { path, lines, highlight, lineStart }});
+    }
+
+    showSourceDir(path, files) {
+        this.setState({ page: Page.SOURCE_DIR, params: { path, files }});
+    }
+
+    showLoading() {
+        this.setState({ page: Page.LOADING});
+    }
+
+    showError() {
+        this.setState({ page: Page.INTERNAL_ERROR});
+    }
+
+    showSearch(defs, refs) {
+        this.setState({ search: { defs, refs, results: null }});
+    }
+
+    showFind(results) {
+        this.setState({ search: { results, defs: null, refs: null }});
     }
 
     render() {
+        // FIXME factor out the content panel
         let divMain;
-        switch (this.props.page.type) {
-            case Page.BUILD_RESULTS:
-                divMain = <ResultsController />;
-                break;
-            case Page.ERR_CODE:
-                divMain = <ErrCodeController />;
-                break;
+        switch (this.state.page) {
             case Page.SOURCE:
-                divMain = <SourceViewController path={this.props.page.path} lines={this.props.page.lines} highlight={this.props.page.highlight} scrollTo={this.props.page.lineStart} />;
+                divMain = <SourceView app={this} path={this.state.params.path} lines={this.state.params.lines} highlight={this.state.params.highlight} scrollTo={this.state.params.lineStart} />;
                 break;
             case Page.SOURCE_DIR:
-                divMain = <DirView path={this.props.page.path} files={this.props.page.files} getSource={this.props.getSource} />;
+                divMain = <DirView app={this} path={this.state.params.path} files={this.state.params.files} />;
                 break;
             case Page.LOADING:
                 divMain = <div id="div_loading">Loading...</div>;
-                break;
-            case Page.SUMMARY:
-                divMain = <Summary breadCrumbs={this.props.page.breadCrumbs} parent={this.props.page.parent} signature={this.props.page.signature} doc_summary={this.props.page.doc_summary} doc_rest={this.props.page.doc_rest} children={this.props.page.children} />;
                 break;
             case Page.INTERNAL_ERROR:
                 divMain = "Server error?";
@@ -75,40 +95,18 @@ class RustwApp extends React.Component {
 
         return <div id="div_app">
             <div id="div_main">
-                <SidebarController page={this.props.page}/>
+                <Sidebar app={this} search={this.state.search} />
                 {divMain}
             </div>
         </div>;
     }
 }
 
-const mapStateToProps = (state) => {
-    return {
-        page: state.page,
-    }
-}
-
-const mapDispatchToProps = (dispatch) => {
-    return {
-        getSource: (fileName, lineStart) => dispatch(actions.getSource(fileName, lineStart)),
-    }
-}
-
-const AppController = withRouter(connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(RustwApp));
-
-
-let store = createStore(rustwReducer, applyMiddleware(thunk));
-
 export function renderApp() {
     ReactDOM.render(
-        <Provider store={store}>
-            <Router>
-                <Route path='/' component={AppController} />
-            </Router>
-        </Provider>,
+        <Router>
+            <Route path='/' component={RustwApp} />
+        </Router>,
         document.getElementById('container')
     );
 }

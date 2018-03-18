@@ -8,18 +8,20 @@
 
 import * as React from 'react';
 
+import * as actions from './actions';
 import { BreadCrumbs } from './breadCrumbs';
+import { RustwApp } from './app.js';
 
 export interface DirViewProps {
+    app: RustwApp,
     files: Array<any>,
     path: Array<string>,
-    getSource: (path :string) => any
 }
 
 export const DirView: React.SFC<DirViewProps> = (props) => {
     const dirPath = props.path.join('/');
     let files = props.files.map((f: any) => {
-        const onClick = () => props.getSource(`${dirPath}/${f.name}`);
+        const onClick = () => actions.getSource(props.app, `${dirPath}/${f.name}`);
         const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';
         return (
             <div className="div_entry" key={f.name}>
@@ -28,7 +30,7 @@ export const DirView: React.SFC<DirViewProps> = (props) => {
         );
     });
     return <div id="src">
-        <BreadCrumbs path = {props.path} getSource={props.getSource} />
+        <BreadCrumbs app = {props.app} path = {props.path} />
         <div id="div_dir_view">
             <div id="div_dir_contents">
                 {files}
