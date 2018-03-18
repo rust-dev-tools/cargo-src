@@ -11,11 +11,15 @@ import { connect } from 'react-redux';
 import * as actions from './actions';
 import { SearchPanelController } from './searchPanel.js';
 
-import { FindResults, SearchResults } from "./search";
+import { SearchResults } from "./search";
 
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 function Sidebar(props) {
+    let searchResults = null;
+    if (props.page.defs || props.page.refs) {
+        searchResults = <SearchResults defs={props.page.defs} refs={props.page.refs} />;
+    }
     return (
         <Tabs className="div_sidebar" selectedTabClassName="selected">
             <TabList className="div_sidebar_tabs">
@@ -24,7 +28,7 @@ function Sidebar(props) {
             </TabList>
             <TabPanel className="div_sidebar_main">
                 <SearchPanelController/>
-                <div id="div_search_results"><SearchResults defs={props.page.defs} refs={props.page.refs} /></div> 
+                <div id="div_search_results">{searchResults}</div>
             </TabPanel>
             <TabPanel className="div_sidebar_main">
             </TabPanel>

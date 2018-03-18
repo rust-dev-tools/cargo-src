@@ -18,7 +18,6 @@ import * as actions from './actions';
 import * as utils from './utils';
 import { ResultsController, Error } from "./errors";
 import { ErrCodeController } from "./err_code";
-import { FindResults, SearchResults } from "./search";
 import { DirView } from './dirView';
 import { SourceViewController } from './srcView';
 import { Summary } from './summary';

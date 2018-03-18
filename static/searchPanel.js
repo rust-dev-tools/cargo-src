@@ -10,7 +10,6 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { BuildState } from './reducers';
 
-import { FindResults, SearchResults } from "./search";
 import { Menu, MenuHost } from './menus';
 import * as actions from './actions';
 
