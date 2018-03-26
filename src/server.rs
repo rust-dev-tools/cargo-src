@@ -8,11 +8,9 @@
 
 use analysis;
 use build::{self, BuildArgs};
-use build::errors::{self, Diagnostic};
 use config::Config;
 use file_cache::Cache;
 use listings::{Listing, DirectoryListing};
-use reprocess;
 use futures;
 
 use std::collections::HashMap;
@@ -30,9 +28,6 @@ use hyper::server::Response;
 use hyper::StatusCode;
 use hyper::server::Service;
 use hyper::error::Error;
-use hyper::Body;
-use hyper::Chunk;
-use futures::sync::mpsc::Sender;
 use serde_json;
 use span;
 
@@ -82,7 +77,7 @@ impl Server {
         thread::spawn(move || {
             println!("Building...");
             status.start_build();
-            builder.build(None).unwrap();
+            builder.build().unwrap();
             status.finish_build();
 
             status.start_analysis();
@@ -158,56 +153,6 @@ impl fmt::Display for Status {
     }
 }
 
-// Diagnostics are streamed to the client. This struct is an interface for
-// the build module to relay messages as an event stream.
-pub struct DiagnosticEventHandler {
-    lowering_ctxt: errors::LoweringContext,
-    tx: Sender<Result<Chunk, Error>>,
-    diagnostics: Vec<Diagnostic>,
-}
-
-impl DiagnosticEventHandler {
-    fn new(tx: Sender<Result<Chunk, Error>>) -> DiagnosticEventHandler {
-        DiagnosticEventHandler {
-            lowering_ctxt: errors::LoweringContext::new(),
-            tx: tx,
-            diagnostics: vec![],
-        }
-    }
-
-    pub fn handle_msg(&mut self, msg: &str) {
-        let parsed = errors::parse_error(&msg, &mut self.lowering_ctxt);
-        match parsed {
-            errors::ParsedError::Diagnostic(d) => {
-                let text = serde_json::to_string(&d).unwrap();
-                self.tx
-                    .try_send(Ok(Chunk::from(format!("event: error\ndata: {}\n\n", text))))
-                    .unwrap();
-                self.diagnostics.push(d);
-            }
-            errors::ParsedError::Message(s) => {
-                let text = serde_json::to_string(&s).unwrap();
-                self.tx
-                    .try_send(Ok(Chunk::from(format!(
-                        "event: message\ndata: {}\n\n",
-                        text
-                    ))))
-                    .unwrap();
-            }
-            errors::ParsedError::Error => {}
-        }
-    }
-
-    fn complete(mut self, result: &BuildResult) -> Vec<Diagnostic> {
-        let text = serde_json::to_string(&result).unwrap();
-
-        self.tx
-            .try_send(Ok(Chunk::from(format!("event: close\ndata: {}\n\n", text))))
-            .unwrap();
-
-        self.diagnostics
-    }
-}
 
 impl Server {
     fn route(
@@ -267,10 +212,6 @@ impl Server {
         }
 
         if !self.config.demo_mode {
-            if path[0] == BUILD_REQUEST {
-                return self.handle_build(req);
-            }
-
             if path[0] == EDIT_REQUEST {
                 return self.handle_edit(req, query);
             }
@@ -433,58 +374,6 @@ impl Server {
         let mut res = Response::new();
         res.headers_mut().set(ContentType::json());
         return res.with_body(text);
-    }
-
-    fn handle_build(
-        &self,
-        _req: Request,
-    ) -> Response {
-        assert!(
-            !self.config.demo_mode,
-            "Build shouldn't happen in demo mode"
-        );
-
-        {
-            self.file_cache.reset();
-        }
-
-        let mut res = Response::new();
-        res.headers_mut()
-            .set(ContentType("text/event-stream".parse().unwrap()));
-
-        let (tx, body) = Body::pair();
-        res.set_body(body);
-        self.spawn_build(tx);
-
-        res
-    }
-
-    fn spawn_build(
-        &self,
-        res: Sender<Result<Chunk, Error>>) {
-        let pending_pull_data = self.pending_pull_data.clone();
-        let file_cache = self.file_cache.clone();
-        let config = self.config.clone();
-        let status = self.status.clone();
-        let builder = self.builder.clone();
-
-        thread::spawn(move || {
-            status.start_build();
-            let mut diagnostic_event_handler = DiagnosticEventHandler::new(res);
-            let build_result = builder.build(Some(&mut diagnostic_event_handler)).unwrap();
-            status.finish_build();
-            let key = reprocess::make_key();
-            let result = BuildResult::from_build(&build_result, key.clone());
-            pending_pull_data.lock().unwrap().insert(key, None);
-            let diagnostics = diagnostic_event_handler.complete(&result);
-            reprocess::reprocess_snippets(
-                result.pull_data_key,
-                diagnostics,
-                pending_pull_data,
-                file_cache,
-                config,
-            )
-        });
     }
 
     fn handle_edit(
@@ -744,24 +633,6 @@ pub struct TextResult<'a> {
     line_end: usize,
 }
 
-#[derive(Serialize, Debug)]
-pub struct BuildResult {
-    pub messages: Vec<String>,
-    pub errors: Vec<Diagnostic>,
-    pub pull_data_key: String,
-}
-
-impl BuildResult {
-    fn from_build(build: &build::BuildResult, key: String) -> BuildResult {
-        let (errors, messages) = errors::parse_errors(&build.stderr);
-        BuildResult {
-            messages: messages,
-            errors: errors,
-            pull_data_key: key,
-        }
-    }
-}
-
 fn static_path() -> PathBuf {
     const STATIC_DIR: &'static str = "static";
 
@@ -804,7 +675,6 @@ const STATIC_REQUEST: &'static str = "static";
 const SOURCE_REQUEST: &'static str = "src";
 const PLAIN_TEXT: &'static str = "plain_text";
 const CONFIG_REQUEST: &'static str = "config";
-const BUILD_REQUEST: &'static str = "build";
 const EDIT_REQUEST: &'static str = "edit";
 const PULL_REQUEST: &'static str = "pull";
 const SEARCH_REQUEST: &'static str = "search";

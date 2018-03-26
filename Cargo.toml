@@ -12,7 +12,6 @@ categories = ["development-tools"]
 name = "cargo-src"
 
 [dependencies]
-derive-new = "0.3"
 url = "0.5"
 serde = "1.0"
 serde_json = "1.0"

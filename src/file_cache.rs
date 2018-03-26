@@ -95,10 +95,6 @@ impl Cache {
         }
     }
 
-    pub fn reset(&self) {
-        self.files.clear();
-    }
-
     pub fn get_text(&self, path: &Path) -> Result<String, String> {
         match self.files.load_file(path) {
             Ok(FileContents::Text(s)) => Ok(s),

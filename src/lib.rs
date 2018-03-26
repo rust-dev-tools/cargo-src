@@ -14,8 +14,6 @@
 #![feature(proc_macro)]
 #![feature(integer_atomics)]
 
-#[macro_use]
-extern crate derive_new;
 extern crate hyper;
 extern crate futures;
 #[macro_use]
@@ -43,7 +41,6 @@ pub use build::BuildArgs;
 
 mod build;
 pub mod config;
-mod reprocess;
 mod file_cache;
 mod listings;
 mod highlight;
