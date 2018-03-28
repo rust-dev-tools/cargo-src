@@ -8,8 +8,15 @@
 
 use config::Config;
 
+use cargo_metadata;
+use std::collections::HashMap;
+use std::fs::{read_dir, remove_file};
+use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
+
+// FIXME use `join` not `/`
+const TARGET_DIR: &str = "target/rls";
 
 #[derive(Clone)]
 pub struct Builder {
@@ -38,7 +45,7 @@ impl Builder {
         cmd.args(&self.build_args.args);
         // FIXME(#170) configure save-analysis
         cmd.env("RUSTFLAGS", "-Zunstable-options -Zsave-analysis");
-        cmd.env("CARGO_TARGET_DIR", "target/rls");
+        cmd.env("CARGO_TARGET_DIR", TARGET_DIR);
         cmd.env("RUST_LOG", "");
 
         cmd
@@ -47,6 +54,84 @@ impl Builder {
     pub fn build(&self) -> Option<i32> {
         let mut cmd = self.init_cmd();
         let status = cmd.status().expect("Running build failed");
+        self.clean_analysis();
         status.code()
+    }
+
+    // Remove any old or duplicate json files.
+    fn clean_analysis(&self) {
+        let crate_names = self.crate_names();
+        let crate_names: Vec<&str> = crate_names.iter().map(|n| &**n).collect();
+
+        let analysis_dir = Path::new(&TARGET_DIR).join("debug").join("deps").join("save-analysis");
+        if let Ok(dir_contents) = read_dir(&analysis_dir) {
+            // We're going to put all files for the same crate in one bucket, then delete duplicates.
+            let mut buckets = HashMap::new();
+            for entry in dir_contents {
+                let entry = entry.expect("unexpected error reading save-analysis directory");
+                let name = entry.file_name();
+                let mut name = name.to_str().unwrap();
+
+                if !name.ends_with("json") {
+                    continue;
+                }
+
+                if name.starts_with("lib") {
+                    name = &name[3..];
+                }
+
+                let hyphen = name.find('-');
+                let hyphen = match hyphen {
+                    Some(h) => h,
+                    None => continue,
+                };
+                let name = &name[..hyphen];
+                // The JSON file does not correspond with any crate from `cargo
+                // metadata`, so it is presumably an old dep that has been removed.
+                // So, we should delete it.
+                if !crate_names.contains(&name) {
+                    info!("deleting {:?}", entry.path());
+                    if let Err(e) = remove_file(entry.path()) {
+                        debug!("Error deleting file, {:?}: {}", entry.file_name(), e);
+                    }
+
+                    continue;
+                }
+
+                buckets
+                    .entry(name.to_owned())
+                    .or_insert_with(|| vec![])
+                    .push((entry.path(), entry.metadata().expect("no file metadata").created().expect("no created time")))
+            }
+
+            for bucket in buckets.values_mut() {
+                if bucket.len() <= 1 {
+                    continue;
+                }
+
+                // Sort by date created (JSON files are effectively read only)
+                bucket.sort_by(|a, b| b.1.cmp(&a.1));
+                // And delete all but the newest file.
+                for &(ref path, _) in &bucket[1..] {
+                    info!("deleting {:?}", path);
+                    if let Err(e) = remove_file(path) {
+                        debug!("Error deleting file, {:?}: {}", path, e);
+                    }
+                }
+            }
+        }
+    }
+
+    fn crate_names(&self) -> Vec<String> {
+        let metadata = match cargo_metadata::metadata_deps(None, true) {
+            Ok(metadata) => metadata,
+            Err(_) => return Vec::new(),
+        };
+
+        metadata
+            .packages
+            .into_iter()
+            .map(|p| p.name)
+            .collect()
     }
 }

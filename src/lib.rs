@@ -14,6 +14,7 @@
 #![feature(proc_macro)]
 #![feature(integer_atomics)]
 
+extern crate cargo_metadata;
 extern crate hyper;
 extern crate futures;
 #[macro_use]
