@@ -436,7 +436,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rustdoc-highlight"
 version = "0.1.1"
-source = "git+https://github.com/nrc/rustdoc-highlight#0f5c2e95f9dc19e3c4c8830b206df10851e1d2bb"
+source = "git+https://github.com/nrc/rustdoc-highlight#05287a9be9fe5298f585f332a3efeeedea4c37ba"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
