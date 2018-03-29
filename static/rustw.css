@@ -150,7 +150,8 @@ html {
 #div_main {
     box-sizing: border-box;
     background-color: #fafafa;
-    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
     font-size: small;
     display: flex;
 }
@@ -164,82 +165,6 @@ html {
 #container {
     min-height: 100%;
     display: flex;
-}
-#div_message {
-    margin-bottom: 20px;
-}
-#div_stdout {
-    margin-bottom: 20px;
-}
-#div_errors {
-    margin-bottom: 20px;
-}
-#div_std_label {
-    font-weight: 600;
-    margin-left: 8px;
-}
-
-#div_messages pre {
-    margin-top: 4px;
-    margin-bottom: 4px;    
-}
-
-.div_diagnostic {
-    margin-top: 5px;
-    margin-left: 10px;
-}
-.group_children {
-    display: block;
-    margin-top: 5px;
-    margin-bottom: -10px;
-}
-.div_children {
-    display: block;
-    margin-left: 40px;
-}
-.div_children_dots {
-    margin-left: 30px;
-    position: relative;
-    top: -10px;
-}
-.div_diagnostic_nested {
-    display: block;
-    margin-top: -10px;
-}
-.group_children>.small_button {
-    display: block;
-    position: relative;
-    top: 7px;
-}
-
-.div_snippet>.small_button {
-    vertical-align: top;
-}
-.div_span {
-    display: block;
-}
-.div_spans {
-    position: relative;
-    top: 2px;
-    display: inline-block;
-}
-.div_span_label {
-    display: inline-block;
-    margin-left: 2em;
-}
-
-.level_error {
-    color: red;
-}
-.level_warning {
-    color: gold;
-}
-.level_note {
-    color: green;
-}
-.level_help {
-    color: green;
-    vertical-align: top;
 }
 
 a.issue_link, a.link {
@@ -288,28 +213,6 @@ a.issue_link:active, a.link  { color: black }
     position: relative;
     z-index: 1;
     width: -moz-max-content;
-}
-.err_code {
-    display: inline-block;
-}
-.err_code_link {
-    text-decoration: underline;
-    cursor: pointer;
-}
-#div_err_code {
-    margin-left: 20px;
-}
-#div_err_code_explain {
-    margin-top: 30px;
-    max-width: 700px;
-    font-size: medium;
-}
-span.err_msg {
-    display: inline-block;
-    vertical-align: top;
-}
-span.err_colon {
-    vertical-align: top;
 }
 
 .div_entry {
@@ -590,7 +493,7 @@ span#measure {
     cursor: pointer;
 }
 
-#div_dir_view, #div_src_view, #div_build_results, #div_loading, #div_search_results {
+#div_dir_view, #div_src_view, #div_loading, #div_search_results {
     position: relative;
     padding: 0.5em 0em;
 }
@@ -603,7 +506,9 @@ span#measure {
     padding: 10px 20px;
     background-color: #CCCCFF;
 }
+.div_src_view {
 
+}
 .div_sidebar {
     flex: 0 0 250px;
     background-color: lightgrey;
@@ -631,7 +536,12 @@ span#measure {
 
 .div_sidebar_main {
     padding: 10px;
-    overflow: hidden;
+    overflow: scroll;
+    display: none;
+}
+
+.div_sidebar_main.react-tabs__tab-panel--selected {
+    display: block;
 }
 
 #search_box{
@@ -647,4 +557,5 @@ span#measure {
 
 #src {
     flex: 1;
+    overflow: scroll;
 }
