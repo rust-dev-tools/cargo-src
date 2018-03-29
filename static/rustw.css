@@ -186,6 +186,7 @@ a.issue_link:active, a.link  { color: black }
 }
 .div_all_span_src {
     font-family: 'Fira Code';
+    font-size: smaller;
     white-space: nowrap;
 }
 .div_children .div_all_span_src {
@@ -209,7 +210,6 @@ a.issue_link:active, a.link  { color: black }
 .span_src {
     display: block;
     white-space: pre;
-    padding-left: 1em;
     position: relative;
     z-index: 1;
     width: -moz-max-content;
@@ -412,19 +412,17 @@ span#measure {
 }
 
 .div_search_title {
-    font-weight: heavy;
+    font-size: large;
 }
 .div_search_file_link {
     padding-top: 0.2em;
+    padding-bottom: 0.5em;
     text-decoration: underline;
     cursor: pointer;
 }
 .div_search_results {
-    padding-left: 2em;
+    padding-top: 0.25em;
     padding-bottom: 1.5em;
-}
-.div_search_results .div_all_span_src {
-    padding-left: 2em;
 }
 .div_search_results .div_span_src_number {
     cursor: pointer;

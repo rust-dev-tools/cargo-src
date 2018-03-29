@@ -45,12 +45,19 @@ class ResultSet extends React.Component {
                     actions.getSource(self.props.app, r.file_name, highlight);
                     e.preventDefault();
                 };
+
+                // Squash the indent down by a factor of four.
+                const text = l.line;
+                let trimmed = text.trimLeft();
+                const newIndent = (text.length - trimmed.length) / 4;
+                trimmed = trimmed.padStart(trimmed.length + newIndent);
+
                 return (<div key={`${kind}-${count}-${l.line_start}`}>
                     <span className="div_span_src_number">
                         <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
                     </span>
                     <span className="div_span_src">
-                        <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: l.line}} />
+                        <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: trimmed}} />
                     </span>
                     <br />
                 </div>);
@@ -94,9 +101,9 @@ export function SearchResults(props) {
         return noResults();
     } else {
         return <div>
-            <div className="div_search_title">Definitions:</div>
+            <div className="div_search_title">Definitions</div>
             <ResultSet app={props.app} input={props.defs} kind="def"/>
-            <div className="div_search_title">References:</div>
+            <div className="div_search_title">References</div>
             <ResultSet app={props.app} input={props.refs} kind="ref"/>
         </div>;
     }
