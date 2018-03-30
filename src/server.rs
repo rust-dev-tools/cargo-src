@@ -13,14 +13,12 @@ use file_cache::Cache;
 use listings::{Listing, DirectoryListing};
 use futures;
 
-use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, Ordering}};
-use std::thread::{self, sleep};
-use std::time;
+use std::thread;
 
 use hyper::header::ContentType;
 use hyper::server::Request;
@@ -41,8 +39,6 @@ pub struct Server {
     builder: build::Builder,
     pub config: Arc<Config>,
     file_cache: Arc<Cache>,
-    // Data which is produced by a post-build pass (see reprocess.rs).
-    pending_pull_data: Arc<Mutex<HashMap<String, Option<String>>>>,
     status: Status
 }
 
@@ -59,8 +55,6 @@ impl Server {
             builder: build::Builder::new(config.clone(), build_args),
             config: config,
             file_cache: Arc::new(Cache::new()),
-            // FIXME(#58) a rebuild should cancel all pending tasks.
-            pending_pull_data: Arc::new(Mutex::new(HashMap::new())),
             status: Status::new(),
         };
 
@@ -182,10 +176,6 @@ impl Server {
 
         if path[0] == CONFIG_REQUEST {
             return self.handle_config(req);
-        }
-
-        if path[0] == PULL_REQUEST {
-            return self.handle_pull(req, query);
         }
 
         if path[0] == SOURCE_REQUEST {
@@ -571,44 +561,6 @@ impl Server {
             }
         }
     }
-
-    fn handle_pull(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
-        match parse_query_value(query, "key=") {
-            Some(key) => {
-                let mut res = Response::new();
-                res.headers_mut().set(ContentType::json());
-
-                loop {
-                    let pending_pull_data = self.pending_pull_data.lock().unwrap();
-                    match pending_pull_data.get(&key) {
-                        Some(&Some(ref s)) => {
-                            // Data is ready, return it.
-                            return res.with_body(s.clone());
-                        }
-                        Some(&None) => {
-                            // Task is in progress, wait.
-                        }
-                        None => {
-                            // No push task, return nothing.
-                            return res.with_body("{}");
-                        }
-                    }
-                    sleep(time::Duration::from_millis(200));
-                }
-            }
-            None => {
-                self.handle_error(
-                    _req,
-                    StatusCode::InternalServerError,
-                    "Bad query string".to_owned(),
-                )
-            }
-        }
-    }
 }
 
 // The below data types are used to pass data to the client.
@@ -671,12 +623,11 @@ fn parse_query_value(query: Option<&str>, key: &str) -> Option<String> {
     }
 }
 
-const STATIC_REQUEST: &'static str = "static";
-const SOURCE_REQUEST: &'static str = "src";
-const PLAIN_TEXT: &'static str = "plain_text";
-const CONFIG_REQUEST: &'static str = "config";
-const EDIT_REQUEST: &'static str = "edit";
-const PULL_REQUEST: &'static str = "pull";
-const SEARCH_REQUEST: &'static str = "search";
-const FIND_REQUEST: &'static str = "find";
-const GET_STATUS: &'static str = "status";
+const STATIC_REQUEST: &str = "static";
+const SOURCE_REQUEST: &str = "src";
+const PLAIN_TEXT: &str = "plain_text";
+const CONFIG_REQUEST: &str = "config";
+const EDIT_REQUEST: &str = "edit";
+const SEARCH_REQUEST: &str = "search";
+const FIND_REQUEST: &str = "find";
+const GET_STATUS: &str = "status";
