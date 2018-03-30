@@ -58,12 +58,12 @@ npm install --save-dev immutable
 
 ## Running
 
-`rustw` in your project's directory (i.e., the directory you would normally use
+Run `CARGO=cargo /<your local filepath>/rustw/target/release/cargo-src` in your project's directory (i.e., the directory you would normally use
 cargo or rustc from).
 
-Running `rustw` will start a web server and display a URL in the console. To
+Running `cargo-src` will start a web server and display a URL in the console. To
 terminate the server, use `ctrl + c`. If you point your browser at the provided
-URL, it will build your project, output will be displayed in your browser. The
+URL, it will list the directories and files from your project, which you can then use to view the code. The
 terminal is only used to display some logging, it can be ignored. See
 [tour](#tour) for more.
 
