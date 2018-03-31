@@ -11,6 +11,7 @@
     "react-dom": "^15.6.2",
     "react-router-dom": "^4.2.2",
     "react-tabs": "^2.2.1",
+    "react-treebeard": "^2.1.0",
     "ts-loader": "^2.3.7",
     "typescript": "^2.5.2"
   },

@@ -28,12 +28,7 @@ const Page = {
 export class RustwApp extends React.Component {
     constructor() {
         super();
-        this.state = { page: Page.START }
-    }
-
-    componentWillMount() {
-        // history.replaceState(MAIN_PAGE_STATE, "");
-        // window.onpopstate = onPopState;    
+        this.state = { page: Page.START, fileTreeData: [] }
     }
 
     componentDidMount() {
@@ -42,10 +37,28 @@ export class RustwApp extends React.Component {
             url: "/config",
             success: (data) => {
                 CONFIG = data;
+                this.loadFileTreeData();
             },
             async: false
         });
         actions.getSource(this, CONFIG.workspace_root);
+    }
+
+    loadFileTreeData() {
+        let self = this;
+        utils.request(
+            'tree/' + CONFIG.workspace_root,
+            function(json) {
+                if (json.Directory) {
+                    self.setState({ fileTreeData: json })
+                } else {
+                    console.log("Unexpected tree data.")
+                    console.log(json);
+                }
+            },
+            "Error with tree request",
+            null,
+        );
     }
 
     showSource(path, lines, lineStart, highlight) {
@@ -95,7 +108,7 @@ export class RustwApp extends React.Component {
 
         return <div id="div_app">
             <div id="div_main">
-                <Sidebar app={this} search={this.state.search} />
+                <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} />
                 {divMain}
             </div>
         </div>;

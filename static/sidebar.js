@@ -10,20 +10,28 @@ import React from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 import { SearchPanel } from './searchPanel.js';
+import { TreePanel } from './treePanel.js';
 
 
-export function Sidebar(props) {
-    return (
-        <Tabs className="div_sidebar" selectedTabClassName="selected">
-            <TabList className="div_sidebar_tabs">
-                <Tab className="div_sidebar_tab">search</Tab>
-                <Tab className="div_sidebar_tab">files</Tab>
-            </TabList>
-            <TabPanel className="div_sidebar_main">
-                <SearchPanel app={props.app} {...props.search} />
-            </TabPanel>
-            <TabPanel className="div_sidebar_main">
-            </TabPanel>
-        </Tabs>
-    );
+export class Sidebar extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        return (
+            <Tabs className="div_sidebar" selectedTabClassName="selected">
+                <TabList className="div_sidebar_tabs">
+                    <Tab className="div_sidebar_tab">search</Tab>
+                    <Tab className="div_sidebar_tab">files</Tab>
+                </TabList>
+                <TabPanel className="div_sidebar_main">
+                    <SearchPanel app={this.props.app} {...this.props.search} />
+                </TabPanel>
+                <TabPanel className="div_sidebar_main">
+                    <TreePanel app={this.props.app} tree={this.props.fileTreeData} />
+                </TabPanel>
+            </Tabs>
+        );
+    }
 }

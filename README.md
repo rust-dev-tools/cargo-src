@@ -45,7 +45,8 @@ yarn
 
 # if not:
 
-npm install --save react react-dom redux react-redux redux-thunk
+npm install --save react react-dom
+npm install --save react-treebeard
 npm install --save-dev babel-loader babel-core
 npm install --save-dev babel-preset-react
 npm install --save-dev babel-preset-es2015

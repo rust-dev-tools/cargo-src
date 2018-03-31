@@ -178,15 +178,18 @@ impl Server {
             return self.handle_config(req);
         }
 
-        if path[0] == SOURCE_REQUEST {
+        if path[0] == SOURCE_REQUEST || path[0] == TREE_REQUEST {
+            let recurse = path[0] == TREE_REQUEST;
             let path = &path[1..];
             // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
             // We try to correct for that here.
-            if path.len() == 1 && path[0] == "" {
-                return self.handle_src(req, &["."]);
+            let arg = if path.len() == 1 && path[0] == "" {
+                &["."]
             } else {
-                return self.handle_src(req, path);
-            }
+                path
+            };
+
+            return self.handle_src(req, arg, recurse);
         }
 
         if path[0] == PLAIN_TEXT {
@@ -292,6 +295,7 @@ impl Server {
         &self,
         _req: Request,
         mut path: &[&str],
+        recurse: bool,
     ) -> Response {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
@@ -317,7 +321,7 @@ impl Server {
 
         // TODO should cache directory listings too
         return if path_buf.is_dir() {
-            match DirectoryListing::from_path(&path_buf) {
+            match DirectoryListing::from_path(&path_buf, recurse) {
                 Ok(listing) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
@@ -625,6 +629,7 @@ fn parse_query_value(query: Option<&str>, key: &str) -> Option<String> {
 
 const STATIC_REQUEST: &str = "static";
 const SOURCE_REQUEST: &str = "src";
+const TREE_REQUEST: &str = "tree";
 const PLAIN_TEXT: &str = "plain_text";
 const CONFIG_REQUEST: &str = "config";
 const EDIT_REQUEST: &str = "edit";
