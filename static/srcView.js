@@ -180,7 +180,8 @@ function jumpToLine(line) {
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
     var y = line * $("#src_line_number_1").height() - 100;
-    window.scroll(0, y);
+    let div = document.getElementById("src");
+    div.scroll(0, y);
 }
 
 class LineNumber extends MenuHost {
@@ -202,11 +203,4 @@ function Line(props) {
     const line = !props.line ? '&nbsp' : props.line;
     const lineId = "src_line_" + props.count;
     return <div className="div_src_line" id={lineId} dangerouslySetInnerHTML={{__html: line}} />;
-}
-
-function jumpToLine(line) {
-    // Jump to the start line. 100 is a fudge so that the start line is not
-    // right at the top of the window, which makes it easier to see.
-    var y = line * $("#src_line_number_1").height() - 100;
-    window.scroll(0, y);
 }
