@@ -204,6 +204,14 @@ impl Server {
             return self.handle_find(req, query);
         }
 
+        if path[0] == SYMBOL_ROOTS {
+            return self.handle_sym_roots(req);
+        }
+
+        if path[0] == SYMBOL_CHILDREN {
+            return self.handle_sym_childen(req, query);
+        }
+
         if !self.config.demo_mode {
             if path[0] == EDIT_REQUEST {
                 return self.handle_edit(req, query);
@@ -510,6 +518,60 @@ impl Server {
         }
     }
 
+    fn handle_sym_roots(
+        &self,
+        _req: Request,
+    ) -> Response {
+        match self.file_cache.get_symbol_roots() {
+            Ok(data) => {
+                let mut res = Response::new();
+                res.headers_mut().set(ContentType::json());
+                return res.with_body(serde_json::to_string(&data).unwrap());
+            }
+            Err(s) => {
+                return self.handle_error(_req, StatusCode::InternalServerError, s);
+            }
+        }
+    }
+
+    fn handle_sym_childen(
+        &self,
+        _req: Request,
+        query: Option<&str>,
+    ) -> Response {
+        match parse_query_value(query, "id=") {
+            Some(id) => {
+                let id = match u64::from_str(&id) {
+                    Ok(l) => l,
+                    Err(_) => {
+                        return self.handle_error(
+                            _req,
+                            StatusCode::InternalServerError,
+                            format!("Bad id: {}", id),
+                        );
+                    }
+                };
+                match self.file_cache.get_symbol_children(analysis::Id::new(id)) {
+                    Ok(data) => {
+                        let mut res = Response::new();
+                        res.headers_mut().set(ContentType::json());
+                        return res.with_body(serde_json::to_string(&data).unwrap());
+                    }
+                    Err(s) => {
+                        return self.handle_error(_req, StatusCode::InternalServerError, s);
+                    }
+                }
+            }
+            _ => {
+                return self.handle_error(
+                    _req,
+                    StatusCode::InternalServerError,
+                    "Unknown argument to symbol_children".to_owned(),
+                );
+            }
+        }
+    }
+
     fn handle_plain_text(
         &self,
         _req: Request,
@@ -636,3 +698,5 @@ const EDIT_REQUEST: &str = "edit";
 const SEARCH_REQUEST: &str = "search";
 const FIND_REQUEST: &str = "find";
 const GET_STATUS: &str = "status";
+const SYMBOL_ROOTS: &str = "symbol_roots";
+const SYMBOL_CHILDREN: &str = "symbol_children";

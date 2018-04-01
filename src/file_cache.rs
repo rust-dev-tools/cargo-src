@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cargo_metadata;
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -68,6 +69,14 @@ impl LineResult {
 #[derive(Serialize, Debug, Clone)]
 pub struct FindResult {
     pub results: Vec<FileResult>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct SymbolResult {
+    pub id: String,
+    pub name: String,
+    pub file_name: String,
+    pub line_start: u32,
 }
 
 // Our data which we attach to files in the VFS.
@@ -179,7 +188,7 @@ impl Cache {
         file_name: &Path,
         line: span::Row<span::ZeroIndexed>,
     ) -> Result<String, String> {
-        let lines = self.get_highlighted(Path::new(file_name))?;
+        let lines = self.get_highlighted(file_name)?;
         Ok(lines[line.0 as usize].clone())
     }
 
@@ -194,6 +203,55 @@ impl Cache {
         self.files.clear();
 
         println!("done");
+    }
+
+    // FIXME we should cache this information rather than compute every time.
+    pub fn get_symbol_roots(&self) -> Result<Vec<SymbolResult>, String> {
+        let all_crates = self
+            .analysis
+            .def_roots()
+            .unwrap_or_else(|_| vec![])
+            .into_iter()
+            .filter_map(|(id, name)| {
+                let span = self.analysis.get_def(id).ok()?.span;
+                Some(SymbolResult {
+                    id: id.to_string(),
+                    name,
+                    file_name: self.make_file_path(&span).display().to_string(),
+                    line_start: span.range.row_start.one_indexed().0,
+                })
+            });
+
+        // FIXME Unclear ot sure if we should include dep crates or not here.
+        // Need to test on workspace crates. Might be nice to have deps in any
+        // case, in which case we should return the primary crate(s) first.
+        let metadata = match cargo_metadata::metadata_deps(None, false) {
+            Ok(metadata) => metadata,
+            Err(_) => return Err("Could not access cargo metadata".to_owned()),
+        };
+
+        let names: Vec<String> = metadata
+            .packages
+            .into_iter()
+            .map(|p| p.name)
+            .collect();
+
+        Ok(all_crates.filter(|sr| names.contains(&sr.name)).collect())
+    }
+
+    // FIXME we should indicate whether the symbol has children or not
+    pub fn get_symbol_children(&self, id: Id) -> Result<Vec<SymbolResult>, String> {
+        self.analysis
+            .for_each_child_def(id, |id, def| {
+                let span = &def.span;
+                SymbolResult {
+                    id: id.to_string(),
+                    name: def.name.clone(),
+                    file_name: self.make_file_path(&span).display().to_string(),
+                    line_start: span.range.row_start.one_indexed().0,
+                }
+            })
+            .map_err(|e| e.to_string())
     }
 
     pub fn id_search(&self, id: Id) -> Result<SearchResult, String> {

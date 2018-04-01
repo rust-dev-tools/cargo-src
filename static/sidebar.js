@@ -11,6 +11,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 import { SearchPanel } from './searchPanel.js';
 import { TreePanel } from './treePanel.js';
+import { SymbolPanel } from './symbolPanel.js';
 
 
 export class Sidebar extends React.Component {
@@ -24,12 +25,16 @@ export class Sidebar extends React.Component {
                 <TabList className="div_sidebar_tabs">
                     <Tab className="div_sidebar_tab">search</Tab>
                     <Tab className="div_sidebar_tab">files</Tab>
+                    <Tab className="div_sidebar_tab">symbols</Tab>
                 </TabList>
                 <TabPanel className="div_sidebar_main">
                     <SearchPanel app={this.props.app} {...this.props.search} />
                 </TabPanel>
                 <TabPanel className="div_sidebar_main">
                     <TreePanel app={this.props.app} tree={this.props.fileTreeData} />
+                </TabPanel>
+                <TabPanel className="div_sidebar_main">
+                    <SymbolPanel app={this.props.app} />
                 </TabPanel>
             </Tabs>
         );
