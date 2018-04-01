@@ -13,7 +13,7 @@ const utils = require('./utils');
 
 class ResultSet extends React.Component {
     componentDidMount() {
-        $(".src_link").removeClass("src_link");
+        $(".div_search_results .src_link").removeClass("src_link");
         highlight_needle(this.props.input, this.props.kind);
     }
 
@@ -90,7 +90,7 @@ function FileResult(props) {
 
 class StructuredResultSet extends React.Component {
     componentDidMount() {
-        $(".src_link").removeClass("src_link");
+        $(".div_search_group .src_link").removeClass("src_link");
         const defFile = { file_name: this.props.input.file, lines: [this.props.input.line] };
         highlight_needle([defFile], "def");
     }
