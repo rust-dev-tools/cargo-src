@@ -413,6 +413,7 @@ span#measure {
 
 .div_search_title {
     font-size: large;
+    padding-top: 0.5em;
 }
 .div_search_file_link {
     padding-top: 0.2em;
@@ -424,10 +425,21 @@ span#measure {
     padding-top: 0.25em;
     padding-bottom: 1.5em;
 }
+.div_search_group {
+    border-top: solid black 1px;
+    padding-top: 0.5em;
+    padding-bottom: -1em;
+}
 .div_search_results .div_span_src_number {
     cursor: pointer;
 }
 .div_search_results .span_src {
+    cursor: pointer;
+}
+.div_search_group .div_span_src_number {
+    cursor: pointer;
+}
+.div_search_group .span_src {
     cursor: pointer;
 }
 
@@ -508,7 +520,7 @@ span#measure {
 
 }
 .div_sidebar {
-    flex: 0 0 250px;
+    flex: 0 0 25%;
     background-color: lightgrey;
     display: flex;
     flex-direction: column;

@@ -30,7 +30,13 @@ type Span = span::Span<span::ZeroIndexed>;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SearchResult {
-    pub defs: Vec<FileResult>,
+    pub defs: Vec<DefResult>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct DefResult {
+    pub file: String,
+    pub line: LineResult,
     pub refs: Vec<FileResult>,
 }
 
@@ -202,7 +208,6 @@ impl Cache {
             Err(_) => {
                 return Ok(SearchResult {
                     defs: vec![],
-                    refs: vec![],
                 });
             }
         };
@@ -221,7 +226,6 @@ impl Cache {
 
     fn ids_search(&self, ids: Vec<Id>) -> Result<SearchResult, String> {
         let mut defs = Vec::new();
-        let mut refs = Vec::new();
 
         for id in ids {
             // If all_refs.len() > 0, the first entry will be the def.
@@ -232,34 +236,51 @@ impl Cache {
                 Ok(all_refs) => all_refs.into_iter(),
             };
 
-            defs.push(all_refs.next().unwrap());
-            for ref_span in all_refs {
-                refs.push(ref_span);
-            }
+            let def_span = all_refs.next().unwrap();
+            let def_path = self.make_file_path(&def_span);
+            let line = self.make_line_result(&def_path, &def_span)?;
+
+            defs.push(DefResult {
+                file: def_path.display().to_string(),
+                line,
+                refs: self.make_search_results(all_refs.collect())?,
+            });
         }
 
         // TODO need to save the span for highlighting
         // We then save each bucket of defs/refs as a vec, and put it together to return.
         return Ok(SearchResult {
-            defs: self.make_search_results(defs)?,
-            refs: self.make_search_results(refs)?,
+            defs,
         });
 
     }
 
+    fn make_file_path(&self, span: &Span) -> PathBuf {
+        let file_path = Path::new(&span.file);
+        file_path
+            .strip_prefix(&self.project_dir)
+            .unwrap_or(file_path)
+            .to_owned()
+    }
+
+    fn make_line_result(&self, file_path: &Path, span: &Span) -> Result<LineResult, String> {
+        let text = match self.get_highlighted_line(file_path, span.range.row_start) {
+            Ok(t) => t,
+            Err(_) => return Err(format!("Error finding text for {:?}", span)),
+        };
+        Ok(LineResult::new(span, text))
+    }
+
+    // Sorts a set of search results into buckets by file.
     fn make_search_results(&self, raw: Vec<Span>) -> Result<Vec<FileResult>, String> {
         let mut file_buckets = HashMap::new();
 
         for span in &raw {
-            let file_path = Path::new(&span.file);
-            let file_path = file_path
-                .strip_prefix(&self.project_dir)
-                .unwrap_or(file_path);
-            let text = match self.get_highlighted_line(&file_path, span.range.row_start) {
-                Ok(t) => t,
+            let file_path = self.make_file_path(span);
+            let line = match self.make_line_result(&file_path, span) {
+                Ok(l) => l,
                 Err(_) => continue,
             };
-            let line = LineResult::new(&span, text);
             file_buckets
                 .entry(file_path.display().to_string())
                 .or_insert_with(|| vec![])
