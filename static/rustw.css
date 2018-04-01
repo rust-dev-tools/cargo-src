@@ -186,7 +186,6 @@ a.issue_link:active, a.link  { color: black }
 }
 .div_all_span_src {
     font-family: 'Fira Code';
-    font-size: smaller;
     white-space: nowrap;
 }
 .div_children .div_all_span_src {
@@ -292,7 +291,7 @@ span#measure {
 .src_highlight {
     font-weight: bold;
 }
-.selected {
+.selected_search {
     background-color: #f3f3a5;
 }
 .selected_secondary {

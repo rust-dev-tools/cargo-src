@@ -143,6 +143,12 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     var highlight = $("<div>&nbsp;</div>");
     highlight.addClass(css_class + " floating_highlight");
 
+    const adjust = line_div.data('adjust');
+    if (adjust) {
+        left -= adjust;
+        right -= adjust;
+    }
+
     left *= CHAR_WIDTH;
     right *= CHAR_WIDTH;
     if (right === 0) {

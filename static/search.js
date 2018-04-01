@@ -37,6 +37,14 @@ function FileResult(props) {
     let divLines = lines.map((l) => {
         const lineId = `snippet_line_number_${kind}_${count}_${l.line_start}`;
         const snippetId = `snippet_line_${kind}_${count}_${l.line_start}`;
+
+        // Squash the indent down by a factor of four.
+        const text = l.line;
+        let trimmed = text.trimLeft();
+        const newIndent = (text.length - trimmed.length) / 4;
+        const diffIndent = (text.length - trimmed.length) - newIndent;
+        trimmed = trimmed.padStart(trimmed.length + newIndent);
+
         const lineClick = (e) => {
             const highlight = {
                 "line_start": l.line_start,
@@ -58,18 +66,12 @@ function FileResult(props) {
             e.preventDefault();
         };
 
-        // Squash the indent down by a factor of four.
-        const text = l.line;
-        let trimmed = text.trimLeft();
-        const newIndent = (text.length - trimmed.length) / 4;
-        trimmed = trimmed.padStart(trimmed.length + newIndent);
-
         return <div key={`${kind}-${count}-${l.line_start}`}>
             <span className="div_span_src_number">
                 <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
             </span>
             <span className="div_span_src">
-                <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: trimmed}} />
+                <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: trimmed}} data-adjust={diffIndent} />
             </span>
             <br />
         </div>;
@@ -142,7 +144,7 @@ function highlight_needle(results, tag) {
             utils.highlight_spans(line,
                                   null,
                                   `snippet_line_${tag}_${index}_`,
-                                  "selected");
+                                  "selected_search");
         })
     })
 }
