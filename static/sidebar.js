@@ -17,6 +17,7 @@ import { SymbolPanel } from './symbolPanel.js';
 export class Sidebar extends React.Component {
     constructor(props) {
         super(props);
+        this.state = { symbols: null };
     }
 
     render() {
@@ -34,7 +35,7 @@ export class Sidebar extends React.Component {
                     <TreePanel app={this.props.app} tree={this.props.fileTreeData} />
                 </TabPanel>
                 <TabPanel className="div_sidebar_main">
-                    <SymbolPanel app={this.props.app} />
+                    <SymbolPanel app={this.props.app} symbols={this.props.symbols} />
                 </TabPanel>
             </Tabs>
         );

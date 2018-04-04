@@ -15,6 +15,7 @@ import * as utils from './utils';
 import { DirView } from './dirView';
 import { SourceView } from './srcView';
 import { Sidebar } from './sidebar';
+import { makeTreeData } from './symbolPanel';
 
 const Page = {
     START: 'START',
@@ -28,7 +29,7 @@ const Page = {
 export class RustwApp extends React.Component {
     constructor() {
         super();
-        this.state = { page: Page.START, fileTreeData: [] }
+        this.state = { page: Page.START, fileTreeData: [], symbols: {} }
     }
 
     componentDidMount() {
@@ -38,6 +39,7 @@ export class RustwApp extends React.Component {
             success: (data) => {
                 CONFIG = data;
                 this.loadFileTreeData();
+                this.loadSymbols();
             },
             async: false
         });
@@ -58,6 +60,19 @@ export class RustwApp extends React.Component {
             },
             "Error with tree request",
             null,
+        );
+    }
+
+    // TODO don't do this until analysis is ready (or make the server block until then). Should the server ping us?
+    loadSymbols() {
+        const self = this;
+        utils.request(
+            'symbol_roots',
+            function(json) {
+                self.setState({ symbols: makeTreeData(json) });
+            },
+            "Error with symbol_roots request",
+            null
         );
     }
 
@@ -108,7 +123,7 @@ export class RustwApp extends React.Component {
 
         return <div id="div_app">
             <div id="div_main">
-                <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} />
+                <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} symbols={this.state.symbols} />
                 {divMain}
             </div>
         </div>;

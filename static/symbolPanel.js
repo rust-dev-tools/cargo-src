@@ -17,23 +17,11 @@ const utils = require('./utils');
 export class SymbolPanel extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { data: {} };
         this.onToggle = this.onToggle.bind(this);
+        this.state = {};
     }
 
-    componentDidMount() {
-        const self = this;
-        utils.request(
-            'symbol_roots',
-            function(json) {
-                self.setState({ data: makeTreeData(json) });
-            },
-            "Error with symbol_roots request",
-            null
-        );
-    }
-
-    onToggle(node, toggled){
+    onToggle(node, toggled) {
         const {cursor} = this.state;
         const self = this;
 
@@ -51,12 +39,13 @@ export class SymbolPanel extends React.Component {
         }
 
         // Get any children from the server and add them to the tree.
-        if (!node.children || node.children.length == 0) {
+        if (node.symId && (!node.children || node.children.length == 0)) {
             utils.request(
                 'symbol_children?id=' + node.symId,
                 function(json) {
+                    // FIXME? We are mutating the state of app here, I'm pretty sure this is bad practice.
                     node.children = json.map(makeTreeNode);
-                    self.setState({});
+                    self.props.app.setState({});
                 },
                 "Error with symbol_children request",
                 null
@@ -65,13 +54,17 @@ export class SymbolPanel extends React.Component {
     }
 
     render() {
+        if (!this.props.symbols) {
+            return <div>loading...</div>;
+        }
+
         return (
-            <Treebeard data={this.state.data} onToggle={this.onToggle} style={style} />
+            <Treebeard data={this.props.symbols} onToggle={this.onToggle} style={style} />
         );
     }
 }
 
-function makeTreeData(rootData) {
+export function makeTreeData(rootData) {
     return {
         name: 'symbols',
         toggled: true,

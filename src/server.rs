@@ -12,6 +12,7 @@ use config::Config;
 use file_cache::Cache;
 use listings::{Listing, DirectoryListing};
 use futures;
+use futures::Future;
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -39,7 +40,7 @@ pub struct Server {
     builder: build::Builder,
     pub config: Arc<Config>,
     file_cache: Arc<Cache>,
-    status: Status
+    status: Status,
 }
 
 #[derive(Clone)]
@@ -93,17 +94,18 @@ impl Service for Instance {
     type Request = Request;
     type Response = Response;
     type Error = Error;
-    type Future = Box<futures::future::Future<Item=Self::Response, Error=Self::Error>>;
+    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         let uri = req.uri().clone();
-        return Box::new(futures::future::ok(self.server.lock().unwrap().route(uri.path(), uri.query(), req)));
+        self.server.lock().unwrap().route(uri.path(), uri.query(), req)
     }
 }
 
 struct Status_ {
     build: AtomicU32,
     analysis: AtomicU32,
+    blocked: Mutex<Vec<futures::Complete<()>>>,
 }
 
 #[derive(Clone)]
@@ -117,10 +119,22 @@ impl Status {
             internal: Arc::new(Status_ {
                 build: AtomicU32::new(0),
                 analysis: AtomicU32::new(0),
+                blocked: Mutex::new(Vec::new()),
             })
         }
     }
 
+    fn block(&self) -> impl Future<Item=(), Error=futures::Canceled> {
+        let (c, o) = futures::oneshot();
+        {
+            let mut blocked = self.internal.blocked.lock().unwrap();
+            if self.internal.build.load(Ordering::SeqCst) == 0 && self.internal.analysis.load(Ordering::SeqCst) == 0 {
+                return futures::future::Either::A(futures::future::ok(()));
+            }
+            blocked.push(c);
+        }
+        futures::future::Either::B(o)
+    }
     fn start_build(&self) {
         self.internal.build.fetch_add(1, Ordering::SeqCst);
     }
@@ -132,6 +146,8 @@ impl Status {
     }
     fn finish_analysis(&self) {
         self.internal.analysis.fetch_sub(1, Ordering::SeqCst);
+        let mut blocked = self.internal.blocked.lock().unwrap();
+        blocked.drain(..).for_each(|c| c.send(()).unwrap());
     }
 }
 
@@ -154,7 +170,7 @@ impl Server {
         mut path: &str,
         query: Option<&str>,
         req: Request,
-    ) -> Response {
+    ) -> <Instance as Service>::Future {
         trace!("route: path: {:?}, query: {:?}", path, query);
 
         if path.starts_with('/') {
@@ -162,23 +178,15 @@ impl Server {
         }
         let path: Vec<_> = path.split('/').collect();
 
-        if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
-            return self.handle_index(req);
-        }
-
-        if path[0] == GET_STATUS {
-            return self.handle_status(req);
-        }
-
-        if path[0] == STATIC_REQUEST {
-            return self.handle_static(req, &path[1..]);
-        }
-
-        if path[0] == CONFIG_REQUEST {
-            return self.handle_config(req);
-        }
-
-        if path[0] == SOURCE_REQUEST || path[0] == TREE_REQUEST {
+        let result = if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
+            self.handle_index(req)
+        } else if path[0] == GET_STATUS {
+            self.handle_status(req)
+        } else if path[0] == STATIC_REQUEST {
+            self.handle_static(req, &path[1..])
+        } else if path[0] == CONFIG_REQUEST {
+            self.handle_config(req)
+        } else if path[0] == SOURCE_REQUEST || path[0] == TREE_REQUEST {
             let recurse = path[0] == TREE_REQUEST;
             let path = &path[1..];
             // Because a URL ending in "/." is normalised to "/", we miss out on "." as a source path.
@@ -189,40 +197,28 @@ impl Server {
                 path
             };
 
-            return self.handle_src(req, arg, recurse);
-        }
+            self.handle_src(req, arg, recurse)
+        } else if path[0] == PLAIN_TEXT {
+            self.handle_plain_text(req, query)
+        } else if path[0] == SEARCH_REQUEST {
+            self.handle_search(req, query)
+        } else if path[0] == FIND_REQUEST {
+            self.handle_find(req, query)
+        } else if path[0] == SYMBOL_ROOTS {
+            return Box::new(self.handle_sym_roots(req));
+        } else if path[0] == SYMBOL_CHILDREN {
+            self.handle_sym_childen(req, query)
+        } else if !self.config.demo_mode && path[0] == EDIT_REQUEST {
+            self.handle_edit(req, query)
+        } else {
+            self.handle_error(
+                req,
+                StatusCode::NotFound,
+                format!("Unexpected path: `/{}`", path.join("/")),
+            )
+        };
 
-        if path[0] == PLAIN_TEXT {
-            return self.handle_plain_text(req, query);
-        }
-
-        if path[0] == SEARCH_REQUEST {
-            return self.handle_search(req, query);
-        }
-
-        if path[0] == FIND_REQUEST {
-            return self.handle_find(req, query);
-        }
-
-        if path[0] == SYMBOL_ROOTS {
-            return self.handle_sym_roots(req);
-        }
-
-        if path[0] == SYMBOL_CHILDREN {
-            return self.handle_sym_childen(req, query);
-        }
-
-        if !self.config.demo_mode {
-            if path[0] == EDIT_REQUEST {
-                return self.handle_edit(req, query);
-            }
-        }
-
-        self.handle_error(
-            req,
-            StatusCode::NotFound,
-            format!("Unexpected path: `/{}`", path.join("/")),
-        )
+        Box::new(futures::future::ok(result))
     }
 
     fn handle_error(
@@ -521,17 +517,20 @@ impl Server {
     fn handle_sym_roots(
         &self,
         _req: Request,
-    ) -> Response {
-        match self.file_cache.get_symbol_roots() {
-            Ok(data) => {
-                let mut res = Response::new();
-                res.headers_mut().set(ContentType::json());
-                return res.with_body(serde_json::to_string(&data).unwrap());
+    ) -> impl Future<Item=Response, Error=Error> {
+        let file_cache = self.file_cache.clone();
+        self.status.block().then(move |_| {
+            match file_cache.get_symbol_roots() {
+                Ok(data) => {
+                    let mut res = Response::new();
+                    res.headers_mut().set(ContentType::json());
+                    futures::future::ok(res.with_body(serde_json::to_string(&data).unwrap()))
+                }
+                Err(s) => {
+                    futures::future::ok(Response::new().with_status(StatusCode::InternalServerError).with_body(s))
+                }
             }
-            Err(s) => {
-                return self.handle_error(_req, StatusCode::InternalServerError, s);
-            }
-        }
+        })
     }
 
     fn handle_sym_childen(
