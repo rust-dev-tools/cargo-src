@@ -37,6 +37,7 @@ use config::Config;
 use hyper::server::Http;
 use std::fs::File;
 use std::io::Read;
+use std::process::Command;
 
 pub use build::BuildArgs;
 
@@ -47,12 +48,22 @@ mod listings;
 mod highlight;
 mod server;
 
-pub fn run_server(build_args: BuildArgs) {
+pub fn run_server(mut build_args: BuildArgs) {
     let config = load_config(&build_args);
     let ip = config.ip.clone();
     let port = config.port;
 
-    println!("server running on http://{}:{}", ip, port);
+    let url = format!("http://{}:{}", ip, port);
+    println!("server running on {}", url);
+
+    if let Some(i) = build_args.args.iter().position(|a| a == "--open") {
+        println!("opening...");
+        if let Err(cmds) = open_browser(&url) {
+            println!("Could not open browser, tried: {:?}", cmds);
+        }
+        build_args.args.remove(i);
+    }
+
     let addr = format!("{}:{}", ip, port).parse().unwrap();
     let server = server::Server::new(config.clone(), build_args.clone());
     let instance = server::Instance::new(server);
@@ -75,4 +86,47 @@ fn load_config(build_args: &BuildArgs) -> Config {
     }
 
     config
+}
+
+// The following functions are adapted from `cargo doc`.
+// If OK, they return the command line used to launch the browser, if there is a
+// failure, they return the command lines tried.
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
+    use std::env;
+
+    let mut methods = Vec::new();
+    // trying $BROWSER
+    match env::var("BROWSER"){
+        Ok(name) => match Command::new(name).arg(uri).status() {
+            Ok(_) => return Ok("$BROWSER"),
+            Err(_) => methods.push("$BROWSER")
+        },
+        Err(_) => () // Do nothing here if $BROWSER is not found
+    }
+
+    for m in ["xdg-open", "gnome-open", "kde-open"].iter() {
+        match Command::new(m).arg(uri).status() {
+            Ok(_) => return Ok(m),
+            Err(_) => methods.push(m)
+        }
+    }
+
+    Err(methods)
+}
+
+#[cfg(target_os = "windows")]
+fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
+    match Command::new("cmd").arg("/C").arg(uri).status() {
+        Ok(_) => return Ok("cmd /C"),
+        Err(_) => return Err(vec!["cmd /C"])
+    };
+}
+
+#[cfg(target_os = "macos")]
+fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
+    match Command::new("open").arg(uri).status() {
+        Ok(_) => return Ok("open"),
+        Err(_) => return Err(vec!["open"])
+    };
 }
