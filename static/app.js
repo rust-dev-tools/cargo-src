@@ -63,7 +63,6 @@ export class RustwApp extends React.Component {
         );
     }
 
-    // TODO don't do this until analysis is ready (or make the server block until then). Should the server ping us?
     loadSymbols() {
         const self = this;
         utils.request(

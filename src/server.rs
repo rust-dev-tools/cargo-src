@@ -323,7 +323,7 @@ impl Server {
             path_buf.push(p);
         }
 
-        // TODO should cache directory listings too
+        // FIXME should cache directory listings too
         return if path_buf.is_dir() {
             match DirectoryListing::from_path(&path_buf, recurse) {
                 Ok(listing) => {

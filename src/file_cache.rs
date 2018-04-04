@@ -18,8 +18,8 @@ use vfs::{FileContents, Vfs};
 
 use super::highlight;
 
-// TODO maximum size and evication policy
-// TODO keep timestamps and check on every read. Then don't empty on build.
+// FIXME maximum size and evication policy
+// FIXME keep timestamps and check on every read. Then don't empty on build.
 
 pub struct Cache {
     files: Vfs<VfsUserData>,
@@ -305,7 +305,6 @@ impl Cache {
             });
         }
 
-        // TODO need to save the span for highlighting
         // We then save each bucket of defs/refs as a vec, and put it together to return.
         return Ok(SearchResult {
             defs,

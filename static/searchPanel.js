@@ -40,34 +40,3 @@ function SearchBox(props) {
         <input id="search_box" placeholder="identifier search" autoComplete="off" onKeyPress={onKeyPress}></input>
     </div>)
 }
-
-// function OptionsMenu(props) {
-//     let items = [
-//         { id: "opt-0", label: "list view/code view", fn: () => {} },
-//         { id: "opt-1", label: "show/hide warnings", fn: () => {} },
-//         { id: "opt-2", label: "show/hide notes and help", fn: () => {} },
-//         { id: "opt-3", label: "show/hide all source snippets", fn: () => {} },
-//         { id: "opt-4", label: "show/hide context for source code", fn: () => {} },
-//         { id: "opt-5", label: "show/hide child messages", fn: () => {} },
-//         { id: "opt-6", label: "show/hide error context", fn: () => {} },
-//         { id: "opt-7", label: "build command: <code>cargo build</code>", fn: () => {} },
-//         { id: "opt-8", label: "toolchain: TODO", fn: () => {} },
-//         { id: "opt-9", label: "build time: TODO", fn: () => {} },
-//         { id: "opt-10", label: "exit status: TODO", fn: () => {} }
-//     ];
-
-//     return <Menu id={"div_options"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
-// }
-
-// class Options extends MenuHost {
-//     constructor(props) {
-//         super(props);
-//         this.menuFn = OptionsMenu;
-//         this.leftClick = true;
-//     }
-
-//     renderInner() {
-//         return <span id="link_options" className="button">options</span>;
-//     }
-// }
-

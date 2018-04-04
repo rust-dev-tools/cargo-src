@@ -63,7 +63,6 @@ macro_rules! create_config {
             $(
                 if let Some(val) = parsed.$i {
                     self.$i = val;
-                    // TODO error out if unstable
                 }
             )+
                 self
