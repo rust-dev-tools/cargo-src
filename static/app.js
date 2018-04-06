@@ -12,19 +12,10 @@ import { BrowserRouter as Router, Route, withRouter } from 'react-router-dom';
 import * as actions from './actions';
 
 import * as utils from './utils';
-import { DirView } from './dirView';
-import { SourceView } from './srcView';
 import { Sidebar } from './sidebar';
 import { makeTreeData } from './symbolPanel';
+import { ContentPanel, Page } from './contentPanel';
 
-const Page = {
-    START: 'START',
-    SOURCE: 'SOURCE',
-    SOURCE_DIR: 'SOURCE_DIR',
-    SEARCH: 'SEARCH',
-    FIND: 'FIND',
-    INTERNAL_ERROR: 'INTERNAL_ERROR',
-};
 
 export class RustwApp extends React.Component {
     constructor() {
@@ -100,30 +91,10 @@ export class RustwApp extends React.Component {
     }
 
     render() {
-        // FIXME factor out the content panel
-        let divMain;
-        switch (this.state.page) {
-            case Page.SOURCE:
-                divMain = <SourceView app={this} path={this.state.params.path} lines={this.state.params.lines} highlight={this.state.params.highlight} scrollTo={this.state.params.lineStart} />;
-                break;
-            case Page.SOURCE_DIR:
-                divMain = <DirView app={this} path={this.state.params.path} files={this.state.params.files} />;
-                break;
-            case Page.LOADING:
-                divMain = <div id="div_loading">Loading...</div>;
-                break;
-            case Page.INTERNAL_ERROR:
-                divMain = "Server error?";
-                break;
-            case Page.START:
-            default:
-                divMain = null;
-        }
-
         return <div id="div_app">
             <div id="div_main">
                 <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} symbols={this.state.symbols} />
-                {divMain}
+                <ContentPanel app={this} page={this.state.page} params={this.state.params} />
             </div>
         </div>;
     }
