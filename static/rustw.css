@@ -540,7 +540,7 @@ span#measure {
     background-color: lightslategrey;
     padding: 10px 20px;
     list-style: none;
-
+    cursor: pointer;
 }
 
 .div_sidebar_main {
