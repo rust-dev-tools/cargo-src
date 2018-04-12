@@ -21,8 +21,8 @@ export class Sidebar extends React.Component {
     }
 
     render() {
-        return (
-            <Tabs className="div_sidebar" selectedTabClassName="selected">
+        return <div className="div_sidebar">
+            <Tabs className="div_side_tabbar" selectedTabClassName="selected">
                 <TabList className="div_sidebar_tabs">
                     <Tab className="div_sidebar_tab">search</Tab>
                     <Tab className="div_sidebar_tab">files</Tab>
@@ -38,6 +38,19 @@ export class Sidebar extends React.Component {
                     <SymbolPanel app={this.props.app} symbols={this.props.symbols} />
                 </TabPanel>
             </Tabs>
-        );
+            <StatusBar status={this.props.status} />
+        </div>;
+    }
+}
+
+class StatusBar extends React.Component {
+    render() {
+        let status = "";
+        if (this.props.status) {
+            status = this.props.status;
+        }
+        return <div id="div_status_display">
+            Status: {status}
+        </div>;
     }
 }

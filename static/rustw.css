@@ -508,7 +508,9 @@ span#measure {
 }
 
 #div_status_display {
-    padding: 0 0 0.5em 0.5em;
+    flex: 0;
+    padding: 10px 20px;
+    background-color: #CCCCFF;
 }
 
 #div_dir_path {
@@ -525,8 +527,13 @@ span#measure {
     flex-direction: column;
     overflow: hidden;
 }
-
-.div_sidebar_tabs{
+.div_side_tabbar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.div_sidebar_tabs {
     display: flex;
     height: fit-content;
     margin: 0;

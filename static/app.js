@@ -20,7 +20,7 @@ import { ContentPanel, Page } from './contentPanel';
 export class RustwApp extends React.Component {
     constructor() {
         super();
-        this.state = { page: Page.START, fileTreeData: [], symbols: {} }
+        this.state = { page: Page.START, fileTreeData: [], symbols: {}, status: null }
     }
 
     componentDidMount() {
@@ -66,6 +66,18 @@ export class RustwApp extends React.Component {
         );
     }
 
+    refreshStatus() {
+        let self = this;
+        utils.request(
+            "status",
+            function (data) {
+                self.setState({ status: data.status });
+            },
+            "Could not fetch status",
+            null,
+        );
+    }
+
     showSource(path, lines, lineStart, highlight) {
         this.setState({ page: Page.SOURCE, params: { path, lines, highlight, lineStart }});
     }
@@ -93,7 +105,7 @@ export class RustwApp extends React.Component {
     render() {
         return <div id="div_app">
             <div id="div_main">
-                <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} symbols={this.state.symbols} />
+                <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} symbols={this.state.symbols} status={this.state.status} />
                 <ContentPanel app={this} page={this.state.page} params={this.state.params} />
             </div>
         </div>;

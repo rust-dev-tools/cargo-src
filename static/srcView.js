@@ -89,7 +89,7 @@ function view_in_vcs(target) {
 export class SourceView extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { refMenu: null, status: null };
+        this.state = { refMenu: null };
     }
 
     componentDidMount() {
@@ -128,15 +128,7 @@ export class SourceView extends React.Component {
             jumpToLine(this.props.scrollTo);
         }
 
-        let self = this;
-        utils.request(
-            "status",
-            function (data) {
-                self.setState({ status: data.status });
-            },
-            "Could not fetch status",
-            null,
-        );
+        this.props.app.refreshStatus();
     }
 
     render() {
@@ -168,9 +160,6 @@ export class SourceView extends React.Component {
                     </span>
                 </div>
                 {refMenu}
-            </div>
-            <div id="div_status_display">
-                Status: {this.state.status}
             </div>
         </div>;
     }
