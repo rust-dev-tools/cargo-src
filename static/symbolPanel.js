@@ -21,6 +21,13 @@ export class SymbolPanel extends React.Component {
         this.state = {};
     }
 
+    componentDidMount() {
+        this.props.app.refreshStatus();
+    }
+    componentDidUpdate() {
+        this.props.app.refreshStatus();
+    }
+
     onToggle(node, toggled) {
         const {cursor} = this.state;
         const self = this;
