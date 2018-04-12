@@ -17,12 +17,13 @@ import { SymbolPanel } from './symbolPanel.js';
 export class Sidebar extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { symbols: null };
+        this.state = { symbols: null, tabIndex: 0 };
     }
 
     render() {
+        const onSelect = tabIndex => this.setState({ tabIndex });
         return <div className="div_sidebar">
-            <Tabs className="div_side_tabbar" selectedTabClassName="selected">
+            <Tabs selectedIndex={this.state.tabIndex} className="div_side_tabbar" selectedTabClassName="selected" onSelect={onSelect}>
                 <TabList className="div_sidebar_tabs">
                     <Tab className="div_sidebar_tab">search</Tab>
                     <Tab className="div_sidebar_tab">files</Tab>
