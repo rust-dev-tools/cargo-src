@@ -20,6 +20,12 @@ export class Sidebar extends React.Component {
         this.state = { symbols: null, tabIndex: 0 };
     }
 
+    componentDidUpdate(prevProps) {
+        if (this.props.search != prevProps.search) {
+            this.setState({ tabIndex: 0 });
+        }
+    }
+
     render() {
         const onSelect = tabIndex => this.setState({ tabIndex });
         return <div className="div_sidebar">
