@@ -34,7 +34,7 @@ export function getSearch(app, needle) {
     return utils.request(
         'search?needle=' + needle,
         function(json) {
-            app.showSearch(json.defs, json.refs);
+            app.showSearch(json.defs, json.refs, needle);
         },
         "Error with search request for " + needle,
         null

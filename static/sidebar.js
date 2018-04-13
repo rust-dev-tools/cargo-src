@@ -12,22 +12,43 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { SearchPanel } from './searchPanel.js';
 import { TreePanel } from './treePanel.js';
 import { SymbolPanel } from './symbolPanel.js';
+import * as actions from './actions';
 
 
 export class Sidebar extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { symbols: null, tabIndex: 0 };
+        this.state = { symbols: null, tabIndex: 0, searchTerm: "" };
     }
 
     componentDidUpdate(prevProps) {
         if (this.props.search != prevProps.search) {
-            this.setState({ tabIndex: 0 });
+            let searchTerm = "";
+            if (this.props.search.searchTerm) {
+                searchTerm = this.props.search.searchTerm;
+            }
+            this.setState({ tabIndex: 0, searchTerm });
         }
     }
 
     render() {
+        // We must keep the search box controller state here so that we preserve
+        // the text in the box during tab switches.
+        const enterKeyCode = 13;
+        const searchController = {
+            searchTerm: this.state.searchTerm,
+            onKeyPress: (e) => {
+                if (e.which === enterKeyCode) {
+                    actions.getSearch(this.props.app, e.currentTarget.value);
+                }
+            },
+            onChange: (e) => {
+                this.setState({searchTerm: e.target.value});
+            },
+        };
+
         const onSelect = tabIndex => this.setState({ tabIndex });
+
         return <div className="div_sidebar">
             <Tabs selectedIndex={this.state.tabIndex} className="div_side_tabbar" selectedTabClassName="selected" onSelect={onSelect}>
                 <TabList className="div_sidebar_tabs">
@@ -36,7 +57,7 @@ export class Sidebar extends React.Component {
                     <Tab className="div_sidebar_tab">symbols</Tab>
                 </TabList>
                 <TabPanel className="div_sidebar_main">
-                    <SearchPanel app={this.props.app} {...this.props.search} />
+                    <SearchPanel app={this.props.app} {...this.props.search} searchController={searchController} />
                 </TabPanel>
                 <TabPanel className="div_sidebar_main">
                     <TreePanel app={this.props.app} tree={this.props.fileTreeData} />

@@ -79,6 +79,7 @@ export class RustwApp extends React.Component {
     }
 
     showSource(path, lines, lineStart, highlight) {
+        this.refreshStatus();
         this.setState({ page: Page.SOURCE, params: { path, lines, highlight, lineStart }});
     }
 
@@ -94,8 +95,9 @@ export class RustwApp extends React.Component {
         this.setState({ page: Page.INTERNAL_ERROR});
     }
 
-    showSearch(defs, refs) {
-        this.setState({ search: { defs, refs, results: null }});
+    showSearch(defs, refs, searchTerm) {
+        this.refreshStatus();
+        this.setState({ search: { defs, refs, results: null, searchTerm }});
     }
 
     showFind(results) {

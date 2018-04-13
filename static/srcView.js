@@ -127,8 +127,6 @@ export class SourceView extends React.Component {
         if (this.props.scrollTo) {
             jumpToLine(this.props.scrollTo);
         }
-
-        this.props.app.refreshStatus();
     }
 
     render() {

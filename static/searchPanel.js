@@ -9,7 +9,6 @@
 import React from 'react';
 import { FindResults, SearchResults } from "./search";
 
-// import { Menu, MenuHost } from './menus';
 import * as actions from './actions';
 
 export class SearchPanel extends React.Component {
@@ -22,21 +21,14 @@ export class SearchPanel extends React.Component {
         }
 
         return <div>
-            <SearchBox app={this.props.app} />
+            <SearchBox app={this.props.app} searchController={this.props.searchController} />
             <div id="div_search_results">{searchResults}</div>
         </div>;
     }
 }
 
 function SearchBox(props) {
-    const enterKeyCode = 13;
-    const onKeyPress = (e) => {
-        if (e.which === enterKeyCode) {
-            actions.getSearch(props.app, e.currentTarget.value);
-        }
-    };
-
-    return (<div>
-        <input id="search_box" placeholder="identifier search" autoComplete="off" onKeyPress={onKeyPress}></input>
-    </div>)
+    return <div>
+        <input id="search_box" value={props.searchController.searchTerm} placeholder="identifier search" autoComplete="off" onKeyPress={props.searchController.onKeyPress} onChange={props.searchController.onChange}></input>
+    </div>;
 }
