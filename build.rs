@@ -12,7 +12,7 @@ use std::{env, fs};
 use std::path::Path;
 
 fn main() {
-    // copy from $CARGO_MANIFEST_DIR to $CARGO_MANIFEST_DIR/target/$PROFILE
+    // Copy from $CARGO_MANIFEST_DIR to $CARGO_MANIFEST_DIR/target/$PROFILE.
     let from = env::var("CARGO_MANIFEST_DIR").unwrap();
     let from = Path::new(&from);
     let to = {
@@ -22,12 +22,12 @@ fn main() {
         buf
     };
 
-    // don't rerun on every build, but do rebuild if the build script changes
-    // or something changes in the directory
+    // Don't rerun on every build, but do rebuild if the build script changes
+    // or something changes in the static directory.
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=static");
 
-    // copy the "static" dir and all its contents
+    // Copy the "static" dir and all its contents.
     for entry in WalkDir::new(from.join("static"))
                          .into_iter()
                          .filter_map(|e| e.ok()) {
