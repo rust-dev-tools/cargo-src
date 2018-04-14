@@ -61,6 +61,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-src"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyper 0.11.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-analysis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-blacklist 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustdoc-highlight 0.1.1 (git+https://github.com/nrc/rustdoc-highlight)",
+ "serde 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "walkdir 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cargo_metadata"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -439,28 +461,6 @@ version = "0.1.1"
 source = "git+https://github.com/nrc/rustdoc-highlight#05287a9be9fe5298f585f332a3efeeedea4c37ba"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rustw"
-version = "0.1.0"
-dependencies = [
- "cargo_metadata 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.11.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-analysis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-blacklist 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustdoc-highlight 0.1.1 (git+https://github.com/nrc/rustdoc-highlight)",
- "serde 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "url 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "walkdir 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

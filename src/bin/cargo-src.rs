@@ -1,13 +1,13 @@
 extern crate log;
 extern crate env_logger;
-extern crate rustw;
+extern crate cargo_src;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 
 use std::env;
 use std::process::Command;
-use rustw::BuildArgs;
+use cargo_src::BuildArgs;
 
 fn main() {
     env_logger::init().unwrap();
@@ -29,7 +29,7 @@ fn main() {
         workspace_root,
     };
 
-    rustw::run_server(build_args);
+    cargo_src::run_server(build_args);
 }
 
 fn workspace_root() -> String {
