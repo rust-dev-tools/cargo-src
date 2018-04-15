@@ -12,13 +12,18 @@ use cargo_src::BuildArgs;
 fn main() {
     env_logger::init().unwrap();
 
-    let mut args = env::args();
-    let prog = args.next().expect("No program name?");
-    if prog == "cargo" || prog.ends_with("/cargo") {
-        let src = args.next().expect("No `src` sub-command?");
-        assert_eq!(src, "src", "No `src` sub-command?");
-    } else if prog != "cargo-src" && !prog.ends_with("/cargo-src") {
-        panic!("cargo-src started in some weird and unexpected way: `{}`", prog);
+    let mut args = env::args().peekable();
+    let _prog = args.next().expect("No program name?");
+
+    // Remove `src` from the args, if present.
+    let mut has_src = false;
+    if let Some(s) = args.peek() {
+        if s == "src" {
+            has_src = true;
+        }
+    }
+    if has_src {
+        args.next().unwrap();
     }
 
     let workspace_root = workspace_root();
