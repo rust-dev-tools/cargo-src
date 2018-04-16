@@ -8,38 +8,53 @@
 
 extern crate walkdir;
 use walkdir::WalkDir;
-use std::{env, fs};
+use std::env;
+use std::fs::File;
 use std::path::Path;
+use std::io::Write;
 
+/// This build script creates a function for looking up static data to be served
+/// by the web server. The contents of the static directory are included in the
+/// binary via `include_bytes` and exposed to the rest of the program by
+/// `lookup_static_file`.
 fn main() {
-    // Copy from $CARGO_MANIFEST_DIR to $CARGO_MANIFEST_DIR/target/$PROFILE.
     let from = env::var("CARGO_MANIFEST_DIR").unwrap();
     let from = Path::new(&from);
-    let to = {
-        let mut buf = from.to_owned();
-        buf.push("target");
-        buf.push(env::var("PROFILE").unwrap());
-        buf
-    };
+    let from = from.join("static");
+
+    let mut out_path = Path::new(&env::var("OUT_DIR").unwrap()).to_owned();
+    out_path.push("lookup_static.rs");
+
 
     // Don't rerun on every build, but do rebuild if the build script changes
     // or something changes in the static directory.
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=static");
 
-    // Copy the "static" dir and all its contents.
-    for entry in WalkDir::new(from.join("static"))
-                         .into_iter()
-                         .filter_map(|e| e.ok()) {
-        let mut target = to.clone();
-        let relative = entry.path().strip_prefix(from).unwrap();
-        println!("cargo:rerun-if-changed={}", relative.display());
-        target.push(relative);
-        if entry.file_type().is_dir() {
-            fs::create_dir_all(target).unwrap();
-        } else {
-            fs::copy(entry.path(), target).unwrap();
-        }
+    let mut out_file = File::create(&out_path).unwrap();
+    out_file.write(PREFIX.as_bytes()).unwrap();
+
+    for entry in WalkDir::new(&from)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| !e.path_is_symlink() && e.file_type().is_file())
+    {
+        let relative = entry.path().strip_prefix(&from).unwrap();
+        write!(out_file, "\n\"{}\" => Ok(include_bytes!(\"{}\")),", relative.display(), entry.path().display()).unwrap();
+    }
+
+    out_file.write(SUFFIX.as_bytes()).unwrap();
+}
+
+const PREFIX: &str = "
+pub fn lookup_static_file(path: &str) -> Result<&'static [u8], ()> {
+    match path {
+";
+
+
+const SUFFIX: &str = "
+        _ => Err(()),
     }
 }
+";
 

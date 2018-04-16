@@ -14,7 +14,7 @@ use std::str;
 
 use analysis::{AnalysisHost, Id, Target};
 use span;
-use vfs::{FileContents, Vfs};
+use vfs::Vfs;
 
 use super::highlight;
 
@@ -107,22 +107,6 @@ impl Cache {
             files: Vfs::new(),
             analysis: AnalysisHost::new(Target::Debug),
             project_dir: env::current_dir().unwrap(),
-        }
-    }
-
-    pub fn get_text(&self, path: &Path) -> Result<String, String> {
-        match self.files.load_file(path) {
-            Ok(FileContents::Text(s)) => Ok(s),
-            Ok(FileContents::Binary(_)) => Err(::vfs::Error::BadFileKind.into()),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    pub fn get_bytes(&self, path: &Path) -> Result<Vec<u8>, String> {
-        match self.files.load_file(path) {
-            Ok(FileContents::Text(s)) => Ok(s.into_bytes()),
-            Ok(FileContents::Binary(b)) => Ok(b),
-            Err(e) => Err(e.into()),
         }
     }
 
