@@ -101,7 +101,7 @@ impl Builder {
                 buckets
                     .entry(name.to_owned())
                     .or_insert_with(|| vec![])
-                    .push((entry.path(), entry.metadata().expect("no file metadata").created().expect("no created time")))
+                    .push((entry.path(), entry.metadata().expect("no file metadata").modified().expect("no modified time")))
             }
 
             for bucket in buckets.values_mut() {
