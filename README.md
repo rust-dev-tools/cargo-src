@@ -1,11 +1,27 @@
 # cargo src
 
-A Rust source browser
+A Rust source browser. Explore your Rust project with semantic understanding of
+the code. Features:
 
+* syntax highlighting
+* jump to def (click on a reference)
+* find all references (click on a definition)
+* smart identifier search
+* types (and field info) on hover
+* smart usage highlighting
+* find all impls (right click on a type or trait name)
+* directory browsing
+* symbol browsing
+
+Uses knowledge from the RLS.
+
+This is work-in-progress, pre-release software, expect bugs and plenty of rough
+edges.
 
 Contents:
+
+* [Installing and running](#installing)
 * [Building](#building)
-* [Running](#running)
 * [Customisation](#customisation)
 * [Contributing](#contributing)
 
@@ -13,9 +29,26 @@ Contents:
 
 (Very out of date screenshot)
 
-## Building
+## Installing and running
 
-Requires a nightly version of Rust to build.
+Requires a nightly version of Rust.
+
+To install, run `cargo install cargo-src`.
+
+Then, to run: `cargo src` in a directory where you would usually run `cargo build`.
+You can run `cargo src --open` to open the output of `cargo src` directly in your
+web browser.
+
+`cargo src` will start a web server and build (`cargo check`) and index your code.
+This may take some time (depending on your crate, up to twice as long as a normal
+build). You can browse the source in whilst indexing, but you'll be missing all
+the good stuff like jump-to-def and search.
+
+## Building and running
+
+Requires a nightly version of Rust.
+
+Get the source code from https://github.com/nrc/cargo-src.
 
 * setup the React/webpack environment (requires npm):
 ```sh
@@ -37,10 +70,9 @@ npm install --save-dev webpack
 npm install --save-dev immutable
 ```
 * build the JS components: `npm run build` or `yarn build`
-* `cargo build --release` to build the Rust parts (and copy static files to
-  target directory).
+* `cargo build --release` to build the Rust parts.
 
-## Running
+### Running
 
 Run `CARGO=cargo /<your local filepath>/rustw/target/release/cargo-src` in your
 project's directory (i.e., the directory you would normally use `cargo build`
