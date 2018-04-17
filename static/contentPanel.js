@@ -32,6 +32,10 @@ export class ContentPanel extends React.Component {
         this.query_api(this.props.path);
     }
 
+    componentDidUpdate() {
+        document.title = 'cargo src - ' + this.props.path;
+    }
+
     UNSAFE_componentWillReceiveProps(nextProps) {
         if (nextProps.path == this.props.path) {
             return;
