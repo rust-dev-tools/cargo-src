@@ -10,6 +10,7 @@ the code. Features:
 * types (and field info) on hover
 * smart usage highlighting
 * find all impls (right click on a type or trait name)
+* jump to docs for standard library references
 * directory browsing
 * symbol browsing
 
@@ -25,9 +26,24 @@ Contents:
 * [Customisation](#customisation)
 * [Contributing](#contributing)
 
-![cargo src screenshot - source view](screenshot-src.png)
+![cargo src screenshot - source view](overview.png)
 
-(Very out of date screenshot)
+Hover to show the type of an identifier:
+
+![cargo src screenshot - source view](type-on-hover.png)
+
+Search for an identifier name (shows definitions, and all references to each definition):
+
+![cargo src screenshot - source view](ident-search.png)
+
+Find all uses of a definition:
+
+![cargo src screenshot - source view](find-all-uses.png)
+
+Right click an identifier to show more options
+
+![cargo src screenshot - source view](right-click.png)
+
 
 ## Installing and running
 
