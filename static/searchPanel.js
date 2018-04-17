@@ -9,8 +9,6 @@
 import React from 'react';
 import { FindResults, SearchResults } from "./search";
 
-import * as actions from './actions';
-
 export class SearchPanel extends React.Component {
     render() {
         let searchResults = null;

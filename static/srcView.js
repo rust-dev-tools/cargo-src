@@ -7,7 +7,7 @@
 // except according to those terms.
 
 import React from 'react';
-import * as actions from './actions';
+import ReactDOM from 'react-dom';
 
 import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
@@ -66,18 +66,19 @@ function RefMenu(props) {
         items.push({ id: "ref_menu_view_source", label: "view source", fn: window.open(srcUrl, '_blank') });
     }
 
-    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => actions.getUses(props.app, props.id) });
+    items.push({ id: "ref_menu_find_uses", label: "find all uses", fn: () => props.app.getUses(props.id) });
 
     let impls = props.target.dataset.impls;
     // XXX non strict comparison
     if (impls && impls != "0") {
-        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => actions.getImpls(props.app, props.id) });
+        items.push({ id: "ref_menu_find_impls", label: "find impls (" + impls + ")", fn: () => props.app.getImpls(props.id) });
     }
 
     return <Menu id={"div_ref_menu"} items={items} location={props.location} onClose={props.onClose} target={props.target} />;
 }
 
 function view_in_vcs(target) {
+    // FIXME this is broken
     const file_name = history.state.file;
     const line_id = target.getAttribute("id");
     const line_number = parseInt(line_id.slice("src_line_number_".length));
@@ -93,8 +94,12 @@ export class SourceView extends React.Component {
     }
 
     componentDidMount() {
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() {
         if (this.props.highlight) {
-            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected");
+            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", ReactDOM.findDOMNode(this));
         }
 
         // Make source links active.
@@ -114,18 +119,18 @@ export class SourceView extends React.Component {
             var file = file_loc[0];
 
             if (file === "search") {
-                actions.getUses(this.props.app, file_loc[1]);
+                this.props.app.getUses(file_loc[1]);
                 return;
             }
 
             let data = utils.parseLink(file_loc);
-            actions.getSource(this.props.app, file, data);
+            this.props.app.loadSource(file, data);
         });
 
         add_ref_functionality(this);
 
-        if (this.props.scrollTo) {
-            jumpToLine(this.props.scrollTo);
+        if (this.props.highlight) {
+            jumpToLine(this.props.highlight.line_start);
         }
     }
 

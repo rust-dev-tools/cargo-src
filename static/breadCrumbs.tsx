@@ -7,8 +7,6 @@
 // except according to those terms.
 
 import * as React from 'react';
-import * as actions from './actions';
-
 import { RustwApp } from './app.js';
 
 declare var CONFIG: any;
@@ -29,7 +27,7 @@ export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
 
     let path = "",
         crumbs = props.path.map((p: string) => {
-            if (path.length > 0) {
+            if (path.length > 0 && path != '/') {
                 path += '/';
             }
             path += p;
@@ -41,7 +39,9 @@ export const BreadCrumbs: React.SFC<BreadCrumbProps> = (props) => {
             root = [];
 
             const pathCopy = path;
-            const onClick = () => actions.getSource(props.app, pathCopy);
+            const onClick = () => {
+                props.app.loadSource(pathCopy);
+            }
             return (<span key={path}> > <span className="link_breadcrumb" onClick={onClick}>{p}</span></span>);
         });
     return <div id="div_dir_path">

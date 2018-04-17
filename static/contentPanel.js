@@ -10,6 +10,7 @@ import React from 'react';
 
 import { DirView } from './dirView';
 import { SourceView } from './srcView';
+const utils = require('./utils');
 
 export const Page = {
     START: 'START',
@@ -17,18 +18,61 @@ export const Page = {
     SOURCE_DIR: 'SOURCE_DIR',
     SEARCH: 'SEARCH',
     FIND: 'FIND',
+    LOADING: 'LOADING',
     INTERNAL_ERROR: 'INTERNAL_ERROR',
 };
 
 export class ContentPanel extends React.Component {
+    constructor() {
+        super();
+        this.state = { page: Page.LOADING }
+    }
+
+    componentDidMount() {
+        this.query_api(this.props.path);
+    }
+
+    UNSAFE_componentWillReceiveProps(nextProps) {
+        if (nextProps.path == this.props.path) {
+            return;
+        }
+        this.query_api(nextProps.path);
+    }
+
+    query_api(path) {
+        if (!path || path === '/') {
+            path = CONFIG.workspace_root;
+        }
+
+        const app = this.props.app;
+        const self = this;
+
+        utils.request(
+            'src/' + path,
+            function(json) {
+                if (json.Directory) {
+                    self.setState({ page: Page.SOURCE_DIR, params: { path: json.Directory.path, files: json.Directory.files }});
+                } else if (json.Source) {
+                    app.refreshStatus();
+                    self.setState({ page: Page.SOURCE, params: { path: json.Source.path, lines: json.Source.lines }});
+                } else {
+                    console.log("Unexpected source data.")
+                    console.log(json);
+                }
+            },
+            'Error with source request for ' + '/src' + path,
+            app
+        );
+    }
+
     render() {
         let divMain;
-        switch (this.props.page) {
+        switch (this.state.page) {
             case Page.SOURCE:
-                divMain = <SourceView app={this.props.app} path={this.props.params.path} lines={this.props.params.lines} highlight={this.props.params.highlight} scrollTo={this.props.params.lineStart} />;
+                divMain = <SourceView app={this.props.app} path={this.state.params.path} lines={this.state.params.lines} highlight={this.props.srcHighlight} />;
                 break;
             case Page.SOURCE_DIR:
-                divMain = <DirView app={this.props.app} path={this.props.params.path} files={this.props.params.files} />;
+                divMain = <DirView app={this.props.app} path={this.state.params.path} files={this.state.params.files} />;
                 break;
             case Page.LOADING:
                 divMain = <div id="div_loading">Loading...</div>;

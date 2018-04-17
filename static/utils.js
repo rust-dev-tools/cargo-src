@@ -10,7 +10,15 @@ export function make_url(suffix) {
     return '/' + CONFIG.demo_mode_root_path + suffix;
 }
 
-export function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class) {
+export function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class, element) {
+    // Remove any previous highlighting.
+    if (element) {
+        let highlighted = $(element).find('.' + css_class);
+        highlighted.removeClass(css_class);
+        let floating = $(element).find('.' + css_class + '.floating_highlight');
+        floating.remove();
+    }
+
     if (!highlight.line_start || !highlight.line_end) {
         return;
     }

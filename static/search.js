@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import * as actions from './actions';
 
 const utils = require('./utils');
 
@@ -59,7 +58,7 @@ function FileResult(props) {
                 "column_start": 0,
                 "column_end": 0
             };
-            actions.getSource(props.app, file_name, highlight);
+            props.app.loadSource(file_name, highlight);
             e.preventDefault();
         };
         const snippetClick = (e) => {
@@ -69,7 +68,7 @@ function FileResult(props) {
                 "column_start": l.column_start,
                 "column_end": l.column_end
             };
-            actions.getSource(props.app, file_name, highlight);
+            props.app.loadSource(file_name, highlight);
             e.preventDefault();
         };
 
@@ -84,7 +83,7 @@ function FileResult(props) {
         </div>;
     });
     const onClick = (e) => {
-        actions.getSource(props.app, file_name, {});
+        props.app.loadSource(file_name);
         e.preventDefault();
     };
     return <div>

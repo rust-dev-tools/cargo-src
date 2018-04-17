@@ -12,7 +12,6 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { SearchPanel } from './searchPanel.js';
 import { TreePanel } from './treePanel.js';
 import { SymbolPanel } from './symbolPanel.js';
-import * as actions from './actions';
 
 
 export class Sidebar extends React.Component {
@@ -39,7 +38,7 @@ export class Sidebar extends React.Component {
             searchTerm: this.state.searchTerm,
             onKeyPress: (e) => {
                 if (e.which === enterKeyCode) {
-                    actions.getSearch(this.props.app, e.currentTarget.value);
+                    this.props.app.getSearch(e.currentTarget.value);
                 }
             },
             onChange: (e) => {

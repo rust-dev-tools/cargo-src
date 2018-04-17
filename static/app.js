@@ -8,8 +8,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { BrowserRouter as Router, Route, withRouter } from 'react-router-dom';
-import * as actions from './actions';
+import { BrowserRouter, Route, Switch } from 'react-router-dom';
 
 import * as utils from './utils';
 import { Sidebar } from './sidebar';
@@ -20,7 +19,7 @@ import { ContentPanel, Page } from './contentPanel';
 export class RustwApp extends React.Component {
     constructor() {
         super();
-        this.state = { page: Page.START, fileTreeData: [], symbols: {}, status: null }
+        this.state = { page: Page.START, fileTreeData: [], symbols: {}, status: null, hasConfig: false };
     }
 
     componentDidMount() {
@@ -34,7 +33,7 @@ export class RustwApp extends React.Component {
             },
             async: false
         });
-        actions.getSource(this, CONFIG.workspace_root);
+        this.setState({ hasConfig: true });
     }
 
     loadFileTreeData() {
@@ -67,7 +66,7 @@ export class RustwApp extends React.Component {
     }
 
     refreshStatus() {
-        let self = this;
+        const self = this;
         utils.request(
             "status",
             function (data) {
@@ -78,14 +77,46 @@ export class RustwApp extends React.Component {
         );
     }
 
-    showSource(path, lines, lineStart, highlight) {
-        this.refreshStatus();
-        this.setState({ page: Page.SOURCE, params: { path, lines, highlight, lineStart }});
+
+    getSearch(needle) {
+        const self = this;
+        return utils.request(
+            'search?needle=' + needle,
+            function(json) {
+                self.refreshStatus();
+                self.setState({ search: { defs: json.defs, refs: json.refs, results: null, searchTerm: needle }});
+            },
+            "Error with search request for " + needle,
+            null
+        );
     }
 
-    showSourceDir(path, files) {
-        this.setState({ page: Page.SOURCE_DIR, params: { path, files }});
+    getUses(needle) {
+        const self = this;
+        return utils.request(
+            'search?id=' + needle,
+            function(json) {
+                self.refreshStatus();
+                self.setState({ search: { defs: json.defs, refs: json.refs, results: null, searchTerm: null }});
+            },
+            "Error with search (uses) request for " + needle,
+            null
+        );
     }
+
+    getImpls(needle) {
+        const self = this;
+        return utils.request(
+            'find?impls=' + needle,
+            function(json) {
+                self.refreshStatus();
+                self.setState({ search: { results: json.results, defs: null, refs: null }});
+            },
+            "Error with find (impls) request for " + needle,
+            null
+        );
+    }
+
 
     showLoading() {
         this.setState({ page: Page.LOADING});
@@ -95,20 +126,30 @@ export class RustwApp extends React.Component {
         this.setState({ page: Page.INTERNAL_ERROR});
     }
 
-    showSearch(defs, refs, searchTerm) {
-        this.refreshStatus();
-        this.setState({ search: { defs, refs, results: null, searchTerm }});
-    }
-
-    showFind(results) {
-        this.setState({ search: { results, defs: null, refs: null }});
+    loadSource(path, highlight) {
+        if (!path.startsWith('/')) {
+            path = CONFIG.workspace_root + '/' + path;
+        }
+        const location = {
+            pathname: path,
+            state: { highlight }
+        };
+        this.props.history.push(location);
     }
 
     render() {
+        let contentPanel = "Loading...";
+        if (this.state.hasConfig) {
+            let srcHighlight = null;
+            if (this.props.location.state && this.props.location.state.highlight) {
+                srcHighlight = this.props.location.state.highlight;
+            }
+            contentPanel = <ContentPanel path={this.props.location.pathname} app={this} srcHighlight={srcHighlight} />;
+        }
         return <div id="div_app">
             <div id="div_main">
                 <Sidebar app={this} search={this.state.search} fileTreeData={this.state.fileTreeData} symbols={this.state.symbols} status={this.state.status} />
-                <ContentPanel app={this} page={this.state.page} params={this.state.params} />
+                {contentPanel}
             </div>
         </div>;
     }
@@ -116,9 +157,9 @@ export class RustwApp extends React.Component {
 
 export function renderApp() {
     ReactDOM.render(
-        <Router>
-            <Route path='/' component={RustwApp} />
-        </Router>,
+        <BrowserRouter>
+            <Route component={RustwApp} />
+        </BrowserRouter>,
         document.getElementById('container')
     );
 }

@@ -180,9 +180,7 @@ impl Server {
         }
         let path: Vec<_> = path.split('/').collect();
 
-        let result = if path.is_empty() || (path.len() == 1 && (path[0] == "index.html" || path[0] == "")) {
-            self.handle_index(req)
-        } else if path[0] == GET_STATUS {
+        let result = if path[0] == GET_STATUS {
             self.handle_status(req)
         } else if path[0] == STATIC_REQUEST {
             self.handle_static(req, &path[1..])
@@ -213,11 +211,7 @@ impl Server {
         } else if !self.config.demo_mode && path[0] == EDIT_REQUEST {
             self.handle_edit(req, query)
         } else {
-            self.handle_error(
-                req,
-                StatusCode::NotFound,
-                format!("Unexpected path: `/{}`", path.join("/")),
-            )
+            self.handle_index(req)
         };
 
         Box::new(futures::future::ok(result))

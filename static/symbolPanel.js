@@ -9,7 +9,6 @@
 import React from 'react';
 import { Treebeard } from 'react-treebeard';
 
-import * as actions from './actions';
 const utils = require('./utils');
 
 // FIXME share code with treePanel
@@ -42,7 +41,7 @@ export class SymbolPanel extends React.Component {
 
         // Jump to the line in the source code.
         if (node.file_name) {
-            actions.getSource(this.props.app, node.file_name, { line_start: node.line_start, line_end: node.line_start });
+            this.props.app.loadSource(node.file_name, { line_start: node.line_start, line_end: node.line_start });
         }
 
         // Get any children from the server and add them to the tree.

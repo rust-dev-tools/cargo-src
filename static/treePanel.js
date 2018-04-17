@@ -9,8 +9,6 @@
 import React from 'react';
 import { Treebeard } from 'react-treebeard';
 
-import * as actions from './actions';
-
 export class TreePanel extends React.Component {
     constructor(props) {
         super(props);
@@ -29,7 +27,7 @@ export class TreePanel extends React.Component {
         if (node.children) {
             node.toggled = toggled;
         } else {
-            actions.getSource(this.props.app, node.path);
+            this.props.app.loadSource(node.path);
         }
         this.setState({ cursor: node });
     }
