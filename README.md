@@ -19,28 +19,30 @@ Uses knowledge from the RLS.
 This is work-in-progress, pre-release software, expect bugs and plenty of rough
 edges.
 
-Contents:
+## Contents:
 
 * [Installing and running](#installing)
 * [Building](#building)
 * [Customisation](#customisation)
 * [Contributing](#contributing)
 
+### Screen shots
+
 ![cargo src screenshot - source view](overview.png)
 
-Hover to show the type of an identifier:
+### Hover to show the type of an identifier:
 
 ![cargo src screenshot - source view](type-on-hover.png)
 
-Search for an identifier name (shows definitions, and all references to each definition):
+### Search for an identifier name (shows definitions, and all references to each definition):
 
 ![cargo src screenshot - source view](ident-search.png)
 
-Find all uses of a definition:
+### Find all uses of a definition:
 
 ![cargo src screenshot - source view](find-all-uses.png)
 
-Right click an identifier to show more options
+### Right click an identifier to show more options
 
 ![cargo src screenshot - source view](right-click.png)
 
