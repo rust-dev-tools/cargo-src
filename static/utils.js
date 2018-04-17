@@ -172,8 +172,10 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     }
 
     var offset = line_div.offset();
-    line_div.after(highlight);
-    offset.left += left;
-    highlight.offset(offset);
-    highlight.width(width);
+    if (offset) {
+        line_div.after(highlight);
+        offset.left += left;
+        highlight.offset(offset);
+        highlight.width(width);
+    }
 }

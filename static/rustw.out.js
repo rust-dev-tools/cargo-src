@@ -1055,10 +1055,12 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     }
 
     var offset = line_div.offset();
-    line_div.after(highlight);
-    offset.left += left;
-    highlight.offset(offset);
-    highlight.width(width);
+    if (offset) {
+        line_div.after(highlight);
+        offset.left += left;
+        highlight.offset(offset);
+        highlight.width(width);
+    }
 }
 
 /***/ }),
@@ -6602,6 +6604,11 @@ var ContentPanel = exports.ContentPanel = function (_React$Component) {
             this.query_api(this.props.path);
         }
     }, {
+        key: 'componentDidUpdate',
+        value: function componentDidUpdate() {
+            document.title = 'cargo src - ' + this.props.path;
+        }
+    }, {
         key: 'UNSAFE_componentWillReceiveProps',
         value: function UNSAFE_componentWillReceiveProps(nextProps) {
             if (nextProps.path == this.props.path) {
@@ -7505,6 +7512,11 @@ var SourceView = exports.SourceView = function (_React$Component) {
     }
 
     _createClass(SourceView, [{
+        key: 'componentWillUnmount',
+        value: function componentWillUnmount() {
+            console.log("unmount");
+        }
+    }, {
         key: 'componentDidMount',
         value: function componentDidMount() {
             this.componentDidUpdate();
