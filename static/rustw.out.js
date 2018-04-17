@@ -6501,7 +6501,11 @@ var RustwApp = exports.RustwApp = function (_React$Component) {
                 pathname: path,
                 state: { highlight: highlight }
             };
-            this.props.history.push(location);
+            if (this.props.location.pathname == path) {
+                this.props.history.replace(location);
+            } else {
+                this.props.history.push(location);
+            }
         }
     }, {
         key: 'render',
@@ -7512,11 +7516,6 @@ var SourceView = exports.SourceView = function (_React$Component) {
     }
 
     _createClass(SourceView, [{
-        key: 'componentWillUnmount',
-        value: function componentWillUnmount() {
-            console.log("unmount");
-        }
-    }, {
         key: 'componentDidMount',
         value: function componentDidMount() {
             this.componentDidUpdate();

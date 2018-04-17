@@ -134,7 +134,11 @@ export class RustwApp extends React.Component {
             pathname: path,
             state: { highlight }
         };
-        this.props.history.push(location);
+        if (this.props.location.pathname == path) {
+            this.props.history.replace(location);
+        } else {
+            this.props.history.push(location);
+        }
     }
 
     render() {
