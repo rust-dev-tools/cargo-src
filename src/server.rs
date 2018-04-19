@@ -304,7 +304,23 @@ impl Server {
             path = &path[1..];
         }
         for p in path {
-            path_buf.push(p);
+            if cfg!(windows) {
+                let mut chars = p.chars();
+                match (chars.next(), chars.next(), chars.next()) {
+                    (Some(drive_letter), Some(colon), None)
+                        if drive_letter.is_ascii_alphabetic()
+                            && colon == ':' => {
+                        let mut fixed_drive_prefix = String::new();
+                        fixed_drive_prefix.push(drive_letter);
+                        fixed_drive_prefix.push(colon);
+                        fixed_drive_prefix.push('\\');
+                        path_buf.push(&fixed_drive_prefix);
+                    },
+                    _ => path_buf.push(p),
+                }
+            } else {
+                path_buf.push(p);
+            }
         }
 
         // FIXME should cache directory listings too

@@ -39,7 +39,7 @@ export class RustwApp extends React.Component {
     loadFileTreeData() {
         let self = this;
         utils.request(
-            'tree/' + CONFIG.workspace_root,
+            'tree/' + CONFIG.workspace_root.replace('\\', '/'),
             function(json) {
                 if (json.Directory) {
                     self.setState({ fileTreeData: json })
