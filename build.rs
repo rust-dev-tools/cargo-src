@@ -40,7 +40,7 @@ fn main() {
         .filter(|e| !e.path_is_symlink() && e.file_type().is_file())
     {
         let relative = entry.path().strip_prefix(&from).unwrap();
-        write!(out_file, "\nr#\"{}\"# => Ok(include_bytes!(r#\"{}\"#)),", relative.display(), entry.path().display()).unwrap();
+        write!(out_file, "\nr#\"{}\"# => Ok(include_bytes!(r#\"{}\"#)),", relative.display().replace("\\", "/"), entry.path().display().replace("\\", "/")).unwrap();
     }
 
     out_file.write(SUFFIX.as_bytes()).unwrap();
