@@ -1,6 +1,6 @@
 [package]
 name = "cargo-src"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Nick Cameron <ncameron@mozilla.com>"]
 repository = "https://github.com/nrc/cargo-src"
 readme = "README.md"
