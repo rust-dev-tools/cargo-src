@@ -20,13 +20,27 @@ export class Menu extends React.Component {
     }
 
     didRender() {
-        if (this.isEmpty) {
+        if (this.items().length == 0) {
             this.props.onClose();
             return;
         }
 
         var menuDiv = $(`#${this.props.id}`);
         menuDiv.offset(this.props.location);
+    }
+
+    items() {
+        return this.props
+            .items
+            .filter((i) => { return !i.unstable || CONFIG.unstable_features })
+            .map((i) => {
+                const className = `${this.props.id}_link menu_link`;
+                let onClick = (ev) => {
+                    hideMenu(ev);
+                    i.fn(self.props.target, self.props.location);
+                };
+                return <div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>;
+            });
     }
 
     render() {
@@ -37,18 +51,9 @@ export class Menu extends React.Component {
             event.stopPropagation();
         };
 
-        let items = this.props.items.filter((i) => {return !i.unstable || CONFIG.unstable_features})
-                        .map((i) => {
-                            const className = `${this.props.id}_link menu_link`;
-                            let onClick = (ev) => {
-                                hideMenu(ev);
-                                i.fn(self.props.target, self.props.location);
-                            };
-                            return <div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>;
-                        });
+        let items = this.items();
     
         if (items.length === 0) {
-            this.isEmpty = true;
             return null;
         }
 

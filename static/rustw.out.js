@@ -6429,7 +6429,7 @@ var RustwApp = exports.RustwApp = function (_React$Component) {
         key: 'loadFileTreeData',
         value: function loadFileTreeData() {
             var self = this;
-            utils.request('tree/' + CONFIG.workspace_root, function (json) {
+            utils.request('tree/' + CONFIG.workspace_root.replace('\\', '/'), function (json) {
                 if (json.Directory) {
                     self.setState({ fileTreeData: json });
                 } else {
@@ -6731,7 +6731,7 @@ var Menu = exports.Menu = function (_React$Component) {
     }, {
         key: "didRender",
         value: function didRender() {
-            if (this.isEmpty) {
+            if (this.items().length == 0) {
                 this.props.onClose();
                 return;
             }
@@ -6740,18 +6740,11 @@ var Menu = exports.Menu = function (_React$Component) {
             menuDiv.offset(this.props.location);
         }
     }, {
-        key: "render",
-        value: function render() {
+        key: "items",
+        value: function items() {
             var _this2 = this;
 
-            var self = this;
-            var hideMenu = function hideMenu(event) {
-                self.props.onClose();
-                event.preventDefault();
-                event.stopPropagation();
-            };
-
-            var items = this.props.items.filter(function (i) {
+            return this.props.items.filter(function (i) {
                 return !i.unstable || CONFIG.unstable_features;
             }).map(function (i) {
                 var className = _this2.props.id + "_link menu_link";
@@ -6765,9 +6758,20 @@ var Menu = exports.Menu = function (_React$Component) {
                     i.label
                 );
             });
+        }
+    }, {
+        key: "render",
+        value: function render() {
+            var self = this;
+            var hideMenu = function hideMenu(event) {
+                self.props.onClose();
+                event.preventDefault();
+                event.stopPropagation();
+            };
+
+            var items = this.items();
 
             if (items.length === 0) {
-                this.isEmpty = true;
                 return null;
             }
 
