@@ -77,7 +77,9 @@ impl Server {
             let code = builder.build().unwrap();
             status.finish_build();
 
-            if code != 0 {
+            // Test specifically for `1` rather than `!= 0` since a compilation
+            // failure gives `101`, and we want to continue then.
+            if code == 1 {
                 process::exit(1);
             }
             status.start_analysis();

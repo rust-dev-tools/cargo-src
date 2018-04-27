@@ -55,9 +55,7 @@ impl Builder {
         let mut cmd = self.init_cmd();
         let status = cmd.status().expect("Running build failed");
         let result = status.code();
-        if let Some(0) = result {
-            self.clean_analysis();
-        }
+        self.clean_analysis();
         result
     }
 
