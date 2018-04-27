@@ -54,8 +54,11 @@ impl Builder {
     pub fn build(&self) -> Option<i32> {
         let mut cmd = self.init_cmd();
         let status = cmd.status().expect("Running build failed");
-        self.clean_analysis();
-        status.code()
+        let result = status.code();
+        if let Some(0) = result {
+            self.clean_analysis();
+        }
+        result
     }
 
     // Remove any old or duplicate json files.

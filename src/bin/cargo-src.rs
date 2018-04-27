@@ -26,15 +26,33 @@ fn main() {
         args.next().unwrap();
     }
 
+    let args: Vec<_> = args.collect();
+
+    if args.contains(&"--help".to_owned()) {
+        print_help();
+        return;
+    }
+
     let workspace_root = workspace_root();
     
     let build_args = BuildArgs {
         program: env::var("CARGO").expect("Missing $CARGO var"),
-        args: args.collect(),
+        args,
         workspace_root,
     };
 
     cargo_src::run_server(build_args);
+}
+
+fn print_help() {
+    println!("cargo-src");
+    println!("Browse a program's source code\n");
+    println!("USAGE:");
+    println!("    cargo src [OPTIONS]\n");
+    println!("OPTIONS:");
+    println!("    --help    show this message");
+    println!("    --open    open the cargo-src frontend in your web browser");
+    println!("\nOther options follow `cargo check`, see `cargo check --help` for more.");
 }
 
 fn workspace_root() -> String {

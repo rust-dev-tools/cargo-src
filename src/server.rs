@@ -16,7 +16,7 @@ use futures::Future;
 
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{self, Command};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, Ordering}};
 use std::thread;
@@ -74,9 +74,12 @@ impl Server {
         thread::spawn(move || {
             println!("Building...");
             status.start_build();
-            builder.build().unwrap();
+            let code = builder.build().unwrap();
             status.finish_build();
 
+            if code != 0 {
+                process::exit(1);
+            }
             status.start_analysis();
             file_cache.update_analysis();
             status.finish_analysis();
