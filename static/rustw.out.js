@@ -6819,6 +6819,7 @@ var MenuHost = exports.MenuHost = function (_React$Component2) {
             var contextMenu = function contextMenu(ev) {
                 _this4.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target } });
                 ev.preventDefault();
+                ev.stopPropagation();
             };
 
             var onClick = null;
@@ -6951,6 +6952,7 @@ function FileResult(props) {
             };
             props.app.loadSource(file_name, highlight);
             e.preventDefault();
+            e.stopPropagation();
         };
         var snippetClick = function snippetClick(e) {
             var highlight = {
@@ -6961,6 +6963,7 @@ function FileResult(props) {
             };
             props.app.loadSource(file_name, highlight);
             e.preventDefault();
+            e.stopPropagation();
         };
 
         return _react2.default.createElement(
@@ -6986,6 +6989,7 @@ function FileResult(props) {
     var onClick = function onClick(e) {
         props.app.loadSource(file_name);
         e.preventDefault();
+        e.stopPropagation();
     };
     return _react2.default.createElement(
         'div',
@@ -7422,7 +7426,9 @@ function add_ref_functionality(self) {
         var showRefMenu = function showRefMenu(ev) {
             self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id: id } });
             ev.preventDefault();
+            ev.stopPropagation();
         };
+        element.off("contextmenu");
         element.on("contextmenu", showRefMenu);
         element.addClass("hand_cursor");
     };
@@ -7539,6 +7545,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
                 // The data for what to do on-click is encoded in the data-link attribute.
                 // We need to process it here.
                 e.preventDefault();
+                e.stopPropagation();
 
                 var docUrl = e.target.dataset.docLink;
                 if (docUrl) {

@@ -60,6 +60,7 @@ function FileResult(props) {
             };
             props.app.loadSource(file_name, highlight);
             e.preventDefault();
+            e.stopPropagation();
         };
         const snippetClick = (e) => {
             const highlight = {
@@ -70,6 +71,7 @@ function FileResult(props) {
             };
             props.app.loadSource(file_name, highlight);
             e.preventDefault();
+            e.stopPropagation();
         };
 
         return <div key={`${kind}-${count}-${l.line_start}`}>
@@ -85,6 +87,7 @@ function FileResult(props) {
     const onClick = (e) => {
         props.app.loadSource(file_name);
         e.preventDefault();
+        e.stopPropagation();
     };
     return <div>
         <div className="div_search_file_link" onClick={onClick}>{file_name}</div>

@@ -20,6 +20,7 @@ export class Menu extends React.Component {
     }
 
     didRender() {
+        console.log("menu didRender")
         if (this.items().length == 0) {
             this.props.onClose();
             return;
@@ -82,6 +83,7 @@ export class MenuHost extends React.Component {
         let contextMenu = (ev) => {
             this.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target }});
             ev.preventDefault();
+            ev.stopPropagation();
         };
         
         let onClick = null;

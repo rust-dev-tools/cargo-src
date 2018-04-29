@@ -34,7 +34,9 @@ function add_ref_functionality(self) {
         const showRefMenu = (ev) => {
             self.setState({ refMenu: { "top": ev.pageY, "left": ev.pageX, target: ev.target, id }});
             ev.preventDefault();
+            ev.stopPropagation();
         };
+        element.off("contextmenu");
         element.on("contextmenu", showRefMenu);
         element.addClass("hand_cursor");
     }
@@ -108,6 +110,7 @@ export class SourceView extends React.Component {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
             e.preventDefault();
+            e.stopPropagation();
 
             var docUrl = e.target.dataset.docLink;
             if (docUrl) {
@@ -146,7 +149,9 @@ export class SourceView extends React.Component {
 
         let refMenu = null;
         if (!!this.state.refMenu) {
-            const onClose = () => this.setState({ refMenu: null });
+            const onClose = () => {
+                return this.setState({ refMenu: null });
+            };
 
             refMenu = <RefMenu app={this.props.app} location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
         }
