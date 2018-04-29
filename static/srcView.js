@@ -106,6 +106,7 @@ export class SourceView extends React.Component {
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
+        linkables.off("click");
         linkables.click((e) => {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
