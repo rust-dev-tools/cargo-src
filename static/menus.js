@@ -20,7 +20,6 @@ export class Menu extends React.Component {
     }
 
     didRender() {
-        console.log("menu didRender")
         if (this.items().length == 0) {
             this.props.onClose();
             return;
@@ -31,27 +30,27 @@ export class Menu extends React.Component {
     }
 
     items() {
+        const self = this;
         return this.props
             .items
             .filter((i) => { return !i.unstable || CONFIG.unstable_features })
             .map((i) => {
                 const className = `${this.props.id}_link menu_link`;
                 let onClick = (ev) => {
-                    hideMenu(ev);
+                    self.hideMenu(ev);
                     i.fn(self.props.target, self.props.location);
                 };
                 return <div className={className} id={i.id} key={i.id} onClick={onClick}>{i.label}</div>;
             });
     }
 
-    render() {
-        const self = this;
-        const hideMenu = (event) => {
-            self.props.onClose();
-            event.preventDefault();
-            event.stopPropagation();
-        };
+    hideMenu(event) {
+        this.props.onClose();
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
+    render() {
         let items = this.items();
     
         if (items.length === 0) {
@@ -59,7 +58,7 @@ export class Menu extends React.Component {
         }
 
         return <span>
-            <div id="div_overlay" onClick={hideMenu} />
+            <div id="div_overlay" onClick={(ev) => this.hideMenu(ev) } />
             <div id={this.props.id} className="div_menu">
                 {items}
             </div>

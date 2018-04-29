@@ -6744,12 +6744,13 @@ var Menu = exports.Menu = function (_React$Component) {
         value: function items() {
             var _this2 = this;
 
+            var self = this;
             return this.props.items.filter(function (i) {
                 return !i.unstable || CONFIG.unstable_features;
             }).map(function (i) {
                 var className = _this2.props.id + "_link menu_link";
                 var onClick = function onClick(ev) {
-                    hideMenu(ev);
+                    self.hideMenu(ev);
                     i.fn(self.props.target, self.props.location);
                 };
                 return _react2.default.createElement(
@@ -6760,14 +6761,16 @@ var Menu = exports.Menu = function (_React$Component) {
             });
         }
     }, {
+        key: "hideMenu",
+        value: function hideMenu(event) {
+            this.props.onClose();
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, {
         key: "render",
         value: function render() {
-            var self = this;
-            var hideMenu = function hideMenu(event) {
-                self.props.onClose();
-                event.preventDefault();
-                event.stopPropagation();
-            };
+            var _this3 = this;
 
             var items = this.items();
 
@@ -6778,7 +6781,9 @@ var Menu = exports.Menu = function (_React$Component) {
             return _react2.default.createElement(
                 "span",
                 null,
-                _react2.default.createElement("div", { id: "div_overlay", onClick: hideMenu }),
+                _react2.default.createElement("div", { id: "div_overlay", onClick: function onClick(ev) {
+                        return _this3.hideMenu(ev);
+                    } }),
                 _react2.default.createElement(
                     "div",
                     { id: this.props.id, className: "div_menu" },
@@ -6797,27 +6802,27 @@ var MenuHost = exports.MenuHost = function (_React$Component2) {
     function MenuHost(props) {
         _classCallCheck(this, MenuHost);
 
-        var _this3 = _possibleConstructorReturn(this, (MenuHost.__proto__ || Object.getPrototypeOf(MenuHost)).call(this, props));
+        var _this4 = _possibleConstructorReturn(this, (MenuHost.__proto__ || Object.getPrototypeOf(MenuHost)).call(this, props));
 
-        _this3.state = { menuOpen: null };
-        return _this3;
+        _this4.state = { menuOpen: null };
+        return _this4;
     }
 
     _createClass(MenuHost, [{
         key: "render",
         value: function render() {
-            var _this4 = this;
+            var _this5 = this;
 
             var menu = null;
             if (!!this.state.menuOpen) {
                 var onClose = function onClose() {
-                    return _this4.setState({ menuOpen: null });
+                    return _this5.setState({ menuOpen: null });
                 };
                 menu = _react2.default.createElement(this.menuFn, { location: this.state.menuOpen, onClose: onClose, target: this.state.menuOpen.target, callbacks: this.props.callbacks });
             }
 
             var contextMenu = function contextMenu(ev) {
-                _this4.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target } });
+                _this5.setState({ menuOpen: { "top": ev.pageY, "left": ev.pageX, target: ev.target } });
                 ev.preventDefault();
                 ev.stopPropagation();
             };
