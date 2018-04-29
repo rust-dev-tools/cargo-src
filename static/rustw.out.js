@@ -36859,6 +36859,9 @@ exports.DirView = (props) => {
         return (React.createElement("div", { className: "div_entry", key: f.name },
             React.createElement("span", { className: className, onClick: onClick }, f.name)));
     });
+    if (files.length == 0) {
+        files = React.createElement("div", { className: "div_entry" }, "<Empty directory>");
+    }
     return React.createElement("div", { id: "src" },
         React.createElement(breadCrumbs_1.BreadCrumbs, { path: props.path, app: props.app }),
         React.createElement("div", { id: "div_dir_view" },

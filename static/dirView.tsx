@@ -19,7 +19,7 @@ export interface DirViewProps {
 
 export const DirView: React.SFC<DirViewProps> = (props) => {
     const dirPath = props.path.join('/').replace('//', '/');
-    let files = props.files.map((f: any) => {
+    let files: any = props.files.map((f: any) => {
         const onClick = () => props.app.loadSource(`${dirPath}/${f.name}`);
         const className = f.kind === "Directory" ? 'div_entry_name div_dir_entry' : 'div_entry_name div_file_entry';
         return (
@@ -28,6 +28,9 @@ export const DirView: React.SFC<DirViewProps> = (props) => {
             </div>
         );
     });
+    if (files.length == 0) {
+        files = <div className="div_entry">&lt;Empty directory&gt;</div>
+    }
     return <div id="src">
         <BreadCrumbs path={props.path} app={props.app} />
         <div id="div_dir_view">
