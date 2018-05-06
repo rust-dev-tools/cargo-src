@@ -72,7 +72,7 @@ dependencies = [
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-analysis 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-analysis 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-blacklist 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -468,7 +468,7 @@ dependencies = [
 
 [[package]]
 name = "rls-analysis"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "derive-new 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -963,7 +963,7 @@ dependencies = [
 "checksum regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)" = "4fd4ace6a8cf7860714a2c2280d6c1f7e6a413486c13298bbc86fd3da019402f"
 "checksum regex-syntax 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
 "checksum relay 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1576e382688d7e9deecea24417e350d3062d97e32e45d70b1cde65994ff1489a"
-"checksum rls-analysis 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b339561571efd8d2d4ae1b16eb27f760cad46907d49e9726242844dbbde14e79"
+"checksum rls-analysis 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a41488cf5dc99d6ce383319d2978756567b70d4ed0539eb0d9ce07763e732e46"
 "checksum rls-blacklist 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e4a9cc2545ccb7e05b355bfe047b8039a6ec12270d5f3c996b766b340a50f7d2"
 "checksum rls-data 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bea04462e94b5512a78499837eecb7db182ff082144cd1b4bc32ef5d43de6510"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
