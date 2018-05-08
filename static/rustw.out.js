@@ -7508,10 +7508,10 @@ function RefMenu(props) {
 }
 
 function view_in_vcs(target) {
-    // FIXME this is broken
-    var file_name = history.state.file;
-    var line_id = target.getAttribute("id");
-    var line_number = parseInt(line_id.slice("src_line_number_".length));
+    var link = target.dataset.link;
+    var colon = link.lastIndexOf(':');
+    var file_name = link.substring(CONFIG.workspace_root.length + 2, colon);
+    var line_number = link.substring(colon + 1);
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
 }
 

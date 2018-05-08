@@ -80,10 +80,10 @@ function RefMenu(props) {
 }
 
 function view_in_vcs(target) {
-    // FIXME this is broken
-    const file_name = history.state.file;
-    const line_id = target.getAttribute("id");
-    const line_number = parseInt(line_id.slice("src_line_number_".length));
+    const link = target.dataset.link;
+    const colon = link.lastIndexOf(':');
+    const file_name = link.substring(CONFIG.workspace_root.length + 2, colon);
+    const line_number = link.substring(colon + 1);
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
 }
 
