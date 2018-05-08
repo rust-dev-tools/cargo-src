@@ -45,9 +45,10 @@ function add_ref_functionality(self) {
 // props: location, onClose, target
 // location: { "top": event.pageY, "left": event.pageX }
 function LineNumberMenu(props) {
-    let items = [
-        { id: "line_number_menu_edit", label: "edit", fn: utils.edit, unstable: true }
-    ];
+    let items = [];
+    if (CONFIG.edit_command) {
+        items.push({ id: "line_number_menu_edit", label: "edit", fn: edit, unstable: true });
+    }
     if (CONFIG.vcs_link) {
         items.push({ id: "line_number_vcs", label: "view in VCS", fn: view_in_vcs });
     }
@@ -85,6 +86,17 @@ function view_in_vcs(target) {
     const file_name = link.substring(CONFIG.workspace_root.length + 2, colon);
     const line_number = link.substring(colon + 1);
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
+}
+
+function edit(target) {
+    utils.request(
+        'edit?file=' + target.dataset.link,
+        function(json) {
+            console.log("edit - success");
+        },
+        "Error with search edit",
+        null
+    );
 }
 
 // See https://github.com/Microsoft/TypeScript/issues/18134

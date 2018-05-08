@@ -127,17 +127,6 @@ export function parseLink(file_loc) {
     return data;
 }
 
-export function edit(target) {
-    request(
-        'edit?file=' + target.dataset.link,
-        function(json) {
-            console.log("edit - success");
-        },
-        "Error with search edit",
-        null
-    );
-}
-
 // Left is the number of chars from the left margin to where the highlight
 // should start. right is the number of chars to where the highlight should end.
 // If right == 0, we take it as the last char in the line.

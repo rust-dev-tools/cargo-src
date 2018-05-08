@@ -887,7 +887,6 @@ exports.make_url = make_url;
 exports.highlight_spans = highlight_spans;
 exports.request = request;
 exports.parseLink = parseLink;
-exports.edit = edit;
 // Copyright 2017 The Rustw Project Developers.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -1013,12 +1012,6 @@ function parseLink(file_loc) {
     };
 
     return data;
-}
-
-function edit(target) {
-    request('edit?file=' + target.dataset.link, function (json) {
-        console.log("edit - success");
-    }, "Error with search edit", null);
 }
 
 // Left is the number of chars from the left margin to where the highlight
@@ -7469,7 +7462,10 @@ function add_ref_functionality(self) {
 // props: location, onClose, target
 // location: { "top": event.pageY, "left": event.pageX }
 function LineNumberMenu(props) {
-    var items = [{ id: "line_number_menu_edit", label: "edit", fn: utils.edit, unstable: true }];
+    var items = [];
+    if (CONFIG.edit_command) {
+        items.push({ id: "line_number_menu_edit", label: "edit", fn: edit, unstable: true });
+    }
     if (CONFIG.vcs_link) {
         items.push({ id: "line_number_vcs", label: "view in VCS", fn: view_in_vcs });
     }
@@ -7513,6 +7509,12 @@ function view_in_vcs(target) {
     var file_name = link.substring(CONFIG.workspace_root.length + 2, colon);
     var line_number = link.substring(colon + 1);
     window.open(CONFIG.vcs_link.replace("$file", file_name).replace("$line", line_number), '_blank');
+}
+
+function edit(target) {
+    utils.request('edit?file=' + target.dataset.link, function (json) {
+        console.log("edit - success");
+    }, "Error with search edit", null);
 }
 
 // See https://github.com/Microsoft/TypeScript/issues/18134
