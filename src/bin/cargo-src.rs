@@ -33,7 +33,14 @@ fn main() {
         return;
     }
 
-    let workspace_root = workspace_root();
+    let workspace_root = match workspace_root() {
+        Ok(root) => root,
+        Err(_) => {
+            println!("Error: could not find workspace root");
+            println!("`cargo src` run outside a Cargo project");
+            std::process::exit(1);
+        }
+    };
     
     let build_args = BuildArgs {
         program: env::var("CARGO").expect("Missing $CARGO var"),
@@ -55,11 +62,11 @@ fn print_help() {
     println!("\nOther options follow `cargo check`, see `cargo check --help` for more.");
 }
 
-fn workspace_root() -> String {
+fn workspace_root() -> Result<String, serde_json::Error> {
     let output = Command::new("cargo").args(&["metadata", "--format-version", "1"]).output();
     let stdout = String::from_utf8(output.expect("error executing `cargo metadata`").stdout).expect("unexpected output");
-    let json: Metadata = serde_json::from_str(&stdout).expect("error parsing json from `cargo metadata`");
-    json.workspace_root
+    let json: Metadata = serde_json::from_str(&stdout)?;
+    Ok(json.workspace_root)
 }
 
 #[derive(Deserialize)]
