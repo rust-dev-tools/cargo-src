@@ -24,8 +24,8 @@ edges.
 ## Contents:
 
 * [Installing and running](#installing)
-* [Building](#building)
 * [Customisation](#customisation)
+* [Building](#building)
 * [Contributing](#contributing)
 
 ### Screen shots
@@ -63,6 +63,30 @@ web browser.
 This may take some time (depending on your crate, up to twice as long as a normal
 build). You can browse the source in whilst indexing, but you'll be missing all
 the good stuff like jump-to-def and search.
+
+
+## Customisation
+
+Create a `rustw.toml` file in your project's directory. See [src/config.rs](src/config.rs)
+or run `cargo src -- -h` for the options available and their defaults.
+
+Some features **need** configuration in the rustw.toml before they can be
+used.
+
+```
+edit_command = "subl $file:$line"
+```
+
+To be able to open files in your local editor. This example works for sublime
+text (`subl`). Use the `$file` and `$line` variables as appropriate for your
+editor.
+
+```
+vcs_link = "https://github.com/nrc/rustw-test/blob/master/$file#L$line"
+```
+
+For links to the code in version control, GitHub, in the example.
+
 
 ## Building and running
 
@@ -126,30 +150,6 @@ On MacOS:
 ```
 export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
 ```
-
-
-## Customisation
-
-Create a `rustw.toml` file in your project's directory. See [src/config.rs](src/config.rs)
-or run `cargo src -- -h` for the options available and their defaults.
-
-Some features **need** configuration in the rustw.toml before they can be
-properly used.
-
-```
-edit_command = "subl $file:$line"
-```
-
-To be able to open files in your local editor. This example works for sublime
-text (`subl`). Use the `$file` and `$line` variables as appropriate for your
-editor.
-
-```
-vcs_link = "https://github.com/nrc/rustw-test/blob/master/$file#L$line"
-```
-
-For links to the code in version control.
-
 
 ## Contributing
 
