@@ -80,12 +80,12 @@ export function request(urlStr, success, errStr, app) {
         console.log(errStr);
         console.log("error: " + errorThrown + "; status: " + status);
 
-        if (!app) {
+        if (app) {
             app.showError();
         }
     });
 
-    if (!app) {
+    if (app) {
         app.showLoading();
     }
 }

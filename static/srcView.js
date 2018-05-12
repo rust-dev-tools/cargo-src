@@ -160,7 +160,7 @@ export class SourceView extends React.Component {
             });
 
         let refMenu = null;
-        if (!this.state.refMenu) {
+        if (this.state.refMenu) {
             const onClose = () => {
                 return this.setState({ refMenu: null });
             };
