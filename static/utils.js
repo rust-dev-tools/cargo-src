@@ -24,7 +24,7 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
     }
 
     if (line_number_prefix) {
-        for (var i = highlight.line_start; i <= highlight.line_end; ++i) {
+        for (let i = highlight.line_start; i <= highlight.line_end; ++i) {
             $("#" + line_number_prefix + i).addClass(css_class);
         }
     }
@@ -34,7 +34,7 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
     }
 
     // Highlight all of the middle lines.
-    for (var i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
+    for (let i = highlight.line_start + 1; i <= highlight.line_end - 1; ++i) {
         $("#" + src_line_prefix + i).addClass(css_class);
     }
 
@@ -45,8 +45,8 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
         $("#" + src_line_prefix + highlight.line_end).addClass(css_class);
     } else {
         // First line
-        var lhs = (highlight.column_start - 1);
-        var rhs = 0;
+        const lhs = (highlight.column_start - 1);
+        let rhs = 0;
         if (highlight.line_end === highlight.line_start && highlight.column_end > 0) {
             // If we're only highlighting one line, then the highlight must stop
             // before the end of the line.
@@ -56,7 +56,7 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
 
         // Last line
         if (highlight.line_end > highlight.line_start) {
-            var rhs = 0;
+            rhs = 0;
             if (highlight.column_end > 0) {
                 rhs = (highlight.column_end - 1);
             }
@@ -80,12 +80,12 @@ export function request(urlStr, success, errStr, app) {
         console.log(errStr);
         console.log("error: " + errorThrown + "; status: " + status);
 
-        if (!!app) {
+        if (!app) {
             app.showError();
         }
     });
 
-    if (!!app) {
+    if (!app) {
         app.showLoading();
     }
 }

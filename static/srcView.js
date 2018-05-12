@@ -7,7 +7,6 @@
 // except according to those terms.
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
@@ -91,7 +90,7 @@ function view_in_vcs(target) {
 function edit(target) {
     utils.request(
         'edit?file=' + target.dataset.link,
-        function(json) {
+        function() {
             console.log("edit - success");
         },
         "Error with search edit",
@@ -113,7 +112,7 @@ export class SourceView extends React.Component {
 
     componentDidUpdate() {
         if (this.props.highlight) {
-            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", ReactDOM.findDOMNode(this));
+            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", this.node);
         }
 
         // Make source links active.
@@ -161,7 +160,7 @@ export class SourceView extends React.Component {
             });
 
         let refMenu = null;
-        if (!!this.state.refMenu) {
+        if (!this.state.refMenu) {
             const onClose = () => {
                 return this.setState({ refMenu: null });
             };
@@ -169,7 +168,7 @@ export class SourceView extends React.Component {
             refMenu = <RefMenu app={this.props.app} location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
         }
 
-        return <div id="src"> 
+        return <div id="src" ref={node => this.node = node}> 
             <BreadCrumbs app={this.props.app} path={this.props.path} />
             <div id="div_src_view">
                 <div id="div_src_contents">
