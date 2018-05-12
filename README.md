@@ -28,7 +28,7 @@ edges.
 * [Building](#building)
 * [Contributing](#contributing)
 
-### Screen shots
+### Screenshots
 
 ![cargo src screenshot - source view](overview.png)
 
@@ -49,7 +49,7 @@ edges.
 ![cargo src screenshot - source view](right-click.png)
 
 
-## Installing and running
+## <a id="installing"></a> Installing and running
 
 Requires a nightly version of Rust.
 
@@ -65,7 +65,7 @@ build). You can browse the source in whilst indexing, but you'll be missing all
 the good stuff like jump-to-def and search.
 
 
-## Customisation
+## <a id="customisation"></a> Customisation
 
 Create a `rustw.toml` file in your project's directory. See [src/config.rs](src/config.rs)
 or run `cargo src -- -h` for the options available and their defaults.
@@ -88,7 +88,7 @@ vcs_link = "https://github.com/nrc/rustw-test/blob/master/$file#L$line"
 For links to the code in version control, GitHub, in the example.
 
 
-## Building and running
+## <a id="building"></a> Building
 
 Requires a nightly version of Rust.
 
@@ -133,7 +133,7 @@ On MacOS:
 export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
 ```
 
-## Contributing
+## <a id="contributing"></a> Contributing
 
 Cargo src is open source (dual-licensed under the Apache 2.0 and MIT licenses)
 and contributions are welcome! You can help by testing and
