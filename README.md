@@ -94,27 +94,9 @@ Requires a nightly version of Rust.
 
 Get the source code from https://github.com/nrc/cargo-src.
 
-* setup the React/webpack environment (requires npm):
-```sh
-npm install
-
-# if you have yarn installed:
-
-yarn
-
-# if not:
-
-npm install --save react react-dom
-npm install --save react-treebeard
-npm install --save-dev babel-loader babel-core
-npm install --save-dev babel-preset-react
-npm install --save-dev babel-preset-es2015
-npm install --save-dev babel-plugin-transform-object-rest-spread
-npm install --save-dev webpack
-npm install --save-dev immutable
-```
-* build the JS components: `npm run build` or `yarn build`
-* `cargo build --release` to build the Rust parts.
+* Install the dependencies: `npm install` or `yarn`
+* Build the JS components: `npm run build` or `yarn build`
+* Build the Rust parts: `cargo build --release`
 
 ### Running
 
