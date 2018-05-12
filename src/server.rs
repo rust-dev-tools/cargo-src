@@ -9,7 +9,7 @@
 use analysis;
 use build::{self, BuildArgs};
 use config::Config;
-use file_cache::Cache;
+use file_controller::Cache;
 use listings::{Listing, DirectoryListing};
 use futures;
 use futures::Future;

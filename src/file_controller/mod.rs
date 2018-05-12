@@ -21,6 +21,16 @@ use super::highlight;
 // FIXME maximum size and evication policy
 // FIXME keep timestamps and check on every read. Then don't empty on build.
 
+mod results;
+use file_controller::results::{
+    SearchResult,
+    DefResult,
+    FileResult,
+    LineResult,
+    FindResult,
+    SymbolResult
+};
+
 pub struct Cache {
     files: Vfs<VfsUserData>,
     analysis: AnalysisHost,
@@ -28,56 +38,6 @@ pub struct Cache {
 }
 
 type Span = span::Span<span::ZeroIndexed>;
-
-#[derive(Serialize, Debug, Clone)]
-pub struct SearchResult {
-    pub defs: Vec<DefResult>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct DefResult {
-    pub file: String,
-    pub line: LineResult,
-    pub refs: Vec<FileResult>,
-}
-
-#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FileResult {
-    pub file_name: String,
-    pub lines: Vec<LineResult>,
-}
-
-#[derive(Serialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct LineResult {
-    pub line_start: u32,
-    pub column_start: u32,
-    pub column_end: u32,
-    pub line: String,
-}
-
-impl LineResult {
-    fn new(span: &Span, line: String) -> LineResult {
-        LineResult {
-            line_start: span.range.row_start.one_indexed().0,
-            column_start: span.range.col_start.one_indexed().0,
-            column_end: span.range.col_end.one_indexed().0,
-            line: line,
-        }
-    }
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct FindResult {
-    pub results: Vec<FileResult>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct SymbolResult {
-    pub id: String,
-    pub name: String,
-    pub file_name: String,
-    pub line_start: u32,
-}
 
 // Our data which we attach to files in the VFS.
 struct VfsUserData {
