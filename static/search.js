@@ -7,8 +7,7 @@
 // except according to those terms.
 
 import React from 'react';
-
-const utils = require('./utils');
+import { highlight_spans } from './utils';
 
 class ResultSet extends React.Component {
     componentDidMount() {
@@ -157,7 +156,7 @@ function highlight_needle(results, tag) {
     results.map((file, index) => {
         file.lines.map((line) => {
             line.line_end = line.line_start;
-            utils.highlight_spans(line,
+            highlight_spans(line,
                                   null,
                                   `snippet_line_${tag}_${index}_`,
                                   "selected_search");

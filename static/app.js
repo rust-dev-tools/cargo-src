@@ -8,9 +8,9 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { BrowserRouter, Route, Switch } from 'react-router-dom';
+import { BrowserRouter, Route } from 'react-router-dom';
 
-import * as utils from './utils';
+import { request } from './utils';
 import { Sidebar } from './sidebar';
 import { makeTreeData } from './symbolPanel';
 import { ContentPanel, Page } from './contentPanel';
@@ -38,7 +38,7 @@ export class RustwApp extends React.Component {
 
     loadFileTreeData() {
         let self = this;
-        utils.request(
+        request(
             'tree/' + CONFIG.workspace_root.replace('\\', '/'),
             function(json) {
                 if (json.Directory) {
@@ -55,7 +55,7 @@ export class RustwApp extends React.Component {
 
     loadSymbols() {
         const self = this;
-        utils.request(
+        request(
             'symbol_roots',
             function(json) {
                 self.setState({ symbols: makeTreeData(json) });
@@ -67,7 +67,7 @@ export class RustwApp extends React.Component {
 
     refreshStatus() {
         const self = this;
-        utils.request(
+        request(
             "status",
             function (data) {
                 self.setState({ status: data.status });
@@ -80,7 +80,7 @@ export class RustwApp extends React.Component {
 
     getSearch(needle) {
         const self = this;
-        return utils.request(
+        return request(
             'search?needle=' + needle,
             function(json) {
                 self.refreshStatus();
@@ -93,7 +93,7 @@ export class RustwApp extends React.Component {
 
     getUses(needle) {
         const self = this;
-        return utils.request(
+        return request(
             'search?id=' + needle,
             function(json) {
                 self.refreshStatus();
@@ -106,7 +106,7 @@ export class RustwApp extends React.Component {
 
     getImpls(needle) {
         const self = this;
-        return utils.request(
+        return request(
             'find?impls=' + needle,
             function(json) {
                 self.refreshStatus();

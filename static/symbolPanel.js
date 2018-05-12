@@ -8,8 +8,7 @@
 
 import React from 'react';
 import { Treebeard } from 'react-treebeard';
-
-const utils = require('./utils');
+import { request } from './utils';
 
 // FIXME share code with treePanel
 
@@ -46,7 +45,7 @@ export class SymbolPanel extends React.Component {
 
         // Get any children from the server and add them to the tree.
         if (node.symId && (!node.children || node.children.length == 0)) {
-            utils.request(
+            request(
                 'symbol_children?id=' + node.symId,
                 function(json) {
                     // FIXME? We are mutating the state of app here, I'm pretty sure this is bad practice.

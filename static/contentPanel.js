@@ -10,7 +10,7 @@ import React from 'react';
 
 import { DirView } from './dirView';
 import { SourceView } from './srcView';
-const utils = require('./utils');
+import { request } from './utils';
 
 export const Page = {
     START: 'START',
@@ -51,7 +51,7 @@ export class ContentPanel extends React.Component {
         const app = this.props.app;
         const self = this;
 
-        utils.request(
+        request(
             'src/' + path,
             function(json) {
                 if (json.Directory) {
