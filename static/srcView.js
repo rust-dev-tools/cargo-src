@@ -59,6 +59,14 @@ function LineNumberMenu(props) {
 function RefMenu(props) {
     let items = [];
 
+    const file_loc = props.target.dataset.link.split(':');
+    const file = file_loc[0];
+
+    if (file != "search") {
+        let data = utils.parseLink(file_loc);
+        items.push({ id: "ref_menu_goto_def", label: "goto def", fn: () => props.app.loadSource(file, data) });
+    }
+
     const docUrl = props.target.dataset.docLink;
     if (docUrl) {
         items.push({ id: "ref_menu_view_docs", label: "view docs", fn: () => window.open(docUrl, '_blank') });
