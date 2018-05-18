@@ -68,9 +68,8 @@ export function highlight_spans(highlight, line_number_prefix, src_line_prefix, 
 // Only supply the `app` argument if you want to show loading/error messages
 // in the main content panel.
 export function request(urlStr, success, errStr, app) {
-    const self = this;
     $.ajax({
-        url: self.make_url(urlStr),
+        url: make_url(urlStr),
         type: 'POST',
         dataType: 'JSON',
         cache: false
