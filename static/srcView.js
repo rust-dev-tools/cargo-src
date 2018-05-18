@@ -121,6 +121,8 @@ export class SourceView extends React.Component {
     componentDidUpdate() {
         if (this.props.highlight) {
             utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", this.node);
+        } else {
+            utils.unHighlight("selected", this.node)
         }
 
         // Make source links active.

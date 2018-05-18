@@ -884,6 +884,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 exports.make_url = make_url;
+exports.unHighlight = unHighlight;
 exports.highlight_spans = highlight_spans;
 exports.request = request;
 exports.parseLink = parseLink;
@@ -899,14 +900,18 @@ function make_url(suffix) {
     return '/' + CONFIG.demo_mode_root_path + suffix;
 }
 
-function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class, element) {
-    // Remove any previous highlighting.
+function unHighlight(css_class, element) {
     if (element) {
         var highlighted = $(element).find('.' + css_class);
         highlighted.removeClass(css_class);
         var floating = $(element).find('.' + css_class + '.floating_highlight');
         floating.remove();
     }
+}
+
+function highlight_spans(highlight, line_number_prefix, src_line_prefix, css_class, element) {
+    // Remove any previous highlighting.
+    unHighlight(css_class, element);
 
     if (!highlight.line_start || !highlight.line_end) {
         return;
@@ -7545,6 +7550,8 @@ var SourceView = exports.SourceView = function (_React$Component) {
 
             if (this.props.highlight) {
                 utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", this.node);
+            } else {
+                utils.unHighlight("selected", this.node);
             }
 
             // Make source links active.
