@@ -11,8 +11,10 @@ use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::str;
+use std::sync::Arc;
 
 use analysis::{AnalysisHost, Id, Target};
+use config::Config;
 use span;
 use vfs::Vfs;
 
@@ -32,6 +34,7 @@ use file_controller::results::{
 };
 
 pub struct Cache {
+    config: Arc<Config>,
     files: Vfs<VfsUserData>,
     analysis: AnalysisHost,
     project_dir: PathBuf,
@@ -62,8 +65,9 @@ macro_rules! vfs_err {
 }
 
 impl Cache {
-    pub fn new() -> Cache {
+    pub fn new(config: Arc<Config>) -> Cache {
         Cache {
+            config,
             files: Vfs::new(),
             analysis: AnalysisHost::new(Target::Debug),
             project_dir: env::current_dir().unwrap(),
@@ -138,8 +142,14 @@ impl Cache {
 
     pub fn update_analysis(&self) {
         println!("Processing analysis...");
+        let workspace_root = self
+            .config
+            .workspace_root
+            .as_ref()
+            .map(|s| Path::new(s).to_owned())
+            .unwrap_or(self.project_dir.clone());
         self.analysis
-            .reload_with_blacklist(&self.project_dir, &self.project_dir, &::blacklist::CRATE_BLACKLIST)
+            .reload_with_blacklist(&self.project_dir, &workspace_root, &::blacklist::CRATE_BLACKLIST)
             .unwrap();
 
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only

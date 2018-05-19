@@ -56,8 +56,8 @@ impl Server {
 
         let mut instance = Server {
             builder: build::Builder::new(config.clone(), build_args),
-            config: config,
-            file_cache: Arc::new(Cache::new()),
+            file_cache: Arc::new(Cache::new(config.clone())),
+            config,
             status: Status::new(),
         };
 
