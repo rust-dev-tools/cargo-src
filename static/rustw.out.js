@@ -7645,7 +7645,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
 function jumpToLine(line) {
     // Jump to the start line. 100 is a fudge so that the start line is not
     // right at the top of the window, which makes it easier to see.
-    var y = line * $("#src_line_number_1").height() - 100;
+    var y = line * $("#src_line_number_1").outerHeight() - 100;
     var div = document.getElementById("src");
     div.scroll(0, y);
 }
