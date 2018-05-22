@@ -43,7 +43,7 @@ pub fn highlight<'a>(
 
         let t_start = Instant::now();
 
-        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
+        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
         classifier.write_source(&mut out).unwrap();
 
         let time = t_start.elapsed();
