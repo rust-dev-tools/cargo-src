@@ -8,6 +8,9 @@
 
 use super::Span;
 
+// The number of lines before and after a result line to use as context.
+pub const CONTEXT_SIZE: i32 = 3;
+
 #[derive(Serialize, Debug, Clone)]
 pub struct SearchResult {
     pub defs: Vec<DefResult>,
@@ -32,15 +35,17 @@ pub struct LineResult {
     pub column_start: u32,
     pub column_end: u32,
     pub line: String,
+    pub context: String,
 }
 
 impl LineResult {
-    pub fn new(span: &Span, line: String) -> LineResult {
+    pub fn new(span: &Span, line: String, context: String) -> LineResult {
         LineResult {
             line_start: span.range.row_start.one_indexed().0,
             column_start: span.range.col_start.one_indexed().0,
             column_end: span.range.col_end.one_indexed().0,
-            line: line,
+            line,
+            context,
         }
     }
 }

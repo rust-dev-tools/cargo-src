@@ -30,7 +30,8 @@ use file_controller::results::{
     FileResult,
     LineResult,
     FindResult,
-    SymbolResult
+    SymbolResult,
+    CONTEXT_SIZE,
 };
 
 pub struct Cache {
@@ -129,15 +130,6 @@ impl Cache {
 
             Ok(u.highlighted_lines.clone())
         }))
-    }
-
-    pub fn get_highlighted_line(
-        &self,
-        file_name: &Path,
-        line: span::Row<span::ZeroIndexed>,
-    ) -> Result<String, String> {
-        let lines = self.get_highlighted(file_name)?;
-        Ok(lines[line.0 as usize].clone())
     }
 
     pub fn update_analysis(&self) {
@@ -275,11 +267,26 @@ impl Cache {
     }
 
     fn make_line_result(&self, file_path: &Path, span: &Span) -> Result<LineResult, String> {
-        let text = match self.get_highlighted_line(file_path, span.range.row_start) {
-            Ok(t) => t,
+        let (text, context) = match self.get_highlighted(file_path) {
+            Ok(lines) => {
+                let line = span.range.row_start.0 as i32;
+                let text = lines[line as usize].clone();
+
+                let mut ctx_start = line - CONTEXT_SIZE;
+                if ctx_start < 0 {
+                    ctx_start = 0;
+                }
+                let mut ctx_end = line + CONTEXT_SIZE;
+                if ctx_end >= lines.len() as i32 {
+                    ctx_end = lines.len() as i32 - 1;
+                }
+                let context = lines[ctx_start as usize..=ctx_end as usize].join("\n");
+
+                (text, context)
+            }
             Err(_) => return Err(format!("Error finding text for {:?}", span)),
         };
-        Ok(LineResult::new(span, text))
+        Ok(LineResult::new(span, text, context))
     }
 
     // Sorts a set of search results into buckets by file.
