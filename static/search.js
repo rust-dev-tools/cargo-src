@@ -37,63 +37,88 @@ class ResultSet extends React.Component {
     }
 }
 
-function FileResult(props) {
-    const { lines, file_name, kind, count } = props;
-    let divLines = lines.map((l) => {
-        const lineId = `snippet_line_number_${kind}_${count}_${l.line_start}`;
-        const snippetId = `snippet_line_${kind}_${count}_${l.line_start}`;
+class FileResult extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { peekContext: null };
+    }
 
-        // Squash the indent down by a factor of four.
-        const text = l.line;
-        let trimmed = text.trimLeft();
-        const newIndent = (text.length - trimmed.length) / 4;
-        const diffIndent = (text.length - trimmed.length) - newIndent;
-        trimmed = trimmed.padStart(trimmed.length + newIndent);
+    render() {
+        const { lines, file_name, kind, count, app } = this.props;
+        const self = this;
+        let divLines = lines.map((l) => {
+            const lineId = `snippet_line_number_${kind}_${count}_${l.line_start}`;
+            const snippetId = `snippet_line_${kind}_${count}_${l.line_start}`;
 
-        const lineClick = (e) => {
-            const highlight = {
-                "line_start": l.line_start,
-                "line_end": l.line_start,
-                "column_start": 0,
-                "column_end": 0
+            // Squash the indent down by a factor of four.
+            const text = l.line;
+            let trimmed = text.trimLeft();
+            const newIndent = (text.length - trimmed.length) / 4;
+            const diffIndent = (text.length - trimmed.length) - newIndent;
+            trimmed = trimmed.padStart(trimmed.length + newIndent);
+
+            const lineClick = (e) => {
+                const highlight = {
+                    "line_start": l.line_start,
+                    "line_end": l.line_start,
+                    "column_start": 0,
+                    "column_end": 0
+                };
+                app.loadSource(file_name, highlight);
+                e.preventDefault();
+                e.stopPropagation();
             };
-            props.app.loadSource(file_name, highlight);
+            const snippetClick = (e) => {
+                const highlight = {
+                    "line_start": l.line_start,
+                    "line_end": l.line_end,
+                    "column_start": l.column_start,
+                    "column_end": l.column_end
+                };
+                app.loadSource(file_name, highlight);
+                e.preventDefault();
+                e.stopPropagation();
+            };
+
+            const onMouseOver = (e) => {
+                self.setState({ peekContext: { pre: l.pre_context, post: l.post_context }});
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const onMouseOut = (e) => {
+                self.setState({ peekContext: null });
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            let context = null;
+            if (this.state.peekContext) {
+                context = <SearchContext line={l.line} preContext={this.state.peekContext.pre}  postContext={this.state.peekContext.post} />
+            }
+
+            return <div key={`${kind}-${count}-${l.line_start}`}>
+                <span className="div_span_src_number">
+                    <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
+                </span>
+                <span className="div_span_src">
+                    <div className="span_src" id={snippetId} onClick={snippetClick} onMouseOver={onMouseOver} onMouseOut={onMouseOut} dangerouslySetInnerHTML={{__html: trimmed}} data-adjust={diffIndent} />
+                </span>
+                {context}
+                <br />
+            </div>;
+        });
+        const onClick = (e) => {
+            props.app.loadSource(file_name);
             e.preventDefault();
             e.stopPropagation();
         };
-        const snippetClick = (e) => {
-            const highlight = {
-                "line_start": l.line_start,
-                "line_end": l.line_end,
-                "column_start": l.column_start,
-                "column_end": l.column_end
-            };
-            props.app.loadSource(file_name, highlight);
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        return <div key={`${kind}-${count}-${l.line_start}`}>
-            <span className="div_span_src_number">
-                <div className="span_src_number" id={lineId} onClick={lineClick}>{l.line_start}</div>
-            </span>
-            <span className="div_span_src">
-                <div className="span_src" id={snippetId} onClick={snippetClick} dangerouslySetInnerHTML={{__html: trimmed}} data-adjust={diffIndent} />
-            </span>
-            <br />
+        return <div>
+            <div className="div_search_file_link" onClick={onClick}>{file_name}</div>
+            <div className="div_all_span_src">
+                {divLines}
+            </div>
         </div>;
-    });
-    const onClick = (e) => {
-        props.app.loadSource(file_name);
-        e.preventDefault();
-        e.stopPropagation();
-    };
-    return <div>
-        <div className="div_search_file_link" onClick={onClick}>{file_name}</div>
-        <div className="div_all_span_src">
-            {divLines}
-        </div>
-    </div>;
+    }
 }
 
 class StructuredResultSet extends React.Component {
@@ -157,9 +182,15 @@ function highlight_needle(results, tag) {
         file.lines.map((line) => {
             line.line_end = line.line_start;
             highlight_spans(line,
-                                  null,
-                                  `snippet_line_${tag}_${index}_`,
-                                  "selected_search");
+                            null,
+                            `snippet_line_${tag}_${index}_`,
+                            "selected_search");
         })
     })
+}
+
+function SearchContext(props) {
+    const text = props.preContext + '\n<span class="search_context_highlight">' + props.line + '</span>\n' + props.postContext;
+    return <div className="div_search_context_box" dangerouslySetInnerHTML={{__html: text}}>
+    </div>
 }

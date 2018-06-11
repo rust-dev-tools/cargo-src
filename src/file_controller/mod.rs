@@ -267,7 +267,7 @@ impl Cache {
     }
 
     fn make_line_result(&self, file_path: &Path, span: &Span) -> Result<LineResult, String> {
-        let (text, context) = match self.get_highlighted(file_path) {
+        let (text, pre, post) = match self.get_highlighted(file_path) {
             Ok(lines) => {
                 let line = span.range.row_start.0 as i32;
                 let text = lines[line as usize].clone();
@@ -280,13 +280,14 @@ impl Cache {
                 if ctx_end >= lines.len() as i32 {
                     ctx_end = lines.len() as i32 - 1;
                 }
-                let context = lines[ctx_start as usize..=ctx_end as usize].join("\n");
+                let pre = lines[ctx_start as usize..line as usize].join("\n");
+                let post = lines[line as usize + 1..=ctx_end as usize].join("\n");
 
-                (text, context)
+                (text, pre, post)
             }
             Err(_) => return Err(format!("Error finding text for {:?}", span)),
         };
-        Ok(LineResult::new(span, text, context))
+        Ok(LineResult::new(span, text, pre, post))
     }
 
     // Sorts a set of search results into buckets by file.

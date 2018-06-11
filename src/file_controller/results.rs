@@ -35,17 +35,19 @@ pub struct LineResult {
     pub column_start: u32,
     pub column_end: u32,
     pub line: String,
-    pub context: String,
+    pub pre_context: String,
+    pub post_context: String,
 }
 
 impl LineResult {
-    pub fn new(span: &Span, line: String, context: String) -> LineResult {
+    pub fn new(span: &Span, line: String, pre_context: String, post_context: String) -> LineResult {
         LineResult {
             line_start: span.range.row_start.one_indexed().0,
             column_start: span.range.col_start.one_indexed().0,
             column_end: span.range.col_end.one_indexed().0,
             line,
-            context,
+            pre_context,
+            post_context,
         }
     }
 }

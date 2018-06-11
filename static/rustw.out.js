@@ -6924,89 +6924,129 @@ var ResultSet = function (_React$Component) {
     return ResultSet;
 }(_react2.default.Component);
 
-function FileResult(props) {
-    var lines = props.lines,
-        file_name = props.file_name,
-        kind = props.kind,
-        count = props.count;
+var FileResult = function (_React$Component2) {
+    _inherits(FileResult, _React$Component2);
 
-    var divLines = lines.map(function (l) {
-        var lineId = 'snippet_line_number_' + kind + '_' + count + '_' + l.line_start;
-        var snippetId = 'snippet_line_' + kind + '_' + count + '_' + l.line_start;
+    function FileResult(props) {
+        _classCallCheck(this, FileResult);
 
-        // Squash the indent down by a factor of four.
-        var text = l.line;
-        var trimmed = text.trimLeft();
-        var newIndent = (text.length - trimmed.length) / 4;
-        var diffIndent = text.length - trimmed.length - newIndent;
-        trimmed = trimmed.padStart(trimmed.length + newIndent);
+        var _this2 = _possibleConstructorReturn(this, (FileResult.__proto__ || Object.getPrototypeOf(FileResult)).call(this, props));
 
-        var lineClick = function lineClick(e) {
-            var highlight = {
-                "line_start": l.line_start,
-                "line_end": l.line_start,
-                "column_start": 0,
-                "column_end": 0
+        _this2.state = { peekContext: null };
+        return _this2;
+    }
+
+    _createClass(FileResult, [{
+        key: 'render',
+        value: function render() {
+            var _this3 = this;
+
+            var _props2 = this.props,
+                lines = _props2.lines,
+                file_name = _props2.file_name,
+                kind = _props2.kind,
+                count = _props2.count,
+                app = _props2.app;
+
+            var self = this;
+            var divLines = lines.map(function (l) {
+                var lineId = 'snippet_line_number_' + kind + '_' + count + '_' + l.line_start;
+                var snippetId = 'snippet_line_' + kind + '_' + count + '_' + l.line_start;
+
+                // Squash the indent down by a factor of four.
+                var text = l.line;
+                var trimmed = text.trimLeft();
+                var newIndent = (text.length - trimmed.length) / 4;
+                var diffIndent = text.length - trimmed.length - newIndent;
+                trimmed = trimmed.padStart(trimmed.length + newIndent);
+
+                var lineClick = function lineClick(e) {
+                    var highlight = {
+                        "line_start": l.line_start,
+                        "line_end": l.line_start,
+                        "column_start": 0,
+                        "column_end": 0
+                    };
+                    app.loadSource(file_name, highlight);
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+                var snippetClick = function snippetClick(e) {
+                    var highlight = {
+                        "line_start": l.line_start,
+                        "line_end": l.line_end,
+                        "column_start": l.column_start,
+                        "column_end": l.column_end
+                    };
+                    app.loadSource(file_name, highlight);
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+
+                var onMouseOver = function onMouseOver(e) {
+                    self.setState({ peekContext: { pre: l.pre_context, post: l.post_context } });
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+                var onMouseOut = function onMouseOut(e) {
+                    self.setState({ peekContext: null });
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+
+                var context = null;
+                if (_this3.state.peekContext) {
+                    context = _react2.default.createElement(SearchContext, { line: l.line, preContext: _this3.state.peekContext.pre, postContext: _this3.state.peekContext.post });
+                }
+
+                return _react2.default.createElement(
+                    'div',
+                    { key: kind + '-' + count + '-' + l.line_start },
+                    _react2.default.createElement(
+                        'span',
+                        { className: 'div_span_src_number' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'span_src_number', id: lineId, onClick: lineClick },
+                            l.line_start
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'span',
+                        { className: 'div_span_src' },
+                        _react2.default.createElement('div', { className: 'span_src', id: snippetId, onClick: snippetClick, onMouseOver: onMouseOver, onMouseOut: onMouseOut, dangerouslySetInnerHTML: { __html: trimmed }, 'data-adjust': diffIndent })
+                    ),
+                    context,
+                    _react2.default.createElement('br', null)
+                );
+            });
+            var onClick = function onClick(e) {
+                props.app.loadSource(file_name);
+                e.preventDefault();
+                e.stopPropagation();
             };
-            props.app.loadSource(file_name, highlight);
-            e.preventDefault();
-            e.stopPropagation();
-        };
-        var snippetClick = function snippetClick(e) {
-            var highlight = {
-                "line_start": l.line_start,
-                "line_end": l.line_end,
-                "column_start": l.column_start,
-                "column_end": l.column_end
-            };
-            props.app.loadSource(file_name, highlight);
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        return _react2.default.createElement(
-            'div',
-            { key: kind + '-' + count + '-' + l.line_start },
-            _react2.default.createElement(
-                'span',
-                { className: 'div_span_src_number' },
+            return _react2.default.createElement(
+                'div',
+                null,
                 _react2.default.createElement(
                     'div',
-                    { className: 'span_src_number', id: lineId, onClick: lineClick },
-                    l.line_start
+                    { className: 'div_search_file_link', onClick: onClick },
+                    file_name
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: 'div_all_span_src' },
+                    divLines
                 )
-            ),
-            _react2.default.createElement(
-                'span',
-                { className: 'div_span_src' },
-                _react2.default.createElement('div', { className: 'span_src', id: snippetId, onClick: snippetClick, dangerouslySetInnerHTML: { __html: trimmed }, 'data-adjust': diffIndent })
-            ),
-            _react2.default.createElement('br', null)
-        );
-    });
-    var onClick = function onClick(e) {
-        props.app.loadSource(file_name);
-        e.preventDefault();
-        e.stopPropagation();
-    };
-    return _react2.default.createElement(
-        'div',
-        null,
-        _react2.default.createElement(
-            'div',
-            { className: 'div_search_file_link', onClick: onClick },
-            file_name
-        ),
-        _react2.default.createElement(
-            'div',
-            { className: 'div_all_span_src' },
-            divLines
-        )
-    );
-}
+            );
+        }
+    }]);
 
-var StructuredResultSet = function (_React$Component2) {
-    _inherits(StructuredResultSet, _React$Component2);
+    return FileResult;
+}(_react2.default.Component);
+
+var StructuredResultSet = function (_React$Component3) {
+    _inherits(StructuredResultSet, _React$Component3);
 
     function StructuredResultSet() {
         _classCallCheck(this, StructuredResultSet);
@@ -7107,6 +7147,11 @@ function highlight_needle(results, tag) {
             (0, _utils.highlight_spans)(line, null, 'snippet_line_' + tag + '_' + index + '_', "selected_search");
         });
     });
+}
+
+function SearchContext(props) {
+    var text = props.preContext + '\n<span class="search_context_highlight">' + props.line + '</span>\n' + props.postContext;
+    return _react2.default.createElement('div', { className: 'div_search_context_box', dangerouslySetInnerHTML: { __html: text } });
 }
 
 /***/ }),
