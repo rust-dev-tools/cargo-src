@@ -11,6 +11,7 @@ import React from 'react';
 import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
 import { MenuHost, Menu } from './menus';
+import { Highlight } from './highlight';
 
 
 // Menus, highlighting on mouseover.
@@ -119,11 +120,6 @@ export class SourceView extends React.Component {
     }
 
     componentDidUpdate() {
-        if (this.props.highlight) {
-            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", this.node);
-        } else {
-            utils.unHighlight("selected", this.node)
-        }
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
@@ -161,12 +157,22 @@ export class SourceView extends React.Component {
 
     render() {
         const path = this.props.path.join('/');
+        let highlight_start = this.props.highlight && this.props.highlight.line_start || false;
+        let highlight_end = this.props.highlight && this.props.highlight.line_end || false;
         let count = 0,
             numbers = [],
             lines = this.props.lines.map((l) => {
                 count += 1;
-                numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
-                return (<Line count={count} line={l} key={"line-" + count} />);
+                numbers.push(<LineNumber count={count}
+                                         path={path}
+                                         key={"num-" + count}
+                                         highlight_start={highlight_start}
+                                         highlight_end={highlight_end} />);
+                return (<Line count={count} 
+                              line={l}
+                              key={"line-" + count}
+                              highlight_start={highlight_start}
+                              highlight_end={highlight_end} />);
             });
 
         let refMenu = null;
@@ -189,6 +195,7 @@ export class SourceView extends React.Component {
                         {lines}
                     </span>
                 </div>
+                {this.props.highlight ? <Highlight highlight={this.props.highlight} /> : null}
                 {refMenu}
             </div>
         </div>;
@@ -212,7 +219,8 @@ class LineNumber extends MenuHost {
     renderInner() {
         const numId = "src_line_number_" + this.props.count;
         const link = this.props.path + ":" + this.props.count;
-        return <div className="div_src_line_number hand_cursor" id={numId} data-link={link}>
+        const is_highlighted = this.props.highlight_start <= this.props.count && this.props.count <= this.props.highlight_end;
+        return <div className={`div_src_line_number hand_cursor ${is_highlighted ? 'selected' : ''}`} id={numId} data-link={link}>
             {this.props.count}
         </div>;
     }
@@ -221,5 +229,7 @@ class LineNumber extends MenuHost {
 function Line(props) {
     const line = !props.line ? '&nbsp' : props.line;
     const lineId = "src_line_" + props.count;
-    return <div className="div_src_line" id={lineId} dangerouslySetInnerHTML={{__html: line}} />;
+    // Highlight middle lines; partial-line highlights rendered in Highlight component
+    const is_highlighted = props.highlight_start < props.count && props.count < props.highlight_end;
+    return <div className={`div_src_line ${is_highlighted ? 'selected' : ''}`} id={lineId} dangerouslySetInnerHTML={{__html: line}} />;
 }
