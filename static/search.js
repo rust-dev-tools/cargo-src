@@ -108,7 +108,7 @@ class FileResult extends React.Component {
             </div>;
         });
         const onClick = (e) => {
-            props.app.loadSource(file_name);
+            this.props.app.loadSource(file_name);
             e.preventDefault();
             e.stopPropagation();
         };
