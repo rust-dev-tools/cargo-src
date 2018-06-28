@@ -11,6 +11,7 @@ import React from 'react';
 import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
 import { MenuHost, Menu } from './menus';
+import { Highlight } from './highlight';
 
 
 // Menus, highlighting on mouseover.
@@ -119,11 +120,6 @@ export class SourceView extends React.Component {
     }
 
     componentDidUpdate() {
-        if (this.props.highlight) {
-            utils.highlight_spans(this.props.highlight, "src_line_number_", "src_line_", "selected", this.node);
-        } else {
-            utils.unHighlight("selected", this.node)
-        }
 
         // Make source links active.
         var linkables = $("#div_src_view").find(".src_link");
@@ -161,12 +157,18 @@ export class SourceView extends React.Component {
 
     render() {
         const path = this.props.path.join('/');
+        const highlight_start = this.props.highlight && this.props.highlight.line_start || false;
         let count = 0,
             numbers = [],
             lines = this.props.lines.map((l) => {
                 count += 1;
-                numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
-                return (<Line count={count} line={l} key={"line-" + count} />);
+                numbers.push(<LineNumber count={count}
+                                         path={path}
+                                         key={"num-" + count}
+                                         is_highlighted={highlight_start === count} />);
+                return (<Line count={count} 
+                              line={l}
+                              key={"line-" + count} />);
             });
 
         let refMenu = null;
@@ -189,6 +191,7 @@ export class SourceView extends React.Component {
                         {lines}
                     </span>
                 </div>
+                {this.props.highlight ? <Highlight highlight={this.props.highlight} /> : null}
                 {refMenu}
             </div>
         </div>;
@@ -212,7 +215,7 @@ class LineNumber extends MenuHost {
     renderInner() {
         const numId = "src_line_number_" + this.props.count;
         const link = this.props.path + ":" + this.props.count;
-        return <div className="div_src_line_number hand_cursor" id={numId} data-link={link}>
+        return <div className={`div_src_line_number hand_cursor ${this.props.is_highlighted ? 'selected' : ''}`} id={numId} data-link={link}>
             {this.props.count}
         </div>;
     }
