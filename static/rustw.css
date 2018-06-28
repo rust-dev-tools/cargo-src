@@ -488,12 +488,25 @@ span#measure {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
+    min-width: 300px;
+}
+.div_sidebar.collapsed {
+    flex: 0 0 20px;
+    min-width: auto;
 }
 .div_side_tabbar {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+.a_side_collapsebtn {
+    margin: 2px;
+    position: absolute;
+}
+.div_sidebar.collapsed .div_side_tabbar {
+    visibility: hidden;
 }
 .div_sidebar_tabs {
     display: flex;
