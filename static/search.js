@@ -46,7 +46,7 @@ class FileResult extends React.Component {
     render() {
         const { lines, file_name, kind, count, app } = this.props;
         const self = this;
-        let divLines = lines.map((l) => {
+        let divLines = lines.map((l, i) => {
             const lineId = `snippet_line_number_${kind}_${count}_${l.line_start}`;
             const snippetId = `snippet_line_${kind}_${count}_${l.line_start}`;
 
@@ -81,18 +81,20 @@ class FileResult extends React.Component {
             };
 
             const onMouseOver = (e) => {
-                self.setState({ peekContext: { pre: l.pre_context, post: l.post_context }});
+                self.setState({ peekContext: { line: i, pre: l.pre_context, post: l.post_context } });
                 e.preventDefault();
                 e.stopPropagation();
             }
             const onMouseOut = (e) => {
-                self.setState({ peekContext: null });
+                if (self.state.peekContext.line == i) {
+                    self.setState({ peekContext: null });
+                }
                 e.preventDefault();
                 e.stopPropagation();
             }
 
             let context = null;
-            if (this.state.peekContext) {
+            if (this.state.peekContext && this.state.peekContext.line == i) {
                 context = <SearchContext line={l.line} preContext={this.state.peekContext.pre}  postContext={this.state.peekContext.post} />
             }
 
