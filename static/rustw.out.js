@@ -8416,10 +8416,28 @@ var Sidebar = exports.Sidebar = function (_React$Component) {
 
             return _react2.default.createElement(
                 'div',
-                { className: 'div_sidebar' },
+                {
+                    className: "div_sidebar" + (this.state.collapsed ? " collapsed" : "")
+                },
+                _react2.default.createElement(
+                    'a',
+                    {
+                        className: 'a_side_collapsebtn',
+                        href: 'javascript:void(0)',
+                        onClick: function onClick(_e) {
+                            return _this2.setState({ collapsed: !_this2.state.collapsed });
+                        }
+                    },
+                    this.state.collapsed ? "[+]" : "[-]"
+                ),
                 _react2.default.createElement(
                     _reactTabs.Tabs,
-                    { selectedIndex: this.state.tabIndex, className: 'div_side_tabbar', selectedTabClassName: 'selected', onSelect: onSelect },
+                    {
+                        selectedIndex: this.state.tabIndex,
+                        className: 'div_side_tabbar',
+                        selectedTabClassName: 'selected',
+                        onSelect: onSelect
+                    },
                     _react2.default.createElement(
                         _reactTabs.TabList,
                         { className: 'div_sidebar_tabs' },
@@ -8442,7 +8460,11 @@ var Sidebar = exports.Sidebar = function (_React$Component) {
                     _react2.default.createElement(
                         _reactTabs.TabPanel,
                         { className: 'div_sidebar_main' },
-                        _react2.default.createElement(_searchPanel.SearchPanel, _extends({ app: this.props.app }, this.props.search, { searchController: searchController }))
+                        _react2.default.createElement(_searchPanel.SearchPanel, _extends({
+                            app: this.props.app
+                        }, this.props.search, {
+                            searchController: searchController
+                        }))
                     ),
                     _react2.default.createElement(
                         _reactTabs.TabPanel,

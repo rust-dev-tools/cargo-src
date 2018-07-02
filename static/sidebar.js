@@ -48,25 +48,45 @@ export class Sidebar extends React.Component {
 
         const onSelect = tabIndex => this.setState({ tabIndex });
 
-        return <div className="div_sidebar">
-            <Tabs selectedIndex={this.state.tabIndex} className="div_side_tabbar" selectedTabClassName="selected" onSelect={onSelect}>
-                <TabList className="div_sidebar_tabs">
-                    <Tab className="div_sidebar_tab">search</Tab>
-                    <Tab className="div_sidebar_tab">files</Tab>
-                    <Tab className="div_sidebar_tab">symbols</Tab>
-                </TabList>
-                <TabPanel className="div_sidebar_main">
-                    <SearchPanel app={this.props.app} {...this.props.search} searchController={searchController} />
-                </TabPanel>
-                <TabPanel className="div_sidebar_main">
-                    <TreePanel app={this.props.app} tree={this.props.fileTreeData} />
-                </TabPanel>
-                <TabPanel className="div_sidebar_main">
-                    <SymbolPanel app={this.props.app} symbols={this.props.symbols} />
-                </TabPanel>
-            </Tabs>
-            <StatusBar status={this.props.status} />
-        </div>;
+        return (
+            <div
+                className={"div_sidebar" + (this.state.collapsed ? " collapsed" : "")}
+            >
+                <a
+                    className="a_side_collapsebtn"
+                    href="javascript:void(0)"
+                    onClick={_e => this.setState({ collapsed: !this.state.collapsed })}
+                >
+                    {this.state.collapsed ? "[+]" : "[-]"}
+                </a>
+                <Tabs
+                    selectedIndex={this.state.tabIndex}
+                    className="div_side_tabbar"
+                    selectedTabClassName="selected"
+                    onSelect={onSelect}
+                >
+                    <TabList className="div_sidebar_tabs">
+                        <Tab className="div_sidebar_tab">search</Tab>
+                        <Tab className="div_sidebar_tab">files</Tab>
+                        <Tab className="div_sidebar_tab">symbols</Tab>
+                    </TabList>
+                    <TabPanel className="div_sidebar_main">
+                        <SearchPanel
+                            app={this.props.app}
+                            {...this.props.search}
+                            searchController={searchController}
+                        />
+                    </TabPanel>
+                    <TabPanel className="div_sidebar_main">
+                        <TreePanel app={this.props.app} tree={this.props.fileTreeData} />
+                    </TabPanel>
+                    <TabPanel className="div_sidebar_main">
+                        <SymbolPanel app={this.props.app} symbols={this.props.symbols} />
+                    </TabPanel>
+                </Tabs>
+                <StatusBar status={this.props.status} />
+            </div>
+        );
     }
 }
 
