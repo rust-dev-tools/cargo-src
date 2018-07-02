@@ -7670,6 +7670,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var Page = exports.Page = {
     START: 'START',
     SOURCE: 'SOURCE',
+    HTML: 'HTML',
     SOURCE_DIR: 'SOURCE_DIR',
     SEARCH: 'SEARCH',
     FIND: 'FIND',
@@ -7723,6 +7724,9 @@ var ContentPanel = exports.ContentPanel = function (_React$Component) {
                 } else if (json.Source) {
                     app.refreshStatus();
                     self.setState({ page: Page.SOURCE, params: { path: json.Source.path, lines: json.Source.lines } });
+                } else if (json.Html) {
+                    app.refreshStatus();
+                    self.setState({ page: Page.HTML, params: { path: json.Html.path, content: json.Html.content } });
                 } else {
                     console.log("Unexpected source data.");
                     console.log(json);
@@ -7734,6 +7738,9 @@ var ContentPanel = exports.ContentPanel = function (_React$Component) {
         value: function render() {
             var divMain = void 0;
             switch (this.state.page) {
+                case Page.HTML:
+                    divMain = _react2.default.createElement(_srcView.SourceView, { app: this.props.app, path: this.state.params.path, content: this.state.params.content, highlight: this.props.srcHighlight });
+                    break;
                 case Page.SOURCE:
                     divMain = _react2.default.createElement(_srcView.SourceView, { app: this.props.app, path: this.state.params.path, lines: this.state.params.lines, highlight: this.props.srcHighlight });
                     break;
@@ -8734,7 +8741,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
             var path = this.props.path.join('/');
             var count = 0,
                 numbers = [],
-                lines = this.props.lines.map(function (l) {
+                lines = this.props.lines && this.props.lines.map(function (l) {
                 count += 1;
                 numbers.push(_react2.default.createElement(LineNumber, { count: count, path: path, key: "num-" + count }));
                 return _react2.default.createElement(Line, { count: count, line: l, key: "line-" + count });
@@ -8758,7 +8765,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
                 _react2.default.createElement(
                     'div',
                     { id: 'div_src_view' },
-                    _react2.default.createElement(
+                    lines ? _react2.default.createElement(
                         'div',
                         { id: 'div_src_contents' },
                         _react2.default.createElement(
@@ -8771,7 +8778,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
                             { className: 'div_src_lines' },
                             lines
                         )
-                    ),
+                    ) : _react2.default.createElement('div', { id: 'div_src_contents', className: 'div_src_html', dangerouslySetInnerHTML: { __html: this.props.content } }),
                     refMenu
                 )
             );

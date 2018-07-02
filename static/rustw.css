@@ -263,6 +263,14 @@ span#measure {
     margin-bottom: 20px;
     white-space: nowrap;
 }
+#div_src_contents.div_src_html {
+    font-family: 'Fira Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+    width: calc(100% - 30px);
+    margin-left: 15px;
+    white-space: unset;
+    margin-right: 15px;
+    overflow-x: hidden;
+}
 .div_src_line_numbers {
     display: inline-block;
     border-right: black 1px solid;
@@ -276,7 +284,16 @@ span#measure {
 }
 .div_src_lines {
     display: inline-block;
+    font-variant-ligatures: none;
+    text-rendering: auto;
+    -moz-font-feature-settings: 'liga=0';
+    -moz-font-feature-settings: 'liga' 0;
+    -webkit-font-feature-settings: 'liga' 0;
+    -o-font-feature-settings: 'liga' 0;
+    -ms-font-feature-settings: 'liga' 0;
+    font-feature-settings: 'liga' 0;
 }
+
 .div_src_line {
     display: block;
     white-space: pre;
@@ -569,5 +586,5 @@ span#measure {
 
 #src {
     flex: 1;
-    overflow: scroll;
+    overflow: auto;
 }

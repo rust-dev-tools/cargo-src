@@ -163,7 +163,7 @@ export class SourceView extends React.Component {
         const path = this.props.path.join('/');
         let count = 0,
             numbers = [],
-            lines = this.props.lines.map((l) => {
+            lines = this.props.lines && this.props.lines.map((l) => {
                 count += 1;
                 numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
                 return (<Line count={count} line={l} key={"line-" + count} />);
@@ -181,14 +181,19 @@ export class SourceView extends React.Component {
         return <div id="src" ref={node => this.node = node}> 
             <BreadCrumbs app={this.props.app} path={this.props.path} />
             <div id="div_src_view">
-                <div id="div_src_contents">
-                    <span className="div_src_line_numbers">
-                        {numbers}
-                    </span>
-                    <span className="div_src_lines">
-                        {lines}
-                    </span>
-                </div>
+                    {
+                        lines
+                            ? <div id="div_src_contents">
+                                <span className="div_src_line_numbers">
+                                    {numbers}
+                                </span>
+                                <span className="div_src_lines">
+                                    {lines}
+                                </span>
+                            </div>
+                            : <div id="div_src_contents" className="div_src_html" dangerouslySetInnerHTML={({__html: this.props.content})}/>
+                    }
+
                 {refMenu}
             </div>
         </div>;

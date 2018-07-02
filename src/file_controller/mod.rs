@@ -25,13 +25,7 @@ use super::highlight;
 
 mod results;
 use file_controller::results::{
-    SearchResult,
-    DefResult,
-    FileResult,
-    LineResult,
-    FindResult,
-    SymbolResult,
-    CONTEXT_SIZE,
+    DefResult, FileResult, FindResult, LineResult, SearchResult, SymbolResult, CONTEXT_SIZE,
 };
 
 pub struct Cache {
@@ -43,26 +37,28 @@ pub struct Cache {
 
 type Span = span::Span<span::ZeroIndexed>;
 
+#[derive(Debug, Clone)]
+pub enum Highlighted {
+    MonospaceLines(Vec<String>),
+    Html(String),
+}
+
 // Our data which we attach to files in the VFS.
 struct VfsUserData {
-    highlighted_lines: Vec<String>,
+    highlighted: Option<Highlighted>,
 }
 
 impl VfsUserData {
-    fn new() -> VfsUserData {
-        VfsUserData {
-            highlighted_lines: vec![],
-        }
+    fn new() -> Self {
+        VfsUserData { highlighted: None }
     }
 }
 
 macro_rules! vfs_err {
-    ($e: expr) => {
-        {
-            let r: Result<_, String> = $e.map_err(|e| e.into());
-            r
-        }
-    }
+    ($e:expr) => {{
+        let r: Result<_, String> = $e.map_err(|e| e.into());
+        r
+    }};
 }
 
 impl Cache {
@@ -85,7 +81,7 @@ impl Cache {
         vfs_err!(self.files.load_lines(path, line_start, line_end))
     }
 
-    pub fn get_highlighted(&self, path: &Path) -> Result<Vec<String>, String> {
+    pub fn get_highlighted(&self, path: &Path) -> Result<Highlighted, String> {
         vfs_err!(self.files.load_file(path))?;
         vfs_err!(
             self.files
@@ -93,42 +89,79 @@ impl Cache {
         )?;
         vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
-            let text = match text {
-                Some(t) => t,
-                None => return Err(::vfs::Error::BadFileKind),
-            };
-            if u.highlighted_lines.is_empty() {
-                if let Some(ext) = path.extension() {
-                    if ext == "rs" {
-                        let highlighted = highlight::highlight(
-                            &self.analysis,
-                            &self.project_dir,
-                            path.to_str().unwrap().to_owned(),
-                            text.to_owned(),
-                        );
 
-                        let mut highlighted_lines = vec![];
-                        for line in highlighted.lines() {
-                            highlighted_lines.push(line.replace("<br>", "\n"));
+            if u.highlighted.is_none() {
+                if let Some(ext) = path.extension() {
+                    match ext {
+                        e if e == "rs" => {
+                            let text = match text {
+                                Some(t) => t,
+                                None => return Err(::vfs::Error::BadFileKind),
+                            };
+
+                            let highlighted = highlight::highlight(
+                                &self.analysis,
+                                &self.project_dir,
+                                path.to_str().unwrap().to_owned(),
+                                text.to_owned(),
+                            );
+
+                            let mut highlighted = highlighted
+                                .lines()
+                                .map(|line| line.replace("<br>", "\n"))
+                                .collect::<Vec<_>>();
+
+                            if text.ends_with('\n') {
+                                highlighted.push(String::new());
+                            }
+
+                            u.highlighted = Some(Highlighted::MonospaceLines(highlighted));
                         }
-                        if text.ends_with('\n') {
-                            highlighted_lines.push(String::new());
+                        e if e == "md" || e == "markdown" => {
+                            let text = match text {
+                                Some(t) => t,
+                                None => return Err(::vfs::Error::BadFileKind),
+                            };
+
+                            u.highlighted = Some(Highlighted::Html(::comrak::markdown_to_html(
+                                text,
+                                &Default::default(),
+                            )));
                         }
-                        u.highlighted_lines = highlighted_lines;
+                        e if e == "png"
+                            || e == "jpg"
+                            || e == "jpeg"
+                            || e == "gif"
+                            || e == "ico"
+                            || e == "svg"
+                            || e == "apng"
+                            || e == "bmp" =>
+                        {
+                            u.highlighted = Some(Highlighted::Html(format!(
+                                r#"<img src="raw{}"/>"#,
+                                &*path.to_string_lossy()
+                            )));
+                        }
+                        _ => {}
                     }
                 }
 
                 // Don't try to highlight non-Rust files (and cope with highlighting failure).
-                if u.highlighted_lines.is_empty() {
-                    let mut highlighted_lines: Vec<String> = text.lines().map(|s| s.to_owned()).collect();
+                if u.highlighted.is_none() {
+                    let text = match text {
+                        Some(t) => t,
+                        None => return Err(::vfs::Error::BadFileKind),
+                    };
+
+                    let mut highlighted: Vec<String> = text.lines().map(|s| s.to_owned()).collect();
                     if text.ends_with('\n') {
-                        highlighted_lines.push(String::new());
+                        highlighted.push(String::new());
                     }
-                    u.highlighted_lines = highlighted_lines;
+                    u.highlighted = Some(Highlighted::MonospaceLines(highlighted));
                 }
             }
 
-            Ok(u.highlighted_lines.clone())
+            Ok(u.highlighted.clone().unwrap())
         }))
     }
 
@@ -141,7 +174,11 @@ impl Cache {
             .map(|s| Path::new(s).to_owned())
             .unwrap_or(self.project_dir.clone());
         self.analysis
-            .reload_with_blacklist(&self.project_dir, &workspace_root, &::blacklist::CRATE_BLACKLIST)
+            .reload_with_blacklist(
+                &self.project_dir,
+                &workspace_root,
+                &::blacklist::CRATE_BLACKLIST,
+            )
             .unwrap();
 
         // FIXME Possibly extreme, could invalidate by crate or by file. Also, only
@@ -176,11 +213,7 @@ impl Cache {
             Err(_) => return Err("Could not access cargo metadata".to_owned()),
         };
 
-        let names: Vec<String> = metadata
-            .packages
-            .into_iter()
-            .map(|p| p.name)
-            .collect();
+        let names: Vec<String> = metadata.packages.into_iter().map(|p| p.name).collect();
 
         Ok(all_crates.filter(|sr| names.contains(&sr.name)).collect())
     }
@@ -210,9 +243,7 @@ impl Cache {
         let ids = match self.analysis.search_for_id(needle) {
             Ok(ids) => ids.to_owned(),
             Err(_) => {
-                return Ok(SearchResult {
-                    defs: vec![],
-                });
+                return Ok(SearchResult { defs: vec![] });
             }
         };
 
@@ -220,7 +251,8 @@ impl Cache {
     }
 
     pub fn find_impls(&self, id: Id) -> Result<FindResult, String> {
-        let impls = self.analysis
+        let impls = self
+            .analysis
             .find_impls(id)
             .map_err(|_| "No impls found".to_owned())?;
         Ok(FindResult {
@@ -252,10 +284,7 @@ impl Cache {
         }
 
         // We then save each bucket of defs/refs as a vec, and put it together to return.
-        return Ok(SearchResult {
-            defs,
-        });
-
+        return Ok(SearchResult { defs });
     }
 
     fn make_file_path(&self, span: &Span) -> PathBuf {
@@ -267,8 +296,10 @@ impl Cache {
     }
 
     fn make_line_result(&self, file_path: &Path, span: &Span) -> Result<LineResult, String> {
+        use file_controller::Highlighted;
+
         let (text, pre, post) = match self.get_highlighted(file_path) {
-            Ok(lines) => {
+            Ok(Highlighted::MonospaceLines(lines)) => {
                 let line = span.range.row_start.0 as i32;
                 let text = lines[line as usize].clone();
 
@@ -285,9 +316,14 @@ impl Cache {
 
                 (text, pre, post)
             }
+            Ok(_) => unimplemented!(),
             Err(_) => return Err(format!("Error finding text for {:?}", span)),
         };
         Ok(LineResult::new(span, text, pre, post))
+    }
+
+    pub fn get_raw(&self, path: &Path) -> Result<::vfs::FileContents, ::vfs::Error> {
+        self.files.load_file(path)
     }
 
     // Sorts a set of search results into buckets by file.

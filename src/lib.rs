@@ -15,8 +15,8 @@
 #![feature(integer_atomics)]
 
 extern crate cargo_metadata;
-extern crate hyper;
 extern crate futures;
+extern crate hyper;
 #[macro_use]
 extern crate log;
 extern crate rls_analysis as analysis;
@@ -27,6 +27,7 @@ extern crate rustdoc_highlight;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate comrak;
 extern crate serde_json;
 extern crate syntax;
 extern crate syntax_pos;
@@ -44,8 +45,8 @@ pub use build::BuildArgs;
 mod build;
 pub mod config;
 mod file_controller;
-mod listings;
 mod highlight;
+mod listings;
 mod server;
 
 pub fn run_server(mut build_args: BuildArgs) {
@@ -67,7 +68,8 @@ pub fn run_server(mut build_args: BuildArgs) {
     let addr = format!("{}:{}", ip, port).parse().unwrap();
     let server = server::Server::new(config.clone(), build_args.clone());
     let instance = server::Instance::new(server);
-    Http::new().bind(&addr, move || Ok(instance.clone()))
+    Http::new()
+        .bind(&addr, move || Ok(instance.clone()))
         .unwrap()
         .run()
         .unwrap();
@@ -97,18 +99,18 @@ fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
 
     let mut methods = Vec::new();
     // trying $BROWSER
-    match env::var("BROWSER"){
+    match env::var("BROWSER") {
         Ok(name) => match Command::new(name).arg(uri).status() {
             Ok(_) => return Ok("$BROWSER"),
-            Err(_) => methods.push("$BROWSER")
+            Err(_) => methods.push("$BROWSER"),
         },
-        Err(_) => () // Do nothing here if $BROWSER is not found
+        Err(_) => (), // Do nothing here if $BROWSER is not found
     }
 
     for m in ["xdg-open", "gnome-open", "kde-open"].iter() {
         match Command::new(m).arg(uri).status() {
             Ok(_) => return Ok(m),
-            Err(_) => methods.push(m)
+            Err(_) => methods.push(m),
         }
     }
 
@@ -119,7 +121,7 @@ fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
 fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
     match Command::new("cmd").arg("/C").arg(uri).status() {
         Ok(_) => return Ok("cmd /C"),
-        Err(_) => return Err(vec!["cmd /C"])
+        Err(_) => return Err(vec!["cmd /C"]),
     };
 }
 
@@ -127,6 +129,6 @@ fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
 fn open_browser(uri: &str) -> Result<&'static str, Vec<&'static str>> {
     match Command::new("open").arg(uri).status() {
         Ok(_) => return Ok("open"),
-        Err(_) => return Err(vec!["open"])
+        Err(_) => return Err(vec!["open"]),
     };
 }

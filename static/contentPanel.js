@@ -15,6 +15,7 @@ import { request } from './utils';
 export const Page = {
     START: 'START',
     SOURCE: 'SOURCE',
+    HTML: 'HTML',
     SOURCE_DIR: 'SOURCE_DIR',
     SEARCH: 'SEARCH',
     FIND: 'FIND',
@@ -59,6 +60,9 @@ export class ContentPanel extends React.Component {
                 } else if (json.Source) {
                     app.refreshStatus();
                     self.setState({ page: Page.SOURCE, params: { path: json.Source.path, lines: json.Source.lines }});
+                } else if (json.Html) {
+                    app.refreshStatus();
+                    self.setState({ page: Page.HTML, params: { path: json.Html.path, content: json.Html.content }});
                 } else {
                     console.log("Unexpected source data.")
                     console.log(json);
@@ -72,6 +76,10 @@ export class ContentPanel extends React.Component {
     render() {
         let divMain;
         switch (this.state.page) {
+            case Page.HTML:
+                divMain =
+                    <SourceView app={this.props.app} path={this.state.params.path} content={this.state.params.content} highlight={this.props.srcHighlight} />;
+                break;
             case Page.SOURCE:
                 divMain = <SourceView app={this.props.app} path={this.state.params.path} lines={this.state.params.lines} highlight={this.props.srcHighlight} />;
                 break;

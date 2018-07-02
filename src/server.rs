@@ -10,23 +10,26 @@ use analysis;
 use build::{self, BuildArgs};
 use config::Config;
 use file_controller::Cache;
-use listings::{Listing, DirectoryListing};
 use futures;
 use futures::Future;
+use listings::{DirectoryListing, Listing};
 
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex, atomic::{AtomicU32, Ordering}};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc, Mutex,
+};
 use std::thread;
 
+use hyper::error::Error;
 use hyper::header::ContentType;
 use hyper::server::Request;
 use hyper::server::Response;
-use hyper::StatusCode;
 use hyper::server::Service;
-use hyper::error::Error;
+use hyper::StatusCode;
 use serde_json;
 use span;
 
@@ -101,11 +104,14 @@ impl Service for Instance {
     type Request = Request;
     type Response = Response;
     type Error = Error;
-    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         let uri = req.uri().clone();
-        self.server.lock().unwrap().route(uri.path(), uri.query(), req)
+        self.server
+            .lock()
+            .unwrap()
+            .route(uri.path(), uri.query(), req)
     }
 }
 
@@ -127,15 +133,17 @@ impl Status {
                 build: AtomicU32::new(0),
                 analysis: AtomicU32::new(0),
                 blocked: Mutex::new(Vec::new()),
-            })
+            }),
         }
     }
 
-    fn block(&self) -> impl Future<Item=(), Error=futures::Canceled> {
+    fn block(&self) -> impl Future<Item = (), Error = futures::Canceled> {
         let (c, o) = futures::oneshot();
         {
             let mut blocked = self.internal.blocked.lock().unwrap();
-            if self.internal.build.load(Ordering::SeqCst) == 0 && self.internal.analysis.load(Ordering::SeqCst) == 0 {
+            if self.internal.build.load(Ordering::SeqCst) == 0
+                && self.internal.analysis.load(Ordering::SeqCst) == 0
+            {
                 return futures::future::Either::A(futures::future::ok(()));
             }
             blocked.push(c);
@@ -169,7 +177,6 @@ impl fmt::Display for Status {
         }
     }
 }
-
 
 impl Server {
     fn route(
@@ -205,6 +212,8 @@ impl Server {
             self.handle_src(req, arg, recurse)
         } else if path[0] == PLAIN_TEXT {
             self.handle_plain_text(req, query)
+        } else if path[0] == RAW_REQUEST {
+            self.handle_raw(req, &path[1..])
         } else if path[0] == SEARCH_REQUEST {
             self.handle_search(req, query)
         } else if path[0] == FIND_REQUEST {
@@ -222,38 +231,23 @@ impl Server {
         Box::new(futures::future::ok(result))
     }
 
-    fn handle_error(
-        &self,
-        _req: Request,
-        status: StatusCode,
-        msg: String,
-    ) -> Response {
+    fn handle_error(&self, _req: Request, status: StatusCode, msg: String) -> Response {
         debug!("ERROR: {} ({})", msg, status);
 
         Response::new().with_status(status).with_body(msg)
     }
 
-    fn handle_status(
-        &self,
-        _req: Request,
-    )  -> Response {
+    fn handle_status(&self, _req: Request) -> Response {
         let mut res = Response::new();
         res.headers_mut().set(ContentType::plaintext());
         res.with_body(format!("{{\"status\":\"{}\"}}", self.status))
     }
 
-    fn handle_index(
-        &self,
-        _req: Request,
-    ) -> Response {
+    fn handle_index(&self, _req: Request) -> Response {
         self.handle_static(_req, &["index.html"])
     }
 
-    fn handle_static(
-        &self,
-        req: Request,
-        path: &[&str],
-    ) -> Response {
+    fn handle_static(&self, req: Request, path: &[&str]) -> Response {
         let mut path_buf = PathBuf::new();
         for p in path {
             path_buf.push(p);
@@ -284,19 +278,50 @@ impl Server {
         self.handle_error(req, StatusCode::NotFound, "Page not found".to_owned())
     }
 
-    fn handle_src(
-        &self,
-        _req: Request,
-        mut path: &[&str],
-        recurse: bool,
-    ) -> Response {
+    fn handle_raw(&self, req: Request, path: &[&str]) -> Response {
         for p in path {
             // In demo mode this might reveal the contents of the server outside
             // the source directory (really, rustw should run in a sandbox, but
             // hey, FIXME).
             if p.contains("..") || *p == "/" {
                 return self.handle_error(
-                    _req,
+                    req,
+                    StatusCode::InternalServerError,
+                    "Bad path, found `..`".to_owned(),
+                );
+            }
+        }
+
+        match self.file_cache.get_raw(&path.iter().collect::<PathBuf>()) {
+            Ok(::vfs::FileContents::Text(text)) => {
+                let mut res = Response::new();
+                res.headers_mut().set(ContentType::plaintext());
+                res.with_body(text)
+            }
+            Ok(::vfs::FileContents::Binary(bin)) => {
+                let mut res = Response::new();
+                res.with_body(bin)
+            }
+            _ => self.handle_error(req, StatusCode::NotFound, "Page not found".to_owned()),
+        }
+    }
+
+    fn handle_src(&self, req: Request, mut path: &[&str], recurse: bool) -> Response {
+        use file_controller::Highlighted;
+
+        fn path_parts(path: &Path) -> Vec<String> {
+            path.components()
+                .map(|c| c.as_os_str().to_str().unwrap().to_owned())
+                .collect()
+        }
+
+        for p in path {
+            // In demo mode this might reveal the contents of the server outside
+            // the source directory (really, rustw should run in a sandbox, but
+            // hey, FIXME).
+            if p.contains("..") || *p == "/" {
+                return self.handle_error(
+                    req,
                     StatusCode::InternalServerError,
                     "Bad path, found `..`".to_owned(),
                 );
@@ -313,14 +338,10 @@ impl Server {
                 let mut chars = p.chars();
                 match (chars.next(), chars.next(), chars.next()) {
                     (Some(drive_letter), Some(colon), None)
-                        if drive_letter.is_ascii_alphabetic()
-                            && colon == ':' => {
-                        let mut fixed_drive_prefix = String::new();
-                        fixed_drive_prefix.push(drive_letter);
-                        fixed_drive_prefix.push(colon);
-                        fixed_drive_prefix.push('\\');
-                        path_buf.push(&fixed_drive_prefix);
-                    },
+                        if drive_letter.is_ascii_alphabetic() && colon == ':' =>
+                    {
+                        path_buf.push(&[drive_letter, colon, '\\'].iter().collect::<String>());
+                    }
                     _ => path_buf.push(p),
                 }
             } else {
@@ -329,7 +350,7 @@ impl Server {
         }
 
         // FIXME should cache directory listings too
-        return if path_buf.is_dir() {
+        if path_buf.is_dir() {
             match DirectoryListing::from_path(&path_buf, recurse) {
                 Ok(listing) => {
                     let mut res = Response::new();
@@ -339,51 +360,39 @@ impl Server {
                         path,
                         files: listing.files,
                     };
-                    return res.with_body(
-                        serde_json::to_string(&result)
-                            .unwrap()
-                    );
+                    res.with_body(serde_json::to_string(&result).unwrap())
                 }
-                Err(msg) => self.handle_error(_req, StatusCode::InternalServerError, msg),
+                Err(msg) => self.handle_error(req, StatusCode::InternalServerError, msg),
             }
         } else {
             match self.file_cache.get_highlighted(&path_buf) {
-                Ok(ref lines) => {
+                Ok(Highlighted::MonospaceLines(ref lines)) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
                     let path = path_parts(&path_buf);
-                    let result = SourceResult::Source {
-                        path,
-                        lines: lines,
-                    };
-                    return res.with_body(serde_json::to_string(&result).unwrap());
+                    let result = SourceResult::Source { path, lines };
+                    res.with_body(serde_json::to_string(&result).unwrap())
                 }
-                Err(msg) => self.handle_error(_req, StatusCode::InternalServerError, msg),
+                Ok(Highlighted::Html(ref content)) => {
+                    let mut res = Response::new();
+                    res.headers_mut().set(ContentType::json());
+                    let path = path_parts(&path_buf);
+                    let result = SourceResult::Html { path, content };
+                    res.with_body(serde_json::to_string(&result).unwrap())
+                }
+                Err(msg) => self.handle_error(req, StatusCode::InternalServerError, msg),
             }
-        };
-
-        fn path_parts(path: &Path) -> Vec<String> {
-            path.components()
-                .map(|c| c.as_os_str().to_str().unwrap().to_owned())
-                .collect()
         }
     }
 
-    fn handle_config(
-        &self,
-        _req: Request,
-    ) -> Response {
+    fn handle_config(&self, _req: Request) -> Response {
         let text = serde_json::to_string(&*self.config).unwrap();
         let mut res = Response::new();
         res.headers_mut().set(ContentType::json());
         return res.with_body(text);
     }
 
-    fn handle_edit(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
+    fn handle_edit(&self, _req: Request, query: Option<&str>) -> Response {
         assert!(!self.config.demo_mode, "Edit shouldn't happen in demo mode");
         assert!(self.config.unstable_features, "Edit is unstable");
 
@@ -426,11 +435,7 @@ impl Server {
         }
     }
 
-    fn handle_search(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
+    fn handle_search(&self, _req: Request, query: Option<&str>) -> Response {
         match (
             parse_query_value(query, "needle="),
             parse_query_value(query, "id="),
@@ -481,11 +486,7 @@ impl Server {
         }
     }
 
-    fn handle_find(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
+    fn handle_find(&self, _req: Request, query: Option<&str>) -> Response {
         match parse_query_value(query, "impls=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
@@ -519,30 +520,25 @@ impl Server {
         }
     }
 
-    fn handle_sym_roots(
-        &self,
-        _req: Request,
-    ) -> impl Future<Item=Response, Error=Error> {
+    fn handle_sym_roots(&self, _req: Request) -> impl Future<Item = Response, Error = Error> {
         let file_cache = self.file_cache.clone();
-        self.status.block().then(move |_| {
-            match file_cache.get_symbol_roots() {
+        self.status
+            .block()
+            .then(move |_| match file_cache.get_symbol_roots() {
                 Ok(data) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
                     futures::future::ok(res.with_body(serde_json::to_string(&data).unwrap()))
                 }
-                Err(s) => {
-                    futures::future::ok(Response::new().with_status(StatusCode::InternalServerError).with_body(s))
-                }
-            }
-        })
+                Err(s) => futures::future::ok(
+                    Response::new()
+                        .with_status(StatusCode::InternalServerError)
+                        .with_body(s),
+                ),
+            })
     }
 
-    fn handle_sym_childen(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
+    fn handle_sym_childen(&self, _req: Request, query: Option<&str>) -> Response {
         match parse_query_value(query, "id=") {
             Some(id) => {
                 let id = match u64::from_str(&id) {
@@ -576,11 +572,7 @@ impl Server {
         }
     }
 
-    fn handle_plain_text(
-        &self,
-        _req: Request,
-        query: Option<&str>,
-    ) -> Response {
+    fn handle_plain_text(&self, _req: Request, query: Option<&str>) -> Response {
         match (
             parse_query_value(query, "file="),
             parse_query_value(query, "line="),
@@ -641,6 +633,10 @@ pub enum SourceResult<'a> {
         path: Vec<String>,
         lines: &'a [String],
     },
+    Html {
+        path: Vec<String>,
+        content: &'a str,
+    },
     Directory {
         path: Vec<String>,
         files: Vec<Listing>,
@@ -685,6 +681,7 @@ fn parse_query_value(query: Option<&str>, key: &str) -> Option<String> {
 }
 
 const STATIC_REQUEST: &str = "static";
+const RAW_REQUEST: &str = "raw";
 const SOURCE_REQUEST: &str = "src";
 const TREE_REQUEST: &str = "tree";
 const PLAIN_TEXT: &str = "plain_text";
