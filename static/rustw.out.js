@@ -8043,7 +8043,7 @@ var FileResult = function (_React$Component2) {
                 app = _props2.app;
 
             var self = this;
-            var divLines = lines.map(function (l) {
+            var divLines = lines.map(function (l, i) {
                 var lineId = 'snippet_line_number_' + kind + '_' + count + '_' + l.line_start;
                 var snippetId = 'snippet_line_' + kind + '_' + count + '_' + l.line_start;
 
@@ -8078,18 +8078,20 @@ var FileResult = function (_React$Component2) {
                 };
 
                 var onMouseOver = function onMouseOver(e) {
-                    self.setState({ peekContext: { pre: l.pre_context, post: l.post_context } });
+                    self.setState({ peekContext: { line: i, pre: l.pre_context, post: l.post_context } });
                     e.preventDefault();
                     e.stopPropagation();
                 };
                 var onMouseOut = function onMouseOut(e) {
-                    self.setState({ peekContext: null });
+                    if (self.state.peekContext.line == i) {
+                        self.setState({ peekContext: null });
+                    }
                     e.preventDefault();
                     e.stopPropagation();
                 };
 
                 var context = null;
-                if (_this3.state.peekContext) {
+                if (_this3.state.peekContext && _this3.state.peekContext.line == i) {
                     context = _react2.default.createElement(SearchContext, { line: l.line, preContext: _this3.state.peekContext.pre, postContext: _this3.state.peekContext.post });
                 }
 
