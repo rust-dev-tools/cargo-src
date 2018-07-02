@@ -366,18 +366,15 @@ impl Server {
             }
         } else {
             match self.file_cache.get_highlighted(&path_buf) {
-                Ok(Highlighted::MonospaceLines(ref lines)) => {
+                Ok(Highlighted { ref source, ref rendered }) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
                     let path = path_parts(&path_buf);
-                    let result = SourceResult::Source { path, lines };
-                    res.with_body(serde_json::to_string(&result).unwrap())
-                }
-                Ok(Highlighted::Html(ref content)) => {
-                    let mut res = Response::new();
-                    res.headers_mut().set(ContentType::json());
-                    let path = path_parts(&path_buf);
-                    let result = SourceResult::Html { path, content };
+                    let result = SourceResult::File {
+                        path,
+                        lines: source.as_ref().map(|s| s.as_ref()),
+                        rendered: rendered.as_ref().map(|s| s.as_ref()),
+                    };
                     res.with_body(serde_json::to_string(&result).unwrap())
                 }
                 Err(msg) => self.handle_error(req, StatusCode::InternalServerError, msg),
@@ -629,13 +626,10 @@ impl Server {
 
 #[derive(Serialize, Debug)]
 pub enum SourceResult<'a> {
-    Source {
+    File {
         path: Vec<String>,
-        lines: &'a [String],
-    },
-    Html {
-        path: Vec<String>,
-        content: &'a str,
+        lines: Option<&'a [String]>,
+        rendered: Option<&'a str>,
     },
     Directory {
         path: Vec<String>,

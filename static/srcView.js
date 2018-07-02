@@ -163,6 +163,7 @@ export class SourceView extends React.Component {
         const path = this.props.path.join('/');
         let count = 0,
             numbers = [],
+            content = this.props.content,
             lines = this.props.lines && this.props.lines.map((l) => {
                 count += 1;
                 numbers.push(<LineNumber count={count} path={path} key={"num-" + count} />);
@@ -179,45 +180,59 @@ export class SourceView extends React.Component {
         }
 
         const allowedTags = [
-            'h1',
-            'h2',
-            'h3',
-            'h4',
-            'h5',
-            'h6',
-            'blockquote',
-            'p',
-            'a',
-            'ul',
-            'ol',
-            'nl',
-            'li',
-            'b',
-            'i',
-            'img',
-            'strong',
-            'em',
-            'strike',
-            'code',
-            'hr',
-            'br',
-            'div',
-            'table',
-            'thead',
-            'caption',
-            'tbody',
-            'tr',
-            'th',
-            'td',
-            'pre'
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol', 'nl', 'li', 'b', 'i',
+            'img', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'div', 'table', 'thead', 'caption', 'tbody',
+            'tr', 'th', 'td', 'pre',
         ];
+
+        const View = {
+            RENDERED: 'content',
+            SOURCE: 'source',
+        };
+
+        let viewSelector;
+        let currentView = this.state.currentView;
+
+        const setView = (to) => {
+            this.setState({ currentView: to })
+        };
+
+        switch (true) {
+            case !!(content && lines):
+                currentView = currentView || View.RENDERED;
+                viewSelector = <div className="div_view_selector">[&nbsp;
+                    <a
+                        href={currentView == View.SOURCE ? null : "javascript:void(0)"}
+                        onClick={() => setView(View.SOURCE)}>
+                        source
+                    </a>&nbsp;|&nbsp;
+                    <a
+                        href={currentView == View.RENDERED ? null : "javascript:void(0)"}
+                        onClick={() => setView(View.RENDERED)}>
+                        rendered
+                    </a>&nbsp;]
+                </div>;
+                break;
+            case !!(content):
+                currentView = View.RENDERED;
+                break;
+            default:
+                currentView = View.SOURCE;
+                break;
+        };
 
         return <div id="src" ref={node => this.node = node}> 
             <BreadCrumbs app={this.props.app} path={this.props.path} />
+            { viewSelector }
             <div id="div_src_view">
                     {
-                        lines
-                            ? <div id="div_src_contents">
+                        currentView == View.RENDERED
+                            ? <SanitizedHTML
+                                id="div_src_contents"
+                                className="div_src_html"
+                                allowedTags={allowedTags}
+                                html={this.props.content}/>
+                            : <div id="div_src_contents">
                                 <span className="div_src_line_numbers">
                                     {numbers}
                                 </span>
@@ -225,7 +240,6 @@ export class SourceView extends React.Component {
                                     {lines}
                                 </span>
                             </div>
-                            : <SanitizedHTML id="div_src_contents" className="div_src_html" allowedTags={allowedTags} html={this.props.content}/>
                     }
 
                 {refMenu}

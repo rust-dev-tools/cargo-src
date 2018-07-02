@@ -19679,8 +19679,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var Page = exports.Page = {
     START: 'START',
-    SOURCE: 'SOURCE',
-    HTML: 'HTML',
+    FILE: 'FILE',
     SOURCE_DIR: 'SOURCE_DIR',
     SEARCH: 'SEARCH',
     FIND: 'FIND',
@@ -19731,12 +19730,16 @@ var ContentPanel = exports.ContentPanel = function (_React$Component) {
             (0, _utils.request)('src/' + path, function (json) {
                 if (json.Directory) {
                     self.setState({ page: Page.SOURCE_DIR, params: { path: json.Directory.path, files: json.Directory.files } });
-                } else if (json.Source) {
+                } else if (json.File) {
                     app.refreshStatus();
-                    self.setState({ page: Page.SOURCE, params: { path: json.Source.path, lines: json.Source.lines } });
-                } else if (json.Html) {
-                    app.refreshStatus();
-                    self.setState({ page: Page.HTML, params: { path: json.Html.path, content: json.Html.content } });
+                    self.setState({
+                        page: Page.FILE,
+                        params: {
+                            path: json.File.path,
+                            lines: json.File.lines,
+                            rendered: json.File.rendered
+                        }
+                    });
                 } else {
                     console.log("Unexpected source data.");
                     console.log(json);
@@ -19748,11 +19751,8 @@ var ContentPanel = exports.ContentPanel = function (_React$Component) {
         value: function render() {
             var divMain = void 0;
             switch (this.state.page) {
-                case Page.HTML:
-                    divMain = _react2.default.createElement(_srcView.SourceView, { app: this.props.app, path: this.state.params.path, content: this.state.params.content, highlight: this.props.srcHighlight });
-                    break;
-                case Page.SOURCE:
-                    divMain = _react2.default.createElement(_srcView.SourceView, { app: this.props.app, path: this.state.params.path, lines: this.state.params.lines, highlight: this.props.srcHighlight });
+                case Page.FILE:
+                    divMain = _react2.default.createElement(_srcView.SourceView, { app: this.props.app, path: this.state.params.path, lines: this.state.params.lines, content: this.state.params.rendered, highlight: this.props.srcHighlight });
                     break;
                 case Page.SOURCE_DIR:
                     divMain = _react2.default.createElement(_dirView.DirView, { app: this.props.app, path: this.state.params.path, files: this.state.params.files });
@@ -20755,6 +20755,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
             var path = this.props.path.join('/');
             var count = 0,
                 numbers = [],
+                content = this.props.content,
                 lines = this.props.lines && this.props.lines.map(function (l) {
                 count += 1;
                 numbers.push(_react2.default.createElement(LineNumber, { count: count, path: path, key: "num-" + count }));
@@ -20772,16 +20773,70 @@ var SourceView = exports.SourceView = function (_React$Component) {
 
             var allowedTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol', 'nl', 'li', 'b', 'i', 'img', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'div', 'table', 'thead', 'caption', 'tbody', 'tr', 'th', 'td', 'pre'];
 
+            var View = {
+                RENDERED: 'content',
+                SOURCE: 'source'
+            };
+
+            var viewSelector = void 0;
+            var currentView = this.state.currentView;
+
+            var setView = function setView(to) {
+                _this3.setState({ currentView: to });
+            };
+
+            switch (true) {
+                case !!(content && lines):
+                    currentView = currentView || View.RENDERED;
+                    viewSelector = _react2.default.createElement(
+                        'div',
+                        { className: 'div_view_selector' },
+                        '[\xA0',
+                        _react2.default.createElement(
+                            'a',
+                            {
+                                href: currentView == View.SOURCE ? null : "javascript:void(0)",
+                                onClick: function onClick() {
+                                    return setView(View.SOURCE);
+                                } },
+                            'source'
+                        ),
+                        '\xA0|\xA0',
+                        _react2.default.createElement(
+                            'a',
+                            {
+                                href: currentView == View.RENDERED ? null : "javascript:void(0)",
+                                onClick: function onClick() {
+                                    return setView(View.RENDERED);
+                                } },
+                            'rendered'
+                        ),
+                        '\xA0]'
+                    );
+                    break;
+                case !!content:
+                    currentView = View.RENDERED;
+                    break;
+                default:
+                    currentView = View.SOURCE;
+                    break;
+            };
+
             return _react2.default.createElement(
                 'div',
                 { id: 'src', ref: function ref(node) {
                         return _this3.node = node;
                     } },
                 _react2.default.createElement(_breadCrumbs.BreadCrumbs, { app: this.props.app, path: this.props.path }),
+                viewSelector,
                 _react2.default.createElement(
                     'div',
                     { id: 'div_src_view' },
-                    lines ? _react2.default.createElement(
+                    currentView == View.RENDERED ? _react2.default.createElement(_reactSanitizedHtml2.default, {
+                        id: 'div_src_contents',
+                        className: 'div_src_html',
+                        allowedTags: allowedTags,
+                        html: this.props.content }) : _react2.default.createElement(
                         'div',
                         { id: 'div_src_contents' },
                         _react2.default.createElement(
@@ -20794,7 +20849,7 @@ var SourceView = exports.SourceView = function (_React$Component) {
                             { className: 'div_src_lines' },
                             lines
                         )
-                    ) : _react2.default.createElement(_reactSanitizedHtml2.default, { id: 'div_src_contents', className: 'div_src_html', allowedTags: allowedTags, html: this.props.content }),
+                    ),
                     refMenu
                 )
             );

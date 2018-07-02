@@ -14,8 +14,7 @@ import { request } from './utils';
 
 export const Page = {
     START: 'START',
-    SOURCE: 'SOURCE',
-    HTML: 'HTML',
+    FILE: 'FILE',
     SOURCE_DIR: 'SOURCE_DIR',
     SEARCH: 'SEARCH',
     FIND: 'FIND',
@@ -57,12 +56,16 @@ export class ContentPanel extends React.Component {
             function(json) {
                 if (json.Directory) {
                     self.setState({ page: Page.SOURCE_DIR, params: { path: json.Directory.path, files: json.Directory.files }});
-                } else if (json.Source) {
+                } else if (json.File) {
                     app.refreshStatus();
-                    self.setState({ page: Page.SOURCE, params: { path: json.Source.path, lines: json.Source.lines }});
-                } else if (json.Html) {
-                    app.refreshStatus();
-                    self.setState({ page: Page.HTML, params: { path: json.Html.path, content: json.Html.content }});
+                    self.setState({
+                        page: Page.FILE,
+                        params: {
+                            path: json.File.path,
+                            lines: json.File.lines,
+                            rendered: json.File.rendered
+                        },
+                    });
                 } else {
                     console.log("Unexpected source data.")
                     console.log(json);
@@ -76,12 +79,8 @@ export class ContentPanel extends React.Component {
     render() {
         let divMain;
         switch (this.state.page) {
-            case Page.HTML:
-                divMain =
-                    <SourceView app={this.props.app} path={this.state.params.path} content={this.state.params.content} highlight={this.props.srcHighlight} />;
-                break;
-            case Page.SOURCE:
-                divMain = <SourceView app={this.props.app} path={this.state.params.path} lines={this.state.params.lines} highlight={this.props.srcHighlight} />;
+            case Page.FILE:
+                divMain = <SourceView app={this.props.app} path={this.state.params.path} lines={this.state.params.lines} content={this.state.params.rendered} highlight={this.props.srcHighlight} />;
                 break;
             case Page.SOURCE_DIR:
                 divMain = <DirView app={this.props.app} path={this.state.params.path} files={this.state.params.files} />;

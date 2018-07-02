@@ -38,9 +38,9 @@ pub struct Cache {
 type Span = span::Span<span::ZeroIndexed>;
 
 #[derive(Debug, Clone)]
-pub enum Highlighted {
-    MonospaceLines(Vec<String>),
-    Html(String),
+pub struct Highlighted {
+    pub source: Option<Vec<String>>,
+    pub rendered: Option<String>,
 }
 
 // Our data which we attach to files in the VFS.
@@ -82,6 +82,15 @@ impl Cache {
     }
 
     pub fn get_highlighted(&self, path: &Path) -> Result<Highlighted, String> {
+        fn raw_lines(text: &str) -> Vec<String> {
+            let mut highlighted: Vec<String> = text.lines().map(|s| s.to_owned()).collect();
+            if text.ends_with('\n') {
+                highlighted.push(String::new());
+            }
+
+            highlighted
+        }
+
         vfs_err!(self.files.load_file(path))?;
         vfs_err!(
             self.files
@@ -115,7 +124,10 @@ impl Cache {
                                 highlighted.push(String::new());
                             }
 
-                            u.highlighted = Some(Highlighted::MonospaceLines(highlighted));
+                            u.highlighted = Some(Highlighted {
+                                source: Some(highlighted),
+                                rendered: None,
+                            });
                         }
                         e if e == "md" || e == "markdown" => {
                             let text = match text {
@@ -123,10 +135,13 @@ impl Cache {
                                 None => return Err(::vfs::Error::BadFileKind),
                             };
 
-                            u.highlighted = Some(Highlighted::Html(::comrak::markdown_to_html(
-                                text,
-                                &Default::default(),
-                            )));
+                            u.highlighted = Some(Highlighted {
+                                rendered: Some(::comrak::markdown_to_html(
+                                    text,
+                                    &Default::default(),
+                                )),
+                                source: Some(raw_lines(text)),
+                            });
                         }
                         e if e == "png"
                             || e == "jpg"
@@ -138,10 +153,13 @@ impl Cache {
                             || e == "bmp" =>
                         {
                             if let Ok(path) = path.strip_prefix(&self.project_dir) {
-                                u.highlighted = Some(Highlighted::Html(format!(
-                                    r#"<img src="/raw/{}"/>"#,
-                                    &*path.to_string_lossy()
-                                )));
+                                u.highlighted = Some(Highlighted {
+                                    source: None,
+                                    rendered: Some(format!(
+                                        r#"<img src="/raw/{}"/>"#,
+                                        &*path.to_string_lossy()
+                                    )),
+                                });
                             }
                         }
                         _ => {}
@@ -152,14 +170,13 @@ impl Cache {
                 if u.highlighted.is_none() {
                     let text = match text {
                         Some(t) => t,
-                        None => return Err(::vfs::Error::BadFileKind),
+                        None => return Err(::vfs::Error::BadFileKind.into()),
                     };
 
-                    let mut highlighted: Vec<String> = text.lines().map(|s| s.to_owned()).collect();
-                    if text.ends_with('\n') {
-                        highlighted.push(String::new());
-                    }
-                    u.highlighted = Some(Highlighted::MonospaceLines(highlighted));
+                    u.highlighted = Some(Highlighted {
+                        source: Some(raw_lines(text)),
+                        rendered: None,
+                    });
                 }
             }
 
@@ -301,7 +318,7 @@ impl Cache {
         use file_controller::Highlighted;
 
         let (text, pre, post) = match self.get_highlighted(file_path) {
-            Ok(Highlighted::MonospaceLines(lines)) => {
+            Ok(Highlighted { source: Some(lines), .. }) => {
                 let line = span.range.row_start.0 as i32;
                 let text = lines[line as usize].clone();
 
