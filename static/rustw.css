@@ -271,6 +271,9 @@ span#measure {
     margin-right: 15px;
     overflow-x: hidden;
 }
+#div_src_contents.div_src_html img {
+    max-width: 100%;
+}
 .div_src_line_numbers {
     display: inline-block;
     border-right: black 1px solid;

@@ -11,7 +11,7 @@ import React from 'react';
 import * as utils from './utils';
 import { BreadCrumbs } from './breadCrumbs';
 import { MenuHost, Menu } from './menus';
-
+import SanitizedHTML from 'react-sanitized-html';
 
 // Menus, highlighting on mouseover.
 function add_ref_functionality(self) {
@@ -178,6 +178,40 @@ export class SourceView extends React.Component {
             refMenu = <RefMenu app={this.props.app} location={this.state.refMenu} onClose={onClose} target={this.state.refMenu.target} id={this.state.refMenu.id} />;
         }
 
+        const allowedTags = [
+            'h1',
+            'h2',
+            'h3',
+            'h4',
+            'h5',
+            'h6',
+            'blockquote',
+            'p',
+            'a',
+            'ul',
+            'ol',
+            'nl',
+            'li',
+            'b',
+            'i',
+            'img',
+            'strong',
+            'em',
+            'strike',
+            'code',
+            'hr',
+            'br',
+            'div',
+            'table',
+            'thead',
+            'caption',
+            'tbody',
+            'tr',
+            'th',
+            'td',
+            'pre'
+        ];
+
         return <div id="src" ref={node => this.node = node}> 
             <BreadCrumbs app={this.props.app} path={this.props.path} />
             <div id="div_src_view">
@@ -191,7 +225,7 @@ export class SourceView extends React.Component {
                                     {lines}
                                 </span>
                             </div>
-                            : <div id="div_src_contents" className="div_src_html" dangerouslySetInnerHTML={({__html: this.props.content})}/>
+                            : <SanitizedHTML id="div_src_contents" className="div_src_html" allowedTags={allowedTags} html={this.props.content}/>
                     }
 
                 {refMenu}

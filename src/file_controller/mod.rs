@@ -137,10 +137,12 @@ impl Cache {
                             || e == "apng"
                             || e == "bmp" =>
                         {
-                            u.highlighted = Some(Highlighted::Html(format!(
-                                r#"<img src="raw{}"/>"#,
-                                &*path.to_string_lossy()
-                            )));
+                            if let Ok(path) = path.strip_prefix(&self.project_dir) {
+                                u.highlighted = Some(Highlighted::Html(format!(
+                                    r#"<img src="/raw/{}"/>"#,
+                                    &*path.to_string_lossy()
+                                )));
+                            }
                         }
                         _ => {}
                     }

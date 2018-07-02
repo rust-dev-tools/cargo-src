@@ -302,7 +302,7 @@ impl Server {
                 let mut res = Response::new();
                 res.with_body(bin)
             }
-            _ => self.handle_error(req, StatusCode::NotFound, "Page not found".to_owned()),
+            Err(e) => self.handle_error(req, StatusCode::NotFound, e.to_string()),
         }
     }
 
