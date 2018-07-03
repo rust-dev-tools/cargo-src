@@ -64,7 +64,6 @@ impl Builder {
         let crate_names = crate_names()
             .map(|name| name.replace("-", "_"))
             .collect::<Vec<_>>();
-        let crate_names: Vec<&str> = crate_names.iter().map(|n| &**n).collect();
 
         let analysis_dir = Path::new(&TARGET_DIR)
             .join("debug")
@@ -97,7 +96,7 @@ impl Builder {
                 // The JSON file does not correspond with any crate from `cargo
                 // metadata`, so it is presumably an old dep that has been removed.
                 // So, we should delete it.
-                if !crate_names.contains(&match_name) {
+                if !crate_names.iter().any(|name| name == match_name) {
                     info!("deleting {:?}", entry.path());
                     if let Err(e) = remove_file(entry.path()) {
                         debug!("Error deleting file, {:?}: {}", entry.file_name(), e);
