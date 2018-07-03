@@ -20785,42 +20785,38 @@ var SourceView = exports.SourceView = function (_React$Component) {
                 _this3.setState({ currentView: to });
             };
 
-            switch (true) {
-                case !!(content && lines):
-                    currentView = currentView || View.RENDERED;
-                    viewSelector = _react2.default.createElement(
-                        'div',
-                        { className: 'div_view_selector' },
-                        '[\xA0',
-                        _react2.default.createElement(
-                            'a',
-                            {
-                                href: currentView == View.SOURCE ? null : "javascript:void(0)",
-                                onClick: function onClick() {
-                                    return setView(View.SOURCE);
-                                } },
-                            'source'
-                        ),
-                        '\xA0|\xA0',
-                        _react2.default.createElement(
-                            'a',
-                            {
-                                href: currentView == View.RENDERED ? null : "javascript:void(0)",
-                                onClick: function onClick() {
-                                    return setView(View.RENDERED);
-                                } },
-                            'rendered'
-                        ),
-                        '\xA0]'
-                    );
-                    break;
-                case !!content:
-                    currentView = View.RENDERED;
-                    break;
-                default:
-                    currentView = View.SOURCE;
-                    break;
-            };
+            if (content && lines) {
+                currentView = currentView || View.RENDERED;
+                viewSelector = _react2.default.createElement(
+                    'div',
+                    { className: 'div_view_selector' },
+                    '[\xA0',
+                    _react2.default.createElement(
+                        'a',
+                        {
+                            href: currentView == View.SOURCE ? null : "javascript:void(0)",
+                            onClick: function onClick() {
+                                return setView(View.SOURCE);
+                            } },
+                        'source'
+                    ),
+                    '\xA0|\xA0',
+                    _react2.default.createElement(
+                        'a',
+                        {
+                            href: currentView == View.RENDERED ? null : "javascript:void(0)",
+                            onClick: function onClick() {
+                                return setView(View.RENDERED);
+                            } },
+                        'rendered'
+                    ),
+                    '\xA0]'
+                );
+            } else if (content) {
+                currentView = View.RENDERED;
+            } else {
+                currentView = View.SOURCE;
+            }
 
             return _react2.default.createElement(
                 'div',

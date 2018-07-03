@@ -101,68 +101,60 @@ impl Cache {
 
             if u.highlighted.is_none() {
                 if let Some(ext) = path.extension() {
-                    match ext {
-                        e if e == "rs" => {
-                            let text = match text {
-                                Some(t) => t,
-                                None => return Err(::vfs::Error::BadFileKind),
-                            };
+                    if ext == "rs" {
+                        let text = match text {
+                            Some(t) => t,
+                            None => return Err(::vfs::Error::BadFileKind),
+                        };
 
-                            let highlighted = highlight::highlight(
-                                &self.analysis,
-                                &self.project_dir,
-                                path.to_str().unwrap().to_owned(),
-                                text.to_owned(),
-                            );
+                        let highlighted = highlight::highlight(
+                            &self.analysis,
+                            &self.project_dir,
+                            path.to_str().unwrap().to_owned(),
+                            text.to_owned(),
+                        );
 
-                            let mut highlighted = highlighted
-                                .lines()
-                                .map(|line| line.replace("<br>", "\n"))
-                                .collect::<Vec<_>>();
+                        let mut highlighted = highlighted
+                            .lines()
+                            .map(|line| line.replace("<br>", "\n"))
+                            .collect::<Vec<_>>();
 
-                            if text.ends_with('\n') {
-                                highlighted.push(String::new());
-                            }
-
-                            u.highlighted = Some(Highlighted {
-                                source: Some(highlighted),
-                                rendered: None,
-                            });
+                        if text.ends_with('\n') {
+                            highlighted.push(String::new());
                         }
-                        e if e == "md" || e == "markdown" => {
-                            let text = match text {
-                                Some(t) => t,
-                                None => return Err(::vfs::Error::BadFileKind),
-                            };
 
+                        u.highlighted = Some(Highlighted {
+                            source: Some(highlighted),
+                            rendered: None,
+                        });
+                    } else if ext == "md" || ext == "markdown" {
+                        let text = match text {
+                            Some(t) => t,
+                            None => return Err(::vfs::Error::BadFileKind),
+                        };
+
+                        u.highlighted = Some(Highlighted {
+                            rendered: Some(::comrak::markdown_to_html(text, &Default::default())),
+                            source: Some(raw_lines(text)),
+                        });
+                    } else if ext == "png"
+                        || ext == "jpg"
+                        || ext == "jpeg"
+                        || ext == "gif"
+                        || ext == "ico"
+                        || ext == "svg"
+                        || ext == "apng"
+                        || ext == "bmp"
+                    {
+                        if let Ok(path) = path.strip_prefix(&self.project_dir) {
                             u.highlighted = Some(Highlighted {
-                                rendered: Some(::comrak::markdown_to_html(
-                                    text,
-                                    &Default::default(),
+                                source: None,
+                                rendered: Some(format!(
+                                    r#"<img src="/raw/{}"/>"#,
+                                    &*path.to_string_lossy()
                                 )),
-                                source: Some(raw_lines(text)),
                             });
                         }
-                        e if e == "png"
-                            || e == "jpg"
-                            || e == "jpeg"
-                            || e == "gif"
-                            || e == "ico"
-                            || e == "svg"
-                            || e == "apng"
-                            || e == "bmp" =>
-                        {
-                            if let Ok(path) = path.strip_prefix(&self.project_dir) {
-                                u.highlighted = Some(Highlighted {
-                                    source: None,
-                                    rendered: Some(format!(
-                                        r#"<img src="/raw/{}"/>"#,
-                                        &*path.to_string_lossy()
-                                    )),
-                                });
-                            }
-                        }
-                        _ => {}
                     }
                 }
 
@@ -315,10 +307,11 @@ impl Cache {
     }
 
     fn make_line_result(&self, file_path: &Path, span: &Span) -> Result<LineResult, String> {
-        use file_controller::Highlighted;
-
         let (text, pre, post) = match self.get_highlighted(file_path) {
-            Ok(Highlighted { source: Some(lines), .. }) => {
+            Ok(Highlighted {
+                source: Some(lines),
+                ..
+            }) => {
                 let line = span.range.row_start.0 as i32;
                 let text = lines[line as usize].clone();
 
@@ -335,7 +328,7 @@ impl Cache {
 
                 (text, pre, post)
             }
-            Ok(_) => unimplemented!(),
+            Ok(_) => return Err(format!("Not a text file: {}", &*file_path.to_string_lossy())),
             Err(_) => return Err(format!("Error finding text for {:?}", span)),
         };
         Ok(LineResult::new(span, text, pre, post))
