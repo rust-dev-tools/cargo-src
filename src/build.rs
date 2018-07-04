@@ -61,8 +61,11 @@ impl Builder {
 
     // Remove any old or duplicate json files.
     fn clean_analysis(&self) {
-        let crate_names = crate_names()
-            .map(|name| name.replace("-", "_"))
+        let crate_names = cargo_metadata::metadata_deps(None, true)
+            .map(|metadata| metadata.packages)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|package| package.name.replace("-", "_"))
             .collect::<Vec<_>>();
 
         let analysis_dir = Path::new(&TARGET_DIR)
@@ -135,15 +138,4 @@ impl Builder {
             }
         }
     }
-}
-
-fn crate_names() -> impl Iterator<Item = String> {
-    let get_name = |p: cargo_metadata::Package| p.name;
-
-    let metadata = match cargo_metadata::metadata_deps(None, true) {
-        Ok(metadata) => metadata,
-        Err(_) => return Vec::new().into_iter().map(get_name),
-    };
-
-    metadata.packages.into_iter().map(get_name)
 }
