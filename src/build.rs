@@ -61,10 +61,18 @@ impl Builder {
 
     // Remove any old or duplicate json files.
     fn clean_analysis(&self) {
-        let crate_names = self.crate_names();
-        let crate_names: Vec<&str> = crate_names.iter().map(|n| &**n).collect();
+        let crate_names = cargo_metadata::metadata_deps(None, true)
+            .map(|metadata| metadata.packages)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|package| package.name.replace("-", "_"))
+            .collect::<Vec<_>>();
 
-        let analysis_dir = Path::new(&TARGET_DIR).join("debug").join("deps").join("save-analysis");
+        let analysis_dir = Path::new(&TARGET_DIR)
+            .join("debug")
+            .join("deps")
+            .join("save-analysis");
+
         if let Ok(dir_contents) = read_dir(&analysis_dir) {
             // We're going to put all files for the same crate in one bucket, then delete duplicates.
             let mut buckets = HashMap::new();
@@ -77,20 +85,21 @@ impl Builder {
                     continue;
                 }
 
-                if name.starts_with("lib") {
-                    name = &name[3..];
-                }
-
                 let hyphen = name.find('-');
                 let hyphen = match hyphen {
                     Some(h) => h,
                     None => continue,
                 };
                 let name = &name[..hyphen];
+                let match_name = if name.starts_with("lib") {
+                    &name[3..]
+                } else {
+                    &name
+                };
                 // The JSON file does not correspond with any crate from `cargo
                 // metadata`, so it is presumably an old dep that has been removed.
                 // So, we should delete it.
-                if !crate_names.contains(&name) {
+                if !crate_names.iter().any(|name| name == match_name) {
                     info!("deleting {:?}", entry.path());
                     if let Err(e) = remove_file(entry.path()) {
                         debug!("Error deleting file, {:?}: {}", entry.file_name(), e);
@@ -102,7 +111,14 @@ impl Builder {
                 buckets
                     .entry(name.to_owned())
                     .or_insert_with(|| vec![])
-                    .push((entry.path(), entry.metadata().expect("no file metadata").modified().expect("no modified time")))
+                    .push((
+                        entry.path(),
+                        entry
+                            .metadata()
+                            .expect("no file metadata")
+                            .modified()
+                            .expect("no modified time"),
+                    ))
             }
 
             for bucket in buckets.values_mut() {
@@ -121,18 +137,5 @@ impl Builder {
                 }
             }
         }
-    }
-
-    fn crate_names(&self) -> Vec<String> {
-        let metadata = match cargo_metadata::metadata_deps(None, true) {
-            Ok(metadata) => metadata,
-            Err(_) => return Vec::new(),
-        };
-
-        metadata
-            .packages
-            .into_iter()
-            .map(|p| p.name)
-            .collect()
     }
 }
