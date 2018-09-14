@@ -11,7 +11,6 @@
 #![feature(type_ascription)]
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
-#![feature(proc_macro)]
 #![feature(integer_atomics)]
 
 extern crate cargo_metadata;

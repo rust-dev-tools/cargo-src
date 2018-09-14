@@ -19,7 +19,7 @@ use span;
 use syntax;
 use syntax::parse;
 use syntax::parse::lexer::{self, TokenAndSpan};
-use syntax::codemap::{CodeMap, FilePathMapping, Loc};
+use syntax::source_map::{SourceMap, FilePathMapping, Loc};
 use syntax_pos::FileName;
 
 use analysis::AnalysisHost;
@@ -37,13 +37,13 @@ pub fn highlight<'a>(
 
     syntax::with_globals(move || {
         let sess = parse::ParseSess::new(FilePathMapping::empty());
-        let fm = sess.codemap().new_filemap(FileName::Real(PathBuf::from(&file_name)), file_text);
+        let fm = sess.source_map().new_source_file(FileName::Real(PathBuf::from(&file_name)), file_text);
 
-        let mut out = Highlighter::new(analysis, project_path, sess.codemap());
+        let mut out = Highlighter::new(analysis, project_path, sess.source_map());
 
         let t_start = Instant::now();
 
-        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
+        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.source_map());
         classifier.write_source(&mut out).unwrap();
 
         let time = t_start.elapsed();
@@ -60,7 +60,7 @@ pub fn highlight<'a>(
 struct Highlighter<'a> {
     buf: Vec<u8>,
     analysis: &'a AnalysisHost,
-    codemap: &'a CodeMap,
+    source_map: &'a SourceMap,
     project_path: &'a Path,
 }
 
@@ -68,13 +68,13 @@ impl<'a> Highlighter<'a> {
     fn new(
         analysis: &'a AnalysisHost,
         project_path: &'a Path,
-        codemap: &'a CodeMap,
+        source_map: &'a SourceMap,
     ) -> Highlighter<'a> {
         Highlighter {
             buf: vec![],
-            analysis: analysis,
-            codemap: codemap,
-            project_path: project_path,
+            analysis,
+            source_map,
+            project_path,
         }
     }
 
@@ -198,8 +198,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             Class::Ident | Class::Self_ => {
                 match tas {
                     Some(t) => {
-                        let lo = self.codemap.lookup_char_pos(t.sp.lo());
-                        let hi = self.codemap.lookup_char_pos(t.sp.hi());
+                        let lo = self.source_map.lookup_char_pos(t.sp.lo());
+                        let hi = self.source_map.lookup_char_pos(t.sp.hi());
                         // FIXME should be able to get all this info with a single query of analysis
                         let span = &self.span_from_locs(&lo, &hi);
                         let ty = self.analysis
@@ -276,8 +276,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             }
             Class::RefKeyWord if text == "*" => match tas {
                 Some(t) => {
-                    let lo = self.codemap.lookup_char_pos(t.sp.lo());
-                    let hi = self.codemap.lookup_char_pos(t.sp.hi());
+                    let lo = self.source_map.lookup_char_pos(t.sp.lo());
+                    let hi = self.source_map.lookup_char_pos(t.sp.hi());
                     let span = &self.span_from_locs(&lo, &hi);
                     let mut extra = HashMap::new();
                     extra.insert(
