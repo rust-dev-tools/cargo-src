@@ -204,7 +204,7 @@ hacks.
 
 ## Colours and other graphic design issues
 
-I kind of hate the pale yellow background colout
+I kind of hate the pale yellow background colour.
 
 Also hate the thick black bar between topbar and main panel (although I like
 using it for progress indicator)
