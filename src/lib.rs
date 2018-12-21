@@ -7,7 +7,6 @@
 // except according to those terms.
 
 #![feature(const_fn)]
-#![feature(custom_derive, plugin)]
 #![feature(type_ascription)]
 // For libsyntax, which is just a hack to get around rustdoc.
 #![feature(rustc_private)]
