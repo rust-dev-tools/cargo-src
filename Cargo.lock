@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-src"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "cargo_metadata 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "comrak 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
