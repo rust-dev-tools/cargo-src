@@ -100,6 +100,14 @@ const style = {
             //fontSize: '14px'
         },
         node: {
+            container: {
+                link: {
+                    cursor: 'pointer', position: 'relative', padding: '0px 5px', display: 'block'
+                },
+                activeLink: {
+                    background: '#31363F'
+                }
+            },
             base: {
                 position: 'relative'
             },

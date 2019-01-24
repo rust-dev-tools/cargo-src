@@ -1,7 +1,10 @@
+const path = require('path');
+
 module.exports = {
   entry: "./static/rustw.ts",
   output: {
     filename: "./static/rustw.out.js",
+    path: path.resolve(__dirname),
     libraryTarget: 'var',
     library: 'Rustw'
   },
@@ -9,7 +12,7 @@ module.exports = {
     extensions: [".js", ".ts", ".tsx"]
   },
   module: {
-    loaders: [
+    rules: [
     {
       test: /\.js$/,
       exclude: /node_modules/,
