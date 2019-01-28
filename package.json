@@ -4,7 +4,7 @@
     "lint:es": "eslint -c ./static/.eslintrc --ignore-path ./static/.eslintignore static/ || true"
   },
   "dependencies": {
-    "@types/react": "^16.7.0",
+    "@types/react": "^16.7.21",
     "@types/react-router-dom": "^4.3.1",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
