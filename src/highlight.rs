@@ -18,14 +18,21 @@ use rustdoc_highlight::{self as highlight, Class, Classifier};
 use span;
 use syntax;
 use syntax::parse;
-use syntax::parse::lexer::{self, TokenAndSpan};
+use syntax::parse::token::Token;
+use syntax::parse::lexer::{self};
 use syntax::source_map::{SourceMap, FilePathMapping, Loc};
 use syntax_pos::FileName;
+use syntax_pos::edition;
 
 use analysis::AnalysisHost;
 use analysis::DefKind;
 
+
 type Span = span::Span<span::ZeroIndexed>;
+
+pub fn with_globals<R>(f: impl FnOnce() -> R) -> R {
+    syntax::with_globals(edition::DEFAULT_EDITION, f)
+}
 
 pub fn highlight<'a>(
     analysis: &'a AnalysisHost,
@@ -35,7 +42,7 @@ pub fn highlight<'a>(
 ) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
 
-    syntax::with_globals(move || {
+    with_globals( || {
         let sess = parse::ParseSess::new(FilePathMapping::empty());
         let fm = sess.source_map().new_source_file(FileName::Real(PathBuf::from(&file_name)), file_text);
 
@@ -189,7 +196,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         &mut self,
         text: T,
         klass: Class,
-        tas: Option<&TokenAndSpan>,
+        tas: Option<&Token>,
     ) -> io::Result<()> {
         let text = text.to_string();
 
@@ -198,8 +205,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             Class::Ident | Class::Self_ => {
                 match tas {
                     Some(t) => {
-                        let lo = self.source_map.lookup_char_pos(t.sp.lo());
-                        let hi = self.source_map.lookup_char_pos(t.sp.hi());
+                        let lo = self.source_map.lookup_char_pos(t.span.lo());
+                        let hi = self.source_map.lookup_char_pos(t.span.hi());
                         // FIXME should be able to get all this info with a single query of analysis
                         let span = &self.span_from_locs(&lo, &hi);
                         let ty = self.analysis
@@ -276,8 +283,8 @@ impl<'a> highlight::Writer for Highlighter<'a> {
             }
             Class::RefKeyWord if text == "*" => match tas {
                 Some(t) => {
-                    let lo = self.source_map.lookup_char_pos(t.sp.lo());
-                    let hi = self.source_map.lookup_char_pos(t.sp.hi());
+                    let lo = self.source_map.lookup_char_pos(t.span.lo());
+                    let hi = self.source_map.lookup_char_pos(t.span.hi());
                     let span = &self.span_from_locs(&lo, &hi);
                     let mut extra = HashMap::new();
                     extra.insert(
