@@ -51,7 +51,7 @@ pub fn highlight<'a>(
         let t_start = Instant::now();
 
         let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.source_map());
-        classifier.write_source(&mut out).unwrap();
+        classifier.write_source(&mut out).unwrap_or(());
 
         let time = t_start.elapsed();
         info!(
@@ -196,14 +196,14 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         &mut self,
         text: T,
         klass: Class,
-        tas: Option<&Token>,
+        tok: Option<Token>,
     ) -> io::Result<()> {
         let text = text.to_string();
 
         match klass {
             Class::None => write!(self.buf, "{}", text),
             Class::Ident | Class::Self_ => {
-                match tas {
+                match tok {
                     Some(t) => {
                         let lo = self.source_map.lookup_char_pos(t.span.lo());
                         let hi = self.source_map.lookup_char_pos(t.span.hi());
@@ -281,7 +281,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                     ),
                 }
             }
-            Class::RefKeyWord if text == "*" => match tas {
+            Class::RefKeyWord if text == "*" => match tok {
                 Some(t) => {
                     let lo = self.source_map.lookup_char_pos(t.span.lo());
                     let hi = self.source_map.lookup_char_pos(t.span.hi());
