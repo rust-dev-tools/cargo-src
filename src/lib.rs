@@ -21,6 +21,7 @@ extern crate rls_analysis as analysis;
 extern crate rls_blacklist as blacklist;
 extern crate rls_span as span;
 extern crate rls_vfs as vfs;
+extern crate rustc_parse;
 extern crate rustdoc_highlight;
 extern crate serde;
 #[macro_use]
@@ -28,6 +29,7 @@ extern crate serde_derive;
 extern crate comrak;
 extern crate serde_json;
 extern crate syntax;
+extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate toml;
 extern crate url;

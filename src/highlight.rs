@@ -14,13 +14,14 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use rustc_parse::lexer;
 use rustdoc_highlight::{self as highlight, Class, Classifier};
 use span;
 use syntax;
-use syntax::parse;
-use syntax::parse::token::Token;
-use syntax::parse::lexer::{self};
-use syntax::source_map::{SourceMap, FilePathMapping, Loc};
+use syntax_expand::config::process_configure_mod;
+use syntax::token::Token;
+use syntax::sess::ParseSess;
+use syntax::source_map::{SourceMap, Loc};
 use syntax_pos::FileName;
 use syntax_pos::edition;
 
@@ -43,7 +44,7 @@ pub fn highlight<'a>(
     debug!("highlight `{}` in `{}`", file_text, file_name);
 
     with_globals( || {
-        let sess = parse::ParseSess::new(FilePathMapping::empty());
+        let sess = ParseSess::with_silent_emitter(process_configure_mod);
         let fm = sess.source_map().new_source_file(FileName::Real(PathBuf::from(&file_name)), file_text);
 
         let mut out = Highlighter::new(analysis, project_path, sess.source_map());

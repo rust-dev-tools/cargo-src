@@ -79,7 +79,7 @@ impl Builder {
             for entry in dir_contents {
                 let entry = entry.expect("unexpected error reading save-analysis directory");
                 let name = entry.file_name();
-                let mut name = name.to_str().unwrap();
+                let name = name.to_str().unwrap();
 
                 if !name.ends_with("json") {
                     continue;
