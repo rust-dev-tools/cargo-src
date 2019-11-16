@@ -32,10 +32,7 @@ pub struct BuildArgs {
 }
 
 impl Builder {
-    pub fn new(
-        config: Arc<Config>,
-        build_args: BuildArgs,
-    ) -> Builder {
+    pub fn new(config: Arc<Config>, build_args: BuildArgs) -> Builder {
         Builder { config, build_args }
     }
 

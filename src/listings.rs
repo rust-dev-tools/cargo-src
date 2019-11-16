@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Ord, PartialOrd, Ordering};
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Debug, Clone)]

@@ -366,7 +366,10 @@ impl Server {
             }
         } else {
             match self.file_cache.get_highlighted(&path_buf) {
-                Ok(Highlighted { ref source, ref rendered }) => {
+                Ok(Highlighted {
+                    ref source,
+                    ref rendered,
+                }) => {
                     let mut res = Response::new();
                     res.headers_mut().set(ContentType::json());
                     let path = path_parts(&path_buf);

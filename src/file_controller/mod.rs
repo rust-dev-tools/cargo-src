@@ -92,10 +92,9 @@ impl Cache {
         }
 
         vfs_err!(self.files.load_file(path))?;
-        vfs_err!(
-            self.files
-                .ensure_user_data(path, |_| Ok(VfsUserData::new()))
-        )?;
+        vfs_err!(self
+            .files
+            .ensure_user_data(path, |_| Ok(VfsUserData::new())))?;
         vfs_err!(self.files.with_user_data(path, |u| {
             let (text, u) = u?;
 
@@ -328,7 +327,12 @@ impl Cache {
 
                 (text, pre, post)
             }
-            Ok(_) => return Err(format!("Not a text file: {}", &*file_path.to_string_lossy())),
+            Ok(_) => {
+                return Err(format!(
+                    "Not a text file: {}",
+                    &*file_path.to_string_lossy()
+                ))
+            }
             Err(_) => return Err(format!("Error finding text for {:?}", span)),
         };
         Ok(LineResult::new(span, text, pre, post))

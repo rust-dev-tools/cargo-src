@@ -1,13 +1,13 @@
-extern crate log;
-extern crate env_logger;
 extern crate cargo_src;
+extern crate env_logger;
+extern crate log;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 
+use cargo_src::BuildArgs;
 use std::env;
 use std::process::Command;
-use cargo_src::BuildArgs;
 
 fn main() {
     env_logger::init().unwrap();
@@ -41,7 +41,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    
+
     let build_args = BuildArgs {
         program: env::var("CARGO").expect("Missing $CARGO var"),
         args,
@@ -63,8 +63,11 @@ fn print_help() {
 }
 
 fn workspace_root() -> Result<String, serde_json::Error> {
-    let output = Command::new("cargo").args(&["metadata", "--format-version", "1"]).output();
-    let stdout = String::from_utf8(output.expect("error executing `cargo metadata`").stdout).expect("unexpected output");
+    let output = Command::new("cargo")
+        .args(&["metadata", "--format-version", "1"])
+        .output();
+    let stdout = String::from_utf8(output.expect("error executing `cargo metadata`").stdout)
+        .expect("unexpected output");
     let json: Metadata = serde_json::from_str(&stdout)?;
     Ok(json.workspace_root)
 }

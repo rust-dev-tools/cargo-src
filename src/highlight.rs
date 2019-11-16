@@ -18,16 +18,15 @@ use rustc_parse::lexer;
 use rustdoc_highlight::{self as highlight, Class, Classifier};
 use span;
 use syntax;
-use syntax_expand::config::process_configure_mod;
-use syntax::token::Token;
 use syntax::sess::ParseSess;
-use syntax::source_map::{SourceMap, Loc};
-use syntax_pos::FileName;
+use syntax::source_map::{Loc, SourceMap};
+use syntax::token::Token;
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition;
+use syntax_pos::FileName;
 
 use analysis::AnalysisHost;
 use analysis::DefKind;
-
 
 type Span = span::Span<span::ZeroIndexed>;
 
@@ -43,15 +42,18 @@ pub fn highlight<'a>(
 ) -> String {
     debug!("highlight `{}` in `{}`", file_text, file_name);
 
-    with_globals( || {
+    with_globals(|| {
         let sess = ParseSess::with_silent_emitter(process_configure_mod);
-        let fm = sess.source_map().new_source_file(FileName::Real(PathBuf::from(&file_name)), file_text);
+        let fm = sess
+            .source_map()
+            .new_source_file(FileName::Real(PathBuf::from(&file_name)), file_text);
 
         let mut out = Highlighter::new(analysis, project_path, sess.source_map());
 
         let t_start = Instant::now();
 
-        let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.source_map());
+        let mut classifier =
+            Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.source_map());
         classifier.write_source(&mut out).unwrap_or(());
 
         let time = t_start.elapsed();
@@ -87,14 +89,13 @@ impl<'a> Highlighter<'a> {
     }
 
     fn get_link(&self, span: &Span) -> Option<String> {
-        self.analysis
-            .goto_def(span)
-            .ok()
-            .and_then(|def_span| if span == &def_span {
+        self.analysis.goto_def(span).ok().and_then(|def_span| {
+            if span == &def_span {
                 None
             } else {
                 Some(loc_for_span(&def_span, self.project_path))
-            })
+            }
+        })
     }
 
     fn span_from_locs(&mut self, lo: &Loc, hi: &Loc) -> Span {
@@ -175,13 +176,12 @@ fn loc_for_span(span: &Span, project_path: &Path) -> String {
     )
 }
 
-
 macro_rules! maybe_insert {
     ($h: expr, $k: expr, $v: expr) => {
         if let Some(v) = $v {
             $h.insert($k.to_owned(), v);
         }
-    }
+    };
 }
 
 impl<'a> highlight::Writer for Highlighter<'a> {
@@ -193,12 +193,7 @@ impl<'a> highlight::Writer for Highlighter<'a> {
         write!(self.buf, "</span>")
     }
 
-    fn string<T: Display>(
-        &mut self,
-        text: T,
-        klass: Class,
-        tok: Option<Token>,
-    ) -> io::Result<()> {
+    fn string<T: Display>(&mut self, text: T, klass: Class, tok: Option<Token>) -> io::Result<()> {
         let text = text.to_string();
 
         match klass {
@@ -210,14 +205,20 @@ impl<'a> highlight::Writer for Highlighter<'a> {
                         let hi = self.source_map.lookup_char_pos(t.span.hi());
                         // FIXME should be able to get all this info with a single query of analysis
                         let span = &self.span_from_locs(&lo, &hi);
-                        let ty = self.analysis
-                            .show_type(span)
-                            .ok()
-                            .and_then(|s| if s.is_empty() { None } else { Some(s) });
-                        let docs = self.analysis
-                            .docs(span)
-                            .ok()
-                            .and_then(|s| if s.is_empty() { None } else { Some(s) });
+                        let ty = self.analysis.show_type(span).ok().and_then(|s| {
+                            if s.is_empty() {
+                                None
+                            } else {
+                                Some(s)
+                            }
+                        });
+                        let docs = self.analysis.docs(span).ok().and_then(|s| {
+                            if s.is_empty() {
+                                None
+                            } else {
+                                Some(s)
+                            }
+                        });
                         let title = match (ty, docs) {
                             (Some(t), Some(d)) => Some(format!("{}\n\n{}", t, d)),
                             (Some(t), _) => Some(t),
@@ -237,10 +238,11 @@ impl<'a> highlight::Writer for Highlighter<'a> {
 
                                 let impls = match self.analysis.get_def(id) {
                                     Ok(def) => match def.kind {
-                                        DefKind::Enum |
-                                        DefKind::Struct |
-                                        DefKind::Union |
-                                        DefKind::Trait => self.analysis
+                                        DefKind::Enum
+                                        | DefKind::Struct
+                                        | DefKind::Union
+                                        | DefKind::Trait => self
+                                            .analysis
                                             .find_impls(id)
                                             .map(|v| v.len())
                                             .unwrap_or(0),

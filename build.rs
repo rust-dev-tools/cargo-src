@@ -7,11 +7,11 @@
 // except according to those terms.
 
 extern crate walkdir;
-use walkdir::WalkDir;
 use std::env;
 use std::fs::File;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
+use walkdir::WalkDir;
 
 /// This build script creates a function for looking up static data to be served
 /// by the web server. The contents of the static directory are included in the
@@ -24,7 +24,6 @@ fn main() {
 
     let mut out_path = Path::new(&env::var("OUT_DIR").unwrap()).to_owned();
     out_path.push("lookup_static.rs");
-
 
     // Don't rerun on every build, but do rebuild if the build script changes
     // or something changes in the static directory.
@@ -40,7 +39,13 @@ fn main() {
         .filter(|e| !e.path_is_symlink() && e.file_type().is_file())
     {
         let relative = entry.path().strip_prefix(&from).unwrap();
-        write!(out_file, "\nr#\"{}\"# => Ok(include_bytes!(r#\"{}\"#)),", relative.display(), entry.path().display()).unwrap();
+        write!(
+            out_file,
+            "\nr#\"{}\"# => Ok(include_bytes!(r#\"{}\"#)),",
+            relative.display(),
+            entry.path().display()
+        )
+        .unwrap();
     }
 
     out_file.write(SUFFIX.as_bytes()).unwrap();
@@ -51,10 +56,8 @@ pub fn lookup_static_file(path: &str) -> Result<&'static [u8], ()> {
     match path {
 ";
 
-
 const SUFFIX: &str = "
         _ => Err(()),
     }
 }
 ";
-
