@@ -12,10 +12,10 @@ export function make_url(suffix) {
 
 export function unHighlight(css_class, element) {
     if (element) {
-        let highlighted = $(element).find('.' + css_class);
-        highlighted.removeClass(css_class);
-        let floating = $(element).find('.' + css_class + '.floating_highlight');
-        floating.remove();
+        let $highlighted = $(element).find('.' + css_class);
+        $highlighted.removeClass(css_class);
+        let $floating = $(element).find('.' + css_class + '.floating_highlight');
+        $floating.remove();
     }
 
 }
@@ -140,11 +140,11 @@ export function parseLink(file_loc) {
 //         |----| left
 //         |------------| right
 function make_highlight(src_line_prefix, line_number, left, right, css_class) {
-    var line_div = $("#" + src_line_prefix + line_number);
-    var highlight = $("<div>&nbsp;</div>");
-    highlight.addClass(css_class + " floating_highlight");
+    var $line_div = $("#" + src_line_prefix + line_number);
+    var $highlight = $("<div>&nbsp;</div>");
+    $highlight.addClass(css_class + " floating_highlight");
 
-    const adjust = line_div.data('adjust');
+    const adjust = $line_div.data('adjust');
     if (adjust) {
         left -= adjust;
         right -= adjust;
@@ -153,22 +153,22 @@ function make_highlight(src_line_prefix, line_number, left, right, css_class) {
     left *= CHAR_WIDTH;
     right *= CHAR_WIDTH;
     if (right === 0) {
-        right = line_div.width();
+        right = $line_div.width();
     }
 
     var width = right - left;
-    var padding = parseInt(line_div.css("padding-left"));
+    var padding = parseInt($line_div.css("padding-left"));
     if (left > 0) {
         left += padding;
     } else {
         width += padding;
     }
 
-    var offset = line_div.offset();
+    var offset = $line_div.offset();
     if (offset) {
-        line_div.after(highlight);
+        $line_div.after($highlight);
         offset.left += left;
-        highlight.offset(offset);
-        highlight.width(width);
+        $highlight.offset(offset);
+        $highlight.width(width);
     }
 }

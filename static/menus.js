@@ -25,8 +25,8 @@ export class Menu extends React.Component {
             return;
         }
 
-        var menuDiv = $(`#${this.props.id}`);
-        menuDiv.offset(this.props.location);
+        var $menuDiv = $(`#${this.props.id}`);
+        $menuDiv.offset(this.props.location);
     }
 
     items() {
@@ -52,7 +52,7 @@ export class Menu extends React.Component {
 
     render() {
         let items = this.items();
-    
+
         if (items.length === 0) {
             return null;
         }
@@ -84,7 +84,7 @@ export class MenuHost extends React.Component {
             ev.preventDefault();
             ev.stopPropagation();
         };
-        
+
         let onClick = null;
         if (this.leftClick) {
             onClick = contextMenu;

@@ -16,14 +16,14 @@ import SanitizedHTML from 'react-sanitized-html';
 // Menus, highlighting on mouseover.
 function add_ref_functionality(self) {
     for (const el of $("#div_src_view").find(".class_id")) {
-        const element = $(el);
+        const $element = $(el);
         const classes = el.className.split(' ');
         // FIXME[ES6]: use classes.find() and then execute following code
         let c = classes.find((c) => c.startsWith('class_id_'));
         if(c === undefined) {
             return;
         }
-        element.hover(function() {
+        $element.hover(function() {
             $("." + c).css("background-color", "#d5f3b5");
         }, function() {
             $("." + c).css("background-color", "");
@@ -35,9 +35,9 @@ function add_ref_functionality(self) {
             ev.preventDefault();
             ev.stopPropagation();
         };
-        element.off("contextmenu");
-        element.on("contextmenu", showRefMenu);
-        element.addClass("hand_cursor");
+        $element.off("contextmenu");
+        $element.on("contextmenu", showRefMenu);
+        $element.addClass("hand_cursor");
     }
 }
 
@@ -126,9 +126,9 @@ export class SourceView extends React.Component {
         }
 
         // Make source links active.
-        var linkables = $("#div_src_view").find(".src_link");
-        linkables.off("click");
-        linkables.click((e) => {
+        var $linkables = $("#div_src_view").find(".src_link");
+        $linkables.off("click");
+        $linkables.click((e) => {
             // The data for what to do on-click is encoded in the data-link attribute.
             // We need to process it here.
             e.preventDefault();

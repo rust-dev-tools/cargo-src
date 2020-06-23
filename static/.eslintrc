@@ -13,11 +13,13 @@
   },
   "plugins": [
     "react",
-    "jquery"
+    "no-jquery"
   ],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:no-jquery/recommended",
+    "plugin:no-jquery/deprecated-2.2",
   ],
   "parserOptions": {
     "ecmaVersion": 8,
